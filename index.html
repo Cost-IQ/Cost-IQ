@@ -80,7 +80,7 @@
 <div id="appView" style="display:none">
   <div class="header">
     <button class="back" id="backBtn" onclick="goList()">‹</button>
-    <div style="flex:1"><h1 id="hTitle">📊 Cost Control</h1><div class="who" id="whoami">—</div></div>
+    <div style="flex:1"><h1 id="hTitle">Cost IQ</h1><div class="who" id="whoami">—</div></div>
     <button class="out" onclick="goHome()" style="margin-right:6px" title="Αρχική">🏠</button>
     <button class="out" onclick="openLabelEditor()" style="margin-right:6px" title="Ονόματα καρτελών">⚙️</button>
     <button class="out" id="fsBtn" onclick="toggleFullscreen()" style="margin-right:6px" title="Πλήρης οθόνη">⛶</button>
@@ -237,7 +237,7 @@ async function enterApp(){
   const {data:{user}}=await sb.auth.getUser();
   let role='—';
   try{const {data:prof}=await sb.from('profiles').select('role').eq('id',user.id).single();if(prof)role=prof.role;}catch(e){}
-  document.getElementById('whoami').textContent=(user.email||'')+' · '+role+' · '+BUILD;
+  document.getElementById('whoami').textContent=BUILD;
   await loadAll();
 }
 const MIGRATIONS=[
@@ -293,9 +293,9 @@ function setupBanner(){
 function supName(id){const s=ST.suppliers.find(x=>x.id===id);return s?s.name:'—';}
 function pricesFor(pid){return ST.prices.filter(p=>p.product_id===pid);}
 
-function goList(){ST.view='list';ST.prod=null;document.getElementById('backBtn').style.display='none';document.getElementById('hTitle').textContent='📊 Cost Control';renderSection();}
+function goList(){ST.view='list';ST.prod=null;document.getElementById('backBtn').style.display='none';document.getElementById('hTitle').textContent='Cost IQ';renderSection();}
 function goSection(s){ST.section=s;if(s==='recipes')ST.homeView=false;renderSection();}
-function goHome(){ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';document.getElementById('hTitle').textContent='📊 Cost Control';renderSection();window.scrollTo(0,0);}
+function goHome(){ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';document.getElementById('hTitle').textContent='Cost IQ';renderSection();window.scrollTo(0,0);}
 function toggleFullscreen(){
   const d=document.documentElement;
   if(!document.fullscreenElement){(d.requestFullscreen||d.webkitRequestFullscreen||d.msRequestFullscreen||function(){}).call(d);}
