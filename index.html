@@ -181,7 +181,7 @@ const EN_DEF={
   sExpSup:'EXPENSES BY SUPPLIER',sTopProd:'TOP PRODUCTS (spend)',
   sTotalSpend:'Total Spend',sFromHist:'from history',rSubcount:'sub-recipes',rCount:'recipes',rNoneHome:'No Sub-Recipes — press «+ New Homemade»',rNone:'No recipes here',
   mpTitle:'MANUAL PURCHASE (no invoice)',wProduct:'Product',mpSupExist:'Supplier (existing)',mpOrType:'— or type a name on the right —',mpOrName:'…or type a name (e.g market)',mpOrNamePh:'e.g market',wQty:'Quantity',wUnit:'Unit',wDate:'Date',mpUpdate:'Also update product price',mpRecent:'RECENT MANUAL',mpNone:'None yet',phOnlyCh:'Only with price change',phDeliv:'deliveries',phLines:'lines',phSearch:'🔍 Product or supplier…',
-  agTarget:'Target',agAchieved:'Achieved',agPurchNoEfk:'Target Purchases (excl. excise)',agPurchEfk:'Target Purchases +Excise',agFixedMkt:'Fixed Marketing',agVarMkt:'Variable Marketing',agMktActual:'Marketing Actual',agTotalReb:'Total Rebate',agRebActual:'Rebate Actual',agProposed:'Proposed Rebate',agProducts:'PRODUCTS',agPrice:'Agreement Price €',agRebatePct:'Rebate %',agMkt:'Marketing €',agAddProduct:'Add Product',agNewBlock:'New Agreement'
+  agTarget:'Target',agAchieved:'Achieved',agPurchNoEfk:'Target Purchases (excl. excise)',agPurchEfk:'Target Purchases +Excise',agFixedMkt:'Fixed Marketing',agVarMkt:'Variable Marketing',agMktActual:'Marketing Actual',agTotalReb:'Total Rebate',agRebActual:'Rebate Actual',agProposed:'Proposed Rebate',agProducts:'PRODUCTS',agPrice:'Agreement Price €',agRebatePct:'Rebate %',agMkt:'Marketing €',agAddProduct:'Add Product',agNewBlock:'New Agreement',pdOverride:'Manually selected',pdAuto:'Auto (cheapest)'
 };
 function rerenderCurrent(){
   if(ST.view==='labels')return openLabelEditor();
@@ -331,10 +331,10 @@ const LABEL_KEYS=[
   ['sExpSup','ΕΞΟΔΑ ΑΝΑ ΠΡΟΜΗΘΕΥΤΗ'],['sTopProd','TOP ΠΡΟΪΟΝΤΑ (δαπάνη)'],
   ['sTotalSpend','Σύνολο αγορών'],['sFromHist','από ιστορικό'],['rSubcount','υποσυνταγές'],['rCount','συνταγές'],['rNoneHome','Καμία υποσυνταγή'],['rNone','Καμία συνταγή εδώ'],
   ['mpTitle','ΧΕΙΡΟΚΙΝΗΤΗ ΑΓΟΡΑ (χωρίς τιμολόγιο)'],['wProduct','Προϊόν'],['mpSupExist','Προμηθευτής (υπάρχων)'],['mpOrType','— ή γράψε όνομα δεξιά —'],['mpOrName','…ή γράψε όνομα (πχ λαϊκή)'],['mpOrNamePh','πχ λαϊκή'],['wQty','Ποσότητα'],['wUnit','Μονάδα'],['wDate','Ημερομηνία'],['mpUpdate','Να ενημερώσει και την τιμή προϊόντος'],['mpRecent','ΠΡΟΣΦΑΤΕΣ ΧΕΙΡΟΚΙΝΗΤΕΣ'],['mpNone','Καμία ακόμα'],['phOnlyCh','Μόνο με μεταβολή τιμής'],['phDeliv','παραλαβές'],['phLines','γραμμές'],['phSearch','🔍 Προϊόν ή προμηθευτής…'],
-  ['agTarget','Target'],['agAchieved','Achieved'],['agPurchNoEfk','Αγορές Στόχου (χωρίς ΕΦΚ)'],['agPurchEfk','Αγορές Στόχου +ΕΦΚ'],['agFixedMkt','Fixed Marketing'],['agVarMkt','Variable Marketing'],['agMktActual','Marketing Actual'],['agTotalReb','Total Rebate'],['agRebActual','Rebate Actual'],['agProposed','Proposed Rebate'],['agProducts','ΠΡΟΪΟΝΤΑ'],['agPrice','Τιμή Συμφωνίας €'],['agRebatePct','Rebate %'],['agMkt','Marketing €'],['agAddProduct','Προσθήκη Προϊόντος'],['agNewBlock','Νέα Συμφωνία']
+  ['agTarget','Target'],['agAchieved','Achieved'],['agPurchNoEfk','Αγορές Στόχου (χωρίς ΕΦΚ)'],['agPurchEfk','Αγορές Στόχου +ΕΦΚ'],['agFixedMkt','Fixed Marketing'],['agVarMkt','Variable Marketing'],['agMktActual','Marketing Actual'],['agTotalReb','Total Rebate'],['agRebActual','Rebate Actual'],['agProposed','Proposed Rebate'],['agProducts','ΠΡΟΪΟΝΤΑ'],['agPrice','Τιμή Συμφωνίας €'],['agRebatePct','Rebate %'],['agMkt','Marketing €'],['agAddProduct','Προσθήκη Προϊόντος'],['agNewBlock','Νέα Συμφωνία'],['pdOverride','Επιλεγμένος χειροκίνητα'],['pdAuto','Αυτόματο (φθηνότερος)']
 ];
 function openLabelEditor(){
-  ST.view='labels';document.getElementById('backBtn').style.display='block';document.getElementById('hTitle').textContent='⚙️ Ονόματα καρτελών';
+  ST.view='labels';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='⚙️ Ονόματα καρτελών';
   const c=document.getElementById('content');
   const cur=ST.lang;const m=(ST.labels&&ST.labels[cur])||{};
   const langName=cur==='en'?'Αγγλικά (EN)':'Ελληνικά (ΕΛ)';
@@ -371,7 +371,7 @@ function sectionNav(){
     tab('history','📊',lbl('history','Στατιστικά'))+
     '<div class="tab" onclick="loadAll()" style="flex:0 0 auto;min-width:44px" title="Ανανέωση">🔄</div></div></div>'+setupBanner();
 }
-function renderSection(){ if(ST.section==='suppliers') renderSuppliers(); else if(ST.section==='orders') renderOrders(); else if(ST.section==='history') renderStats(); else if(ST.section==='ocr') renderOcr(); else if(ST.section==='invoices') renderInvoices(); else if(ST.section==='recipes') renderRecipes(); else if(ST.section==='agree') renderAgreements(); else renderList(); }
+function renderSection(){ if(ST.section==='suppliers') renderSuppliers(); else if(ST.section==='orders') renderOrders(); else if(ST.section==='history') renderStats(); else if(ST.section==='ocr') renderOcr(); else if(ST.section==='invoices') renderInvoices(); else if(ST.section==='recipes') renderRecipes(); else if(ST.section==='agree') renderAgreements(); else renderList(); var _w=document.getElementById('whoami'); if(_w) _w.style.display=(ST.section==='products'&&ST.view==='list')?'block':'none'; }
 function setKind(k){ST.kind=k;renderList();}
 function renderList(){
   const c=document.getElementById('content');
@@ -432,7 +432,7 @@ function renderList(){
 function openProd(pid){
   const p=ST.products.find(x=>x.id===pid);if(!p)return;
   ST.prod=p;ST.view='detail';
-  document.getElementById('backBtn').style.display='block';
+  document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}
   document.getElementById('hTitle').textContent=p.sku;
   drawProd();
 }
@@ -561,7 +561,7 @@ function drawProd(){
     // ── ΣΤΗΛΗ 1: Τιμές Προμηθευτών + Προσθήκη Τιμής ──
     '<div style="display:flex;flex-direction:column;gap:14px">'+
       '<div class="card" style="margin:0"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px"'+'>💰 '+lbl('hSupPrices','ΤΙΜΕΣ ΠΡΟΜΗΘΕΥΤΩΝ')+'</h3>'+sup+
-        (anyOvr?'<div style="margin-top:8px;font-size:12px;color:var(--warn)">🔒 Επιλεγμένος χειροκίνητα · <a href="#" onclick="clearOverride(\''+p.id+'\');return false" style="color:var(--accent)">↺ Αυτόματο (φθηνότερος)</a></div>':'')+
+        (anyOvr?'<div style="margin-top:8px;font-size:12px;color:var(--warn)">🔒 '+lbl('pdOverride','Επιλεγμένος χειροκίνητα')+' · <a href="#" onclick="clearOverride(\''+p.id+'\');return false" style="color:var(--accent)">↺ '+lbl('pdAuto','Αυτόματο (φθηνότερος)')+'</a></div>':'')+
         '<div class="kv" style="margin-top:10px;border-top:2px solid var(--line);padding-top:10px"><span class="k">'+lbl('pdBestPrice','Best Price')+'</span><span class="v">'+money(b.price)+'</span></div>'+
         '<div class="kv"><span class="k">'+lbl('pdBestSup','Best Supplier')+'</span><span class="v">'+esc(b.sup||'—')+'</span></div>'+
       '</div>'+
@@ -767,7 +767,7 @@ function renderRecipes(){
 function openRecipe(rid){
   const r=(ST.recipes||[]).find(x=>x.id===rid);if(!r)return;
   ST.recipe=r;ST.view='detail';
-  document.getElementById('backBtn').style.display='block';
+  document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}
   document.getElementById('hTitle').textContent=r.name;
   drawRecipe();
 }
@@ -1233,7 +1233,7 @@ async function saveOrder(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 function orderSummary(){
-  ST.view='summary';document.getElementById('backBtn').style.display='block';document.getElementById('hTitle').textContent='📋 Σύνοψη';
+  ST.view='summary';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='📋 Σύνοψη';
   const c=document.getElementById('content');
   // group products with order_qty>0 by best supplier
   const bySup={};
@@ -1289,7 +1289,7 @@ async function logOrder(supName){
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function renderOrderHistory(){
-  ST.view='ohist';document.getElementById('backBtn').style.display='block';document.getElementById('hTitle').textContent='🕘 Ιστορικό Παραγγελιών';
+  ST.view='ohist';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🕘 Ιστορικό Παραγγελιών';
   const c=document.getElementById('content');
   const rows=(ST.orderHistory||[]).slice();
   let h='<button class="btn ghost" onclick="checkDeliveries()" style="margin-top:10px">📦 Έλεγχος Παραλαβών (μαρκάρει Delivered)</button>';
@@ -1937,7 +1937,7 @@ function priceDbView(){
 }
 function openInvoice(id){
   const v=ST.invoices.find(x=>x.id===id);if(!v)return;
-  ST.inv=v;document.getElementById('backBtn').style.display='block';document.getElementById('hTitle').textContent='🧾 '+(v.supplier_name||'Τιμολόγιο');
+  ST.inv=v;document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🧾 '+(v.supplier_name||'Τιμολόγιο');
   const c=document.getElementById('content');
   const lines=ST.history.filter(r=> r.invoice_id===id || ((r.supplier_name&&v.supplier_name&&normStr(r.supplier_name)===normStr(v.supplier_name))&&r.date===v.date) );
   let h='<div class="card"><h3 style="font-size:14px;margin-bottom:10px">🧾 '+esc(v.supplier_name||supName(v.supplier_id))+'</h3>'+
@@ -2005,7 +2005,7 @@ async function setOverride(pid,priceId){
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function clearOverride(pid){
-  try{await sb.from('product_prices').update({is_override:false}).eq('product_id',pid);await refreshPrices();toast('✅ Αυτόματο (φθηνότερος)');drawProd();}
+  try{await sb.from('product_prices').update({is_override:false}).eq('product_id',pid);await refreshPrices();toast('✅ '+lbl('pdAuto','Αυτόματο (φθηνότερος)'));drawProd();}
   catch(e){toast('❌ '+(e.message||e));}
 }
 
