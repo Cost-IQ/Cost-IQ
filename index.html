@@ -180,7 +180,8 @@ const EN_DEF={
   rHomemade:'Homemade Recipes',rBack:'Back to recipes',rNewHome:'New Homemade',rNewRecipe:'New Recipe',
   sExpSup:'EXPENSES BY SUPPLIER',sTopProd:'TOP PRODUCTS (spend)',
   sTotalSpend:'Total Spend',sFromHist:'from history',rSubcount:'sub-recipes',rCount:'recipes',rNoneHome:'No Sub-Recipes — press «+ New Homemade»',rNone:'No recipes here',
-  mpTitle:'MANUAL PURCHASE (no invoice)',wProduct:'Product',mpSupExist:'Supplier (existing)',mpOrType:'— or type a name on the right —',mpOrName:'…or type a name (e.g market)',mpOrNamePh:'e.g market',wQty:'Quantity',wUnit:'Unit',wDate:'Date',mpUpdate:'Also update product price',mpRecent:'RECENT MANUAL',mpNone:'None yet',phOnlyCh:'Only with price change',phDeliv:'deliveries',phLines:'lines'
+  mpTitle:'MANUAL PURCHASE (no invoice)',wProduct:'Product',mpSupExist:'Supplier (existing)',mpOrType:'— or type a name on the right —',mpOrName:'…or type a name (e.g market)',mpOrNamePh:'e.g market',wQty:'Quantity',wUnit:'Unit',wDate:'Date',mpUpdate:'Also update product price',mpRecent:'RECENT MANUAL',mpNone:'None yet',phOnlyCh:'Only with price change',phDeliv:'deliveries',phLines:'lines',phSearch:'🔍 Product or supplier…',
+  agTarget:'Target',agAchieved:'Achieved',agPurchNoEfk:'Target Purchases (excl. excise)',agPurchEfk:'Target Purchases +Excise',agFixedMkt:'Fixed Marketing',agVarMkt:'Variable Marketing',agMktActual:'Marketing Actual',agTotalReb:'Total Rebate',agRebActual:'Rebate Actual',agProposed:'Proposed Rebate',agProducts:'PRODUCTS',agPrice:'Agreement Price €',agRebatePct:'Rebate %',agMkt:'Marketing €',agAddProduct:'Add Product',agNewBlock:'New Agreement'
 };
 function rerenderCurrent(){
   if(ST.view==='labels')return openLabelEditor();
@@ -329,7 +330,8 @@ const LABEL_KEYS=[
   ['rHomemade','Homemade Recipes'],['rBack','Πίσω στις συνταγές'],['rNewHome','Νέα Homemade'],['rNewRecipe','Νέα Συνταγή'],
   ['sExpSup','ΕΞΟΔΑ ΑΝΑ ΠΡΟΜΗΘΕΥΤΗ'],['sTopProd','TOP ΠΡΟΪΟΝΤΑ (δαπάνη)'],
   ['sTotalSpend','Σύνολο αγορών'],['sFromHist','από ιστορικό'],['rSubcount','υποσυνταγές'],['rCount','συνταγές'],['rNoneHome','Καμία υποσυνταγή'],['rNone','Καμία συνταγή εδώ'],
-  ['mpTitle','ΧΕΙΡΟΚΙΝΗΤΗ ΑΓΟΡΑ (χωρίς τιμολόγιο)'],['wProduct','Προϊόν'],['mpSupExist','Προμηθευτής (υπάρχων)'],['mpOrType','— ή γράψε όνομα δεξιά —'],['mpOrName','…ή γράψε όνομα (πχ λαϊκή)'],['mpOrNamePh','πχ λαϊκή'],['wQty','Ποσότητα'],['wUnit','Μονάδα'],['wDate','Ημερομηνία'],['mpUpdate','Να ενημερώσει και την τιμή προϊόντος'],['mpRecent','ΠΡΟΣΦΑΤΕΣ ΧΕΙΡΟΚΙΝΗΤΕΣ'],['mpNone','Καμία ακόμα'],['phOnlyCh','Μόνο με μεταβολή τιμής'],['phDeliv','παραλαβές'],['phLines','γραμμές']
+  ['mpTitle','ΧΕΙΡΟΚΙΝΗΤΗ ΑΓΟΡΑ (χωρίς τιμολόγιο)'],['wProduct','Προϊόν'],['mpSupExist','Προμηθευτής (υπάρχων)'],['mpOrType','— ή γράψε όνομα δεξιά —'],['mpOrName','…ή γράψε όνομα (πχ λαϊκή)'],['mpOrNamePh','πχ λαϊκή'],['wQty','Ποσότητα'],['wUnit','Μονάδα'],['wDate','Ημερομηνία'],['mpUpdate','Να ενημερώσει και την τιμή προϊόντος'],['mpRecent','ΠΡΟΣΦΑΤΕΣ ΧΕΙΡΟΚΙΝΗΤΕΣ'],['mpNone','Καμία ακόμα'],['phOnlyCh','Μόνο με μεταβολή τιμής'],['phDeliv','παραλαβές'],['phLines','γραμμές'],['phSearch','🔍 Προϊόν ή προμηθευτής…'],
+  ['agTarget','Target'],['agAchieved','Achieved'],['agPurchNoEfk','Αγορές Στόχου (χωρίς ΕΦΚ)'],['agPurchEfk','Αγορές Στόχου +ΕΦΚ'],['agFixedMkt','Fixed Marketing'],['agVarMkt','Variable Marketing'],['agMktActual','Marketing Actual'],['agTotalReb','Total Rebate'],['agRebActual','Rebate Actual'],['agProposed','Proposed Rebate'],['agProducts','ΠΡΟΪΟΝΤΑ'],['agPrice','Τιμή Συμφωνίας €'],['agRebatePct','Rebate %'],['agMkt','Marketing €'],['agAddProduct','Προσθήκη Προϊόντος'],['agNewBlock','Νέα Συμφωνία']
 ];
 function openLabelEditor(){
   ST.view='labels';document.getElementById('backBtn').style.display='block';document.getElementById('hTitle').textContent='⚙️ Ονόματα καρτελών';
@@ -966,7 +968,7 @@ function renderAgreements(){
   const blocks=(ST.agreementBlocks||[]).slice().sort((a,b)=>(a.position||0)-(b.position||0));
   if(!blocks.length){
     h+='<div class="card" style="border:1.5px solid var(--warn);background:#FFF7E6"><div style="font-size:13px;font-weight:600;color:var(--warn)">Καμία συμφωνία ακόμα</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Τρέξε το <b>agreements_blocks.sql</b> στο Supabase → SQL Editor, μετά 🔄. Ή πάτα «+ Νέα Συμφωνία».</div></div>';
-    h+='<button class="btn" style="margin-top:10px" onclick="newBlock()">+ Νέα Συμφωνία</button>';
+    h+='<button class="btn" style="margin-top:10px" onclick="newBlock()">➕ '+lbl('agNewBlock','Νέα Συμφωνία')+'</button>';
     c.innerHTML=h;return;
   }
   const kv=(k,v,bold)=>'<div class="kv"><span class="k">'+k+'</span><span class="v"'+(bold?' style="font-weight:700;color:var(--ok)"':'')+'>'+v+'</span></div>';
@@ -981,37 +983,37 @@ function renderAgreements(){
         '<button class="del" onclick="delBlock(\''+bl.id+'\')">🗑</button>'+
       '</div>'+
       '<div class="progress" style="height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:4px 0 8px"><div style="height:100%;width:'+prog+'%;background:var(--ok)"></div></div>'+
-      kv('Target',fmtQty(cc.target))+
-      kv('Achieved',fmtQty(cc.achieved)+' ('+prog+'%)')+
-      kv('Αγορές Στόχου (χωρίς ΕΦΚ)','€'+cc.purchaseTarget.toFixed(2))+
-      kv('Αγορές Στόχου +ΕΦΚ','€'+cc.purchaseTargetEfk.toFixed(2))+
-      '<div class="kv"><span class="k">Fixed Marketing</span><span class="v"><input type="number" step="0.01" value="'+(bl.fixed_marketing!=null?bl.fixed_marketing:'')+'" onchange="saveFixedMkt(\''+bl.id+'\',this.value)" style="width:90px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px"> €</span></div>'+
-      kv('Variable Marketing','€'+cc.mktVariable.toFixed(2))+
-      kv('Marketing Actual','€'+cc.mktCredited.toFixed(2))+
-      kv('Total Rebate','€'+cc.rebateTotal.toFixed(2))+
-      kv('Rebate Actual','€'+cc.rebateActual.toFixed(2),true)+
-      kv('Proposed Rebate',(cc.proposed*100).toFixed(2)+'%')+
-      '<div style="font-size:12px;color:var(--muted);margin:10px 2px 6px;font-weight:600">ΠΡΟΪΟΝΤΑ</div>';
+      kv(lbl('agTarget','Target'),fmtQty(cc.target))+
+      kv(lbl('agAchieved','Achieved'),fmtQty(cc.achieved)+' ('+prog+'%)')+
+      kv(lbl('agPurchNoEfk','Αγορές Στόχου (χωρίς ΕΦΚ)'),'€'+cc.purchaseTarget.toFixed(2))+
+      kv(lbl('agPurchEfk','Αγορές Στόχου +ΕΦΚ'),'€'+cc.purchaseTargetEfk.toFixed(2))+
+      '<div class="kv"><span class="k">'+lbl('agFixedMkt','Fixed Marketing')+'</span><span class="v"><input type="number" step="0.01" value="'+(bl.fixed_marketing!=null?bl.fixed_marketing:'')+'" onchange="saveFixedMkt(\''+bl.id+'\',this.value)" style="width:90px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px"> €</span></div>'+
+      kv(lbl('agVarMkt','Variable Marketing'),'€'+cc.mktVariable.toFixed(2))+
+      kv(lbl('agMktActual','Marketing Actual'),'€'+cc.mktCredited.toFixed(2))+
+      kv(lbl('agTotalReb','Total Rebate'),'€'+cc.rebateTotal.toFixed(2))+
+      kv(lbl('agRebActual','Rebate Actual'),'€'+cc.rebateActual.toFixed(2),true)+
+      kv(lbl('agProposed','Proposed Rebate'),(cc.proposed*100).toFixed(2)+'%')+
+      '<div style="font-size:12px;color:var(--muted);margin:10px 2px 6px;font-weight:600">'+lbl('agProducts','ΠΡΟΪΟΝΤΑ')+'</div>';
     cc.rows.forEach(row=>{
       const a=row.a;
       h+='<div style="border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px">'+
         '<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:14px">'+esc(a.sku)+'</b>'+
           '<span style="font-size:12px;color:var(--muted)">'+fmtQty(row.achieved)+' / '+fmtQty(row.target)+' · rebate €'+row.rebActual.toFixed(2)+'</span></div>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">'+
-          '<div class="field" style="margin:0"><label>Τιμή Συμφωνίας €</label><input id="ag-price-'+a.id+'" type="number" step="0.01" value="'+(a.agreement_price!=null?a.agreement_price:'')+'"></div>'+
-          '<div class="field" style="margin:0"><label>Target</label><input id="ag-target-'+a.id+'" type="number" value="'+(a.target!=null?a.target:'')+'"></div>'+
-          '<div class="field" style="margin:0"><label>Rebate %</label><input id="ag-rebate-'+a.id+'" type="number" value="'+(a.rebate!=null?(a.rebate>1?a.rebate:(a.rebate*100)):'')+'"></div>'+
-          '<div class="field" style="margin:0"><label>Marketing €</label><input id="ag-mkt-'+a.id+'" type="number" step="0.01" value="'+(a.marketing!=null?a.marketing:'')+'"></div>'+
+          '<div class="field" style="margin:0"><label>'+lbl('agPrice','Τιμή Συμφωνίας €')+'</label><input id="ag-price-'+a.id+'" type="number" step="0.01" value="'+(a.agreement_price!=null?a.agreement_price:'')+'"></div>'+
+          '<div class="field" style="margin:0"><label>'+lbl('agTarget','Target')+'</label><input id="ag-target-'+a.id+'" type="number" value="'+(a.target!=null?a.target:'')+'"></div>'+
+          '<div class="field" style="margin:0"><label>'+lbl('agRebatePct','Rebate %')+'</label><input id="ag-rebate-'+a.id+'" type="number" value="'+(a.rebate!=null?(a.rebate>1?a.rebate:(a.rebate*100)):'')+'"></div>'+
+          '<div class="field" style="margin:0"><label>'+lbl('agMkt','Marketing €')+'</label><input id="ag-mkt-'+a.id+'" type="number" step="0.01" value="'+(a.marketing!=null?a.marketing:'')+'"></div>'+
         '</div>'+
-        '<div style="display:flex;gap:6px;margin-top:6px"><button class="btn ghost" style="flex:1;margin:0" onclick="saveAgreementProduct(\''+a.id+'\')">✓ Αποθήκευση</button>'+
+        '<div style="display:flex;gap:6px;margin-top:6px"><button class="btn ghost" style="flex:1;margin:0" onclick="saveAgreementProduct(\''+a.id+'\')">✓ '+lbl('wSave','Αποθήκευση')+'</button>'+
           '<button class="del" onclick="delAgreementProduct(\''+a.id+'\')">🗑</button></div>'+
       '</div>';
     });
-    h+='<button class="btn ghost" onclick="addAgreementProduct(\''+bl.id+'\')">+ Προσθήκη Προϊόντος</button>'+
+    h+='<button class="btn ghost" onclick="addAgreementProduct(\''+bl.id+'\')">➕ '+lbl('agAddProduct','Προσθήκη Προϊόντος')+'</button>'+
     '</div>';
   });
   h+='</div>'+
-     '<button class="btn" style="margin-top:12px" onclick="newBlock()">+ Νέα Συμφωνία</button>'+
+     '<button class="btn" style="margin-top:12px" onclick="newBlock()">➕ '+lbl('agNewBlock','Νέα Συμφωνία')+'</button>'+
      '</div></div>';
   c.innerHTML=h;
 }
@@ -1749,7 +1751,7 @@ function priceHistoryView(){
   if(F.q){const q=F.q.toLowerCase();rows=rows.filter(r=>{const p=ST.products.find(x=>x.id===r.product_id);const nm=(p?p.sku:(r.raw_product||''));return nm.toLowerCase().includes(q)||(resolveSupName(r)||'').toLowerCase().includes(q);});}
   if(F.onlyCh)rows=rows.filter(r=>{const cp=parseFloat(r.change_pct);return !isNaN(cp)&&cp!==0;});
   const periods=[['week',lbl('pWeek','Εβδομάδα')],['month',lbl('pMonth','Μήνας')],['3m',lbl('p3m','3 Μήνες')],['6m',lbl('p6m','6 Μήνες')],['year',lbl('pYear','Έτος')],['all',lbl('pAll','Όλα')]];
-  let h='<input class="search" id="phq" placeholder="🔍 Προϊόν ή προμηθευτής…" oninput="phSet(\'q\',this.value)" value="'+esc(F.q)+'" style="margin-top:10px">'+
+  let h='<input class="search" id="phq" placeholder="'+lbl('phSearch','🔍 Προϊόν ή προμηθευτής…')+'" oninput="phSet(\'q\',this.value)" value="'+esc(F.q)+'" style="margin-top:10px">'+
     '<div class="tabs" style="flex-wrap:wrap">'+periods.map(([k,l])=>'<div class="tab '+(F.period===k?'active':'')+'" style="flex:0 0 auto;padding:8px 12px" onclick="phSet(\'period\',\''+k+'\')">'+l+'</div>').join('')+'</div>'+
     '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:8px 2px;cursor:pointer"><input type="checkbox" '+(F.onlyCh?'checked':'')+' onchange="phSet(\'onlyCh\',this.checked)"> '+lbl('phOnlyCh','Μόνο με μεταβολή τιμής')+'</label>';
   if(!rows.length){h+='<div class="card muted" style="text-align:center">Καμία εγγραφή</div>';return h;}
