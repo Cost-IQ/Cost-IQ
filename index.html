@@ -168,7 +168,7 @@ const EN_DEF={
   iSearch:'🔍 Search (supplier/number)…',iAllSup:'All Suppliers',iAllCat:'All Categories',
   iSortLabel:'Sort:',iSortDate:'Date (newest)',iSortAmount:'Amount (highest)',iSortSup:'Supplier',
   wFrom:'From',wTo:'To',wInvoices:'invoices',wTotal:'Total',iNone:'No invoices for these filters.',
-  thDate:'Date',thSup:'Supplier',thInvNo:'Invoice No',thCat:'Category',thNet:'Net',thVat:'VAT',thTotal:'Total',thBalance:'New Balance',thStatus:'Status',thNotes:'Notes',
+  thDate:'Date',thSup:'Supplier',thInvNo:'Invoice No',thCat:'Category',thNet:'Net Value',thVat:'VAT',thTotal:'Total',thBalance:'New Balance',thStatus:'Status',thNotes:'Notes',
   suName:'Name',suWhats:'WhatsApp (e.g 3069...)',suAlias:'Invoice aliases (comma separated)',suAliasPh:'e.g ACME, XYZ LTD',suNamePh:'Supplier name',wOptional:'(optional)',wSave:'Save',suPrices:'Prices',suAddBtn:'Add Supplier',
   pdSelect:'Choose',pdNoPrice:'No Supplier Price',wSupplier:'Supplier',wPriceEuro:'Price (€)',pdAddPrice:'Add',
   pdMeasure:'Measure (ml per serving)',pdUnits:'Units (units/package)',pdRetail:'Selling Price (incl VAT €)',pdWaste:'Waste %',
@@ -181,7 +181,9 @@ const EN_DEF={
   sExpSup:'EXPENSES BY SUPPLIER',sTopProd:'TOP PRODUCTS (spend)',
   sTotalSpend:'Total Spend',sFromHist:'from history',rSubcount:'sub-recipes',rCount:'recipes',rNoneHome:'No Sub-Recipes — press «+ New Homemade»',rNone:'No recipes here',
   mpTitle:'MANUAL PURCHASE (no invoice)',wProduct:'Product',mpSupExist:'Supplier (existing)',mpOrType:'— or type a name on the right —',mpOrName:'…or type a name (e.g market)',mpOrNamePh:'e.g market',wQty:'Quantity',wUnit:'Unit',wDate:'Date',mpUpdate:'Also update product price',mpRecent:'RECENT MANUAL',mpNone:'None yet',phOnlyCh:'Only with price change',phDeliv:'deliveries',phLines:'lines',phSearch:'🔍 Product or supplier…',
-  agTarget:'Target',agAchieved:'Achieved',agPurchNoEfk:'Target Purchases (excl. excise)',agPurchEfk:'Target Purchases +Excise',agFixedMkt:'Fixed Marketing',agVarMkt:'Variable Marketing',agMktActual:'Marketing Actual',agTotalReb:'Total Rebate',agRebActual:'Rebate Actual',agProposed:'Proposed Rebate',agProducts:'PRODUCTS',agPrice:'Agreement Price €',agRebatePct:'Rebate %',agMkt:'Marketing €',agAddProduct:'Add Product',agNewBlock:'New Agreement',pdOverride:'Manually selected',pdAuto:'Auto (cheapest)'
+  agTarget:'Target',agAchieved:'Achieved',agPurchNoEfk:'Target Purchases (excl. excise)',agPurchEfk:'Target Purchases +Excise',agFixedMkt:'Fixed Marketing',agVarMkt:'Variable Marketing',agMktActual:'Marketing Actual',agTotalReb:'Total Rebate',agRebActual:'Rebate Actual',agProposed:'Proposed Rebate',agProducts:'PRODUCTS',agPrice:'Agreement Price €',agRebatePct:'Rebate %',agMkt:'Marketing €',agAddProduct:'Add Product',agNewBlock:'New Agreement',pdOverride:'Manually selected',pdAuto:'Auto (cheapest)',
+  phhQty:'Qty',phhUnit:'Unit',phhPrev:'Prev.',phhPrice:'Price',phhChgEur:'Chg €',phhChgPct:'Chg %',phhBest:'Best',
+  rcIngredients:'INGREDIENTS',rcPickIng:'— choose ingredient —',rcTotalCost:'Total Cost',rcAddIngH:'ADD INGREDIENT',rcAddIng:'Add Ingredient',rcReal:'Real Cost',rcRealFull:'Real Cost (full batch)',rcNet:'Sale ex-VAT',rcProfit:'Net Profit',rcSaveCost:'Save Costing',rcFoodCm:'Food Cost % (CM)',wDelete:'Delete'
 };
 function rerenderCurrent(){
   if(ST.view==='labels')return openLabelEditor();
@@ -319,7 +321,7 @@ const LABEL_KEYS=[
   ['iSearch','🔍 Αναζήτηση (προμηθευτής/αριθμός)…'],['iAllSup','Όλοι οι Προμηθευτές'],['iAllCat','Όλες οι Κατηγορίες'],
   ['iSortLabel','Ταξ/ση:'],['iSortDate','Ημερομηνία (νεότερα)'],['iSortAmount','Ποσό (μεγαλύτερα)'],['iSortSup','Προμηθευτής'],
   ['wFrom','Από'],['wTo','Έως'],['wInvoices','τιμολόγια'],['wTotal','Σύνολο'],['iNone','Κανένα τιμολόγιο σε αυτά τα φίλτρα.'],
-  ['thDate','Ημερομηνία'],['thSup','Προμηθευτής'],['thInvNo','Αριθμός Τιμολογίου'],['thCat','Κατηγορία'],['thNet','Καθαρή'],['thVat','ΦΠΑ'],['thTotal','Σύνολο'],['thBalance','Νέο Υπόλοιπο'],['thStatus','Κατάσταση'],['thNotes','Σημειώσεις'],
+  ['thDate','Ημερομηνία'],['thSup','Προμηθευτής'],['thInvNo','Αριθμός Τιμολογίου'],['thCat','Κατηγορία'],['thNet','Καθαρή Αξία'],['thVat','ΦΠΑ'],['thTotal','Σύνολο'],['thBalance','Νέο Υπόλοιπο'],['thStatus','Κατάσταση'],['thNotes','Σημειώσεις'],
   ['suName','Όνομα'],['suWhats','WhatsApp (πχ 3069...)'],['suAlias','Ψευδώνυμα τιμολογίου'],['suAliasPh','πχ ΜΟΥΤΟΠΟΥΛΟΣ, ΔΙΑΣ ΑΕ'],['suNamePh','Όνομα προμηθευτή'],['wOptional','(προαιρετικό)'],['wSave','Αποθήκευση'],['suPrices','Τιμές'],['suAddBtn','Προσθήκη (προμηθευτή)'],
   ['pdSelect','Επιλογή'],['pdNoPrice','Καμία Τιμή Προμηθευτή'],['wSupplier','Προμηθευτής'],['wPriceEuro','Τιμή (€)'],
   ['pdMeasure','Measure (ml ανά σερβίρισμα)'],['pdUnits','Units (μονάδες/συσκευασία)'],['pdRetail','Τιμή Πώλησης (με ΦΠΑ €)'],['pdWaste','Φύρα %'],
@@ -331,7 +333,9 @@ const LABEL_KEYS=[
   ['sExpSup','ΕΞΟΔΑ ΑΝΑ ΠΡΟΜΗΘΕΥΤΗ'],['sTopProd','TOP ΠΡΟΪΟΝΤΑ (δαπάνη)'],
   ['sTotalSpend','Σύνολο αγορών'],['sFromHist','από ιστορικό'],['rSubcount','υποσυνταγές'],['rCount','συνταγές'],['rNoneHome','Καμία υποσυνταγή'],['rNone','Καμία συνταγή εδώ'],
   ['mpTitle','ΧΕΙΡΟΚΙΝΗΤΗ ΑΓΟΡΑ (χωρίς τιμολόγιο)'],['wProduct','Προϊόν'],['mpSupExist','Προμηθευτής (υπάρχων)'],['mpOrType','— ή γράψε όνομα δεξιά —'],['mpOrName','…ή γράψε όνομα (πχ λαϊκή)'],['mpOrNamePh','πχ λαϊκή'],['wQty','Ποσότητα'],['wUnit','Μονάδα'],['wDate','Ημερομηνία'],['mpUpdate','Να ενημερώσει και την τιμή προϊόντος'],['mpRecent','ΠΡΟΣΦΑΤΕΣ ΧΕΙΡΟΚΙΝΗΤΕΣ'],['mpNone','Καμία ακόμα'],['phOnlyCh','Μόνο με μεταβολή τιμής'],['phDeliv','παραλαβές'],['phLines','γραμμές'],['phSearch','🔍 Προϊόν ή προμηθευτής…'],
-  ['agTarget','Target'],['agAchieved','Achieved'],['agPurchNoEfk','Αγορές Στόχου (χωρίς ΕΦΚ)'],['agPurchEfk','Αγορές Στόχου +ΕΦΚ'],['agFixedMkt','Fixed Marketing'],['agVarMkt','Variable Marketing'],['agMktActual','Marketing Actual'],['agTotalReb','Total Rebate'],['agRebActual','Rebate Actual'],['agProposed','Proposed Rebate'],['agProducts','ΠΡΟΪΟΝΤΑ'],['agPrice','Τιμή Συμφωνίας €'],['agRebatePct','Rebate %'],['agMkt','Marketing €'],['agAddProduct','Προσθήκη Προϊόντος'],['agNewBlock','Νέα Συμφωνία'],['pdOverride','Επιλεγμένος χειροκίνητα'],['pdAuto','Αυτόματο (φθηνότερος)']
+  ['agTarget','Target'],['agAchieved','Achieved'],['agPurchNoEfk','Αγορές Στόχου (χωρίς ΕΦΚ)'],['agPurchEfk','Αγορές Στόχου +ΕΦΚ'],['agFixedMkt','Fixed Marketing'],['agVarMkt','Variable Marketing'],['agMktActual','Marketing Actual'],['agTotalReb','Total Rebate'],['agRebActual','Rebate Actual'],['agProposed','Proposed Rebate'],['agProducts','ΠΡΟΪΟΝΤΑ'],['agPrice','Τιμή Συμφωνίας €'],['agRebatePct','Rebate %'],['agMkt','Marketing €'],['agAddProduct','Προσθήκη Προϊόντος'],['agNewBlock','Νέα Συμφωνία'],['pdOverride','Επιλεγμένος χειροκίνητα'],['pdAuto','Αυτόματο (φθηνότερος)'],
+  ['phhQty','Ποσ.'],['phhUnit','Μον.'],['phhPrev','Προηγ.'],['phhPrice','Τιμή'],['phhChgEur','Μεταβ. €'],['phhChgPct','Μεταβ. %'],['phhBest','Best'],
+  ['rcIngredients','ΥΛΙΚΑ'],['rcPickIng','— διάλεξε υλικό —'],['rcTotalCost','Συνολικό Κόστος'],['rcAddIngH','ΠΡΟΣΘΗΚΗ ΥΛΙΚΟΥ'],['rcAddIng','Προσθήκη Υλικού'],['rcReal','Πραγματικό Κόστος'],['rcRealFull','Πραγματικό Κόστος (όλη η δόση)'],['rcNet','Πώληση χωρίς ΦΠΑ'],['rcProfit','Καθαρό Κέρδος'],['rcSaveCost','Αποθήκευση Κοστολόγησης'],['rcFoodCm','Food Cost % (CM)'],['wDelete','Διαγραφή']
 ];
 function openLabelEditor(){
   ST.view='labels';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='⚙️ Ονόματα καρτελών';
@@ -711,7 +715,7 @@ function setRkind(k){ST.rkind=k;renderRecipes();}
 function prodOptions(cur){
   const list=(ST.products||[]).slice().sort((a,b)=>String(a.sku).localeCompare(String(b.sku)));
   let has=false;
-  let o='<option value="">— διάλεξε υλικό —</option>';
+  let o='<option value="">'+lbl('rcPickIng','— διάλεξε υλικό —')+'</option>';
   const homes=(ST.recipes||[]).filter(r=>r.is_homemade).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
   if(homes.length){
     o+='<optgroup label="Homemade (υποσυνταγές)">';
@@ -798,35 +802,35 @@ function drawRecipe(){
       '<div class="field"><label>'+lbl('pdWaste','Φύρα %')+'</label><input id="rc-waste" type="number" value="'+(r.waste_pct!=null?(r.waste_pct>1?r.waste_pct:(r.waste_pct*100)):'')+'" placeholder="0" oninput="liveRecipe()"></div>'+
       '<div style="display:flex;gap:8px"><div class="field" style="flex:1"><label>Παραγωγή (πόσο βγάζει η δόση)</label><input id="rc-yield" type="number" step="0.1" value="'+(r.yield_qty!=null?r.yield_qty:'')+'" placeholder="500" oninput="liveRecipe()"></div>'+
         '<div class="field" style="width:100px"><label>Μονάδα</label><select id="rc-yunit" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+unitOptions(r.yield_unit||'ml')+'</select></div></div>'+
-      '<div class="kv"><span class="k">Πραγματικό Κόστος (όλη η δόση)</span><span class="v" id="rc-real" style="font-weight:700">'+(cc.realCost>0?'€'+cc.realCost.toFixed(2):'—')+'</span></div>'+
+      '<div class="kv"><span class="k">'+lbl('rcRealFull','Πραγματικό Κόστος (όλη η δόση)')+'</span><span class="v" id="rc-real" style="font-weight:700">'+(cc.realCost>0?'€'+cc.realCost.toFixed(2):'—')+'</span></div>'+
       '<div class="kv"><span class="k">'+lbl('pdPerUnit','Κόστος ανά μονάδα')+'</span><span class="v" id="rc-cpu" style="font-weight:700">'+(cpu>0?'€'+cpu.toFixed(4):'—')+'</span></div>'+
       '<button class="btn" id="rc-save" onclick="saveRecipe(\''+r.id+'\')">'+lbl('wSave','Αποθήκευση')+'</button></div>';
   }else{
     const col=cmColor(cc.costPct);const pctTxt=cc.costPct>0?(cc.costPct*100).toFixed(2)+'%':'—';
-    const foodLabel=r.kind==='food'?'Food Cost % (CM)':'Beverage Cost % (CM)';
+    const foodLabel=r.kind==='food'?lbl('rcFoodCm','Food Cost % (CM)'):lbl('pdCmLabel','Beverage Cost % (CM)');
     topCard='<div class="card" style="text-align:center;background:'+col+'18;border-color:'+col+'44"><div style="font-size:34px;font-weight:700;color:'+col+'" id="rc-big">'+pctTxt+'</div><div style="font-size:12px;color:'+col+'">'+foodLabel+'</div></div>';
     costCard='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px"'+'>📊 '+lbl('hCosting','ΚΟΣΤΟΛΟΓΗΣΗ')+'</h3>'+
       '<div class="field"><label>'+lbl('pdWaste','Φύρα %')+'</label><input id="rc-waste" type="number" value="'+(r.waste_pct!=null?(r.waste_pct>1?r.waste_pct:(r.waste_pct*100)):'')+'" placeholder="0" oninput="liveRecipe()"></div>'+
       '<div class="field"><label>'+lbl('pdRetail','Τιμή Πώλησης (με ΦΠΑ €)')+'</label><input id="rc-retail" type="number" step="0.01" value="'+(r.retail_price!=null?r.retail_price:'')+'" placeholder="10.00" oninput="liveRecipe()"></div>'+
-      '<div class="kv"><span class="k">Πραγματικό Κόστος</span><span class="v" id="rc-real" style="font-weight:700">'+(cc.realCost>0?'€'+cc.realCost.toFixed(2):'—')+'</span></div>'+
-      '<div class="kv"><span class="k">Πώληση χωρίς ΦΠΑ</span><span class="v" id="rc-net">'+(cc.retailNet>0?'€'+cc.retailNet.toFixed(2):'—')+'</span></div>'+
-      '<div class="kv"><span class="k">Καθαρό Κέρδος</span><span class="v" id="rc-profit">'+(cc.retailNet>0?'€'+cc.netProfit.toFixed(2):'—')+'</span></div>'+
-      '<button class="btn" id="rc-save" onclick="saveRecipe(\''+r.id+'\')">Αποθήκευση Κοστολόγησης</button></div>';
+      '<div class="kv"><span class="k">'+lbl('rcReal','Πραγματικό Κόστος')+'</span><span class="v" id="rc-real" style="font-weight:700">'+(cc.realCost>0?'€'+cc.realCost.toFixed(2):'—')+'</span></div>'+
+      '<div class="kv"><span class="k">'+lbl('rcNet','Πώληση χωρίς ΦΠΑ')+'</span><span class="v" id="rc-net">'+(cc.retailNet>0?'€'+cc.retailNet.toFixed(2):'—')+'</span></div>'+
+      '<div class="kv"><span class="k">'+lbl('rcProfit','Καθαρό Κέρδος')+'</span><span class="v" id="rc-profit">'+(cc.retailNet>0?'€'+cc.netProfit.toFixed(2):'—')+'</span></div>'+
+      '<button class="btn" id="rc-save" onclick="saveRecipe(\''+r.id+'\')">'+lbl('rcSaveCost','Αποθήκευση Κοστολόγησης')+'</button></div>';
   }
   c.innerHTML=topCard+
-    '<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">ΥΛΙΚΑ ('+ings.length+')</h3>'+ingHtml+
-      '<div class="kv" style="margin-top:10px;border-top:2px solid var(--line);padding-top:10px"><span class="k">Συνολικό Κόστος</span><span class="v">€'+cc.total.toFixed(2)+'</span></div>'+
+    '<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">'+lbl('rcIngredients','ΥΛΙΚΑ')+' ('+ings.length+')</h3>'+ingHtml+
+      '<div class="kv" style="margin-top:10px;border-top:2px solid var(--line);padding-top:10px"><span class="k">'+lbl('rcTotalCost','Συνολικό Κόστος')+'</span><span class="v">€'+cc.total.toFixed(2)+'</span></div>'+
     '</div>'+
-    '<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">ΠΡΟΣΘΗΚΗ ΥΛΙΚΟΥ</h3>'+
+    '<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">'+lbl('rcAddIngH','ΠΡΟΣΘΗΚΗ ΥΛΙΚΟΥ')+'</h3>'+
       '<select id="add-ing" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--card)">'+prodOptions('')+'</select>'+
       '<div style="display:flex;gap:6px;align-items:center;margin-top:6px">'+
         '<input id="add-qty" type="number" step="0.1" placeholder="Ποσότητα" style="flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px">'+
         '<select id="add-unit" style="padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--card)">'+unitOptions('ml')+'</select>'+
       '</div>'+
-      '<button class="btn ghost" style="margin-top:8px" onclick="recIngAdd(\''+r.id+'\')">+ Προσθήκη Υλικού</button>'+
+      '<button class="btn ghost" style="margin-top:8px" onclick="recIngAdd(\''+r.id+'\')">➕ '+lbl('rcAddIng','Προσθήκη Υλικού')+'</button>'+
     '</div>'+
     costCard+
-    '<div class="card"><button class="btn" style="background:var(--bad)" onclick="delRecipe(\''+r.id+'\')">🗑 Διαγραφή</button></div>';
+    '<div class="card"><button class="btn" style="background:var(--bad)" onclick="delRecipe(\''+r.id+'\')">🗑 '+lbl('wDelete','Διαγραφή')+'</button></div>';
 }
 function liveRecipe(){
   const r=ST.recipe;
@@ -1777,7 +1781,7 @@ function priceHistoryView(){
     }
     let body='<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">'+
       '<thead><tr style="color:var(--muted);font-size:11px;border-bottom:1px solid var(--line)">'+
-      ['Προϊόν','Κατηγορία','Ποσ.','Μον.','Προηγ.','Τιμή','Μεταβ. €','Μεταβ. %','Best'].map(c=>'<th style="padding:4px 6px;text-align:center;font-weight:600">'+c+'</th>').join('')+
+      [lbl('wProduct','Προϊόν'),lbl('wCategory','Κατηγορία'),lbl('phhQty','Ποσ.'),lbl('phhUnit','Μον.'),lbl('phhPrev','Προηγ.'),lbl('phhPrice','Τιμή'),lbl('phhChgEur','Μεταβ. €'),lbl('phhChgPct','Μεταβ. %'),lbl('phhBest','Best')].map(c=>'<th style="padding:4px 6px;text-align:center;font-weight:600">'+c+'</th>').join('')+
       '</tr></thead><tbody>';
     g.items.forEach(r=>{
       const pid=resolveProductId(r);
@@ -1849,7 +1853,7 @@ function invDbView(){
   if(!invs.length){h+='<div class="card muted" style="text-align:center">'+lbl('iNone','Κανένα τιμολόγιο σε αυτά τα φίλτρα.')+'</div>';return h;}
   h+='<div class="card" style="padding:10px;width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;min-width:640px;border-collapse:collapse;font-size:12px;white-space:nowrap">'+
     '<thead><tr style="border-bottom:2px solid var(--line);color:var(--muted);font-size:11px">'+
-    [lbl('thDate','Ημερομηνία'),lbl('thSup','Προμηθευτής'),lbl('thInvNo','Αριθμός Τιμολογίου'),lbl('thCat','Κατηγορία'),lbl('thNet','Καθαρή'),lbl('thVat','ΦΠΑ'),lbl('thTotal','Σύνολο'),lbl('thBalance','Νέο Υπόλοιπο'),lbl('thStatus','Κατάσταση'),lbl('thNotes','Σημειώσεις'),'📎','🗑'].map(c=>'<th style="padding:6px 8px;text-align:center;font-weight:600">'+c+'</th>').join('')+
+    [lbl('thDate','Ημερομηνία'),lbl('thSup','Προμηθευτής'),lbl('thInvNo','Αριθμός Τιμολογίου'),lbl('thCat','Κατηγορία'),lbl('thNet','Καθαρή Αξία'),lbl('thVat','ΦΠΑ'),lbl('thTotal','Σύνολο'),lbl('thBalance','Νέο Υπόλοιπο'),lbl('thStatus','Κατάσταση'),lbl('thNotes','Σημειώσεις'),'📎','🗑'].map(c=>'<th style="padding:6px 8px;text-align:center;font-weight:600">'+c+'</th>').join('')+
     '</tr></thead><tbody>';
   invs.forEach(v=>{
     const cat=(v.category||'').toLowerCase().indexOf('bever')>=0?'🍺':(v.category?'🍽️':'');
