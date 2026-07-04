@@ -475,8 +475,9 @@ function computeEFK(category,sub,sku,sizeMl,alcohol){
   if(/BEER|ΜΠΥΡΑ|ΜΠΙΡΑ|LAGER|IPA|PILSNER|\bALE\b|STOUT|WEISS|RADLER|STELLA|HEINEKEN|AMSTEL|CORONA|ΑΘΗΝΑΙΚΗ|VERGINA|ΒΕΡΓΙΝΑ|FIX|ΦΙΞ|VOREIA|ΒΟΡΕΙΑ/.test(c)){
     const sml=parseFloat(sizeMl)||0; if(sml<=0)return null;
     const a=parseFloat(alcohol)||0; if(a<=0)return null;
-    const alcPct=a>1?a:a*100;                 // ΕΦΚ μπύρας: βαθμοί Plato ≈ 2.5×αλκοόλ, €0.748/βαθμό
-    return Math.round((sml/1000)*(2.5*alcPct)*0.748*100)/100;
+    const alcPct=a>1?a:a*100;
+    const plato=2.5*alcPct;                    // βαθμοί Plato ≈ 2.5 × αλκοόλ%
+    return Math.round(((sml/1000)/100)*plato*5*100)/100;  // (Λίτρα÷100)×Plato×5€/hL
   }
   if(rate===null)return null;
   const sml=parseFloat(sizeMl)||0; if(sml<=0)return null;
@@ -598,7 +599,7 @@ function drawProd(){
       '<div class="field"><label>'+lbl('pdPack','Συσκευασία (πώς παραγγέλνεις)')+'</label><input id="pi-pack" type="text" value="'+esc(p.packaging||'')+'" placeholder="'+lbl('phPack','πχ Κιβώτιο 6×1L / Σακί 25Kg / Τεμάχιο')+'"></div>'+
       '<div class="field"><label>'+lbl('pdSize','Μέγεθος (ml/g)')+'</label><input id="pi-size" type="number" value="'+(p.size_ml!=null?p.size_ml:'')+'"></div>'+
       (isBev?'<div class="field"><label>'+lbl('pdAlc','Αλκοόλ % (για αυτόματο ΕΦΚ)')+'</label><input id="pi-alc" type="number" step="0.1" value="'+(p.alcohol_pct!=null?(p.alcohol_pct>1?p.alcohol_pct:(p.alcohol_pct*100)):'')+'" placeholder="'+lbl('phAlc','πχ 40')+'" oninput="autoEfk()"></div>'+
-        '<div class="field"><label>'+lbl('pdEfk','ΕΦΚ (€, χειροκίνητο ή αυτόματο)')+'</label><div style="display:flex;gap:6px"><input id="pi-efk" type="number" step="0.01" value="'+(p.efk!=null&&p.efk!==''?Number(p.efk):'')+'" placeholder="0.00" style="flex:1"><button class="btn ghost" style="width:auto;margin:0;padding:0 12px" onclick="autoEfk(true)" title="Αυτόματος υπολογισμός από αλκοόλ">↻</button></div></div>':
+        '<div class="field"><label>'+lbl('pdEfk','ΕΦΚ (€, χειροκίνητο ή αυτόματο)')+'</label><div style="display:flex;gap:6px;align-items:center"><input id="pi-efk" type="number" step="0.01" value="'+(p.efk!=null&&p.efk!==''?Number(p.efk):'')+'" placeholder="0.00" style="flex:1"><span style="font-size:16px;color:var(--muted)">€</span><button class="btn ghost" style="width:auto;margin:0;padding:0 12px" onclick="autoEfk(true)" title="Αυτόματος υπολογισμός από αλκοόλ">↻</button></div></div>':
         '<div class="field"><label>'+lbl('pdMeasureUnit','Μονάδα Μέτρησης')+'</label><select id="pi-unit" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
           ['','Kg','g','L','ml','Piece','Bunch','τεμ'].map(u=>'<option value="'+u+'"'+((p.measure_unit||'')===u?' selected':'')+'>'+(u||'—')+'</option>').join('')+'</select></div>')+
       '<button class="btn" id="pi-save" onclick="saveInfo(\''+p.id+'\')">'+lbl('wSave','Αποθήκευση')+'</button>'+
