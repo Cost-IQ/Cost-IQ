@@ -198,7 +198,7 @@ const EN_DEF={
   sStatsH:'STATISTICS',sTotalExp:'Total Spend',sProducts:'Products',sPurchases:'Purchases',sAvgChg:'Avg Change %',sOver10:'Increase >10%',sPurchByProd:'Purchases by Product',
   pdbDate:'Date',pdbBuys:'Purchases',pdbTotal:'Total €',pdbAvg:'Avg Price €',pdbLast:'Last €',pdbDiff:'Change %',pdbBestSup:'Best Supplier',pdbBestEur:'Best €',
   pdSumQty:'Total Quantity',pdSumSpend:'Total Spend',pdAvgPrice:'Avg Price',pdLast:'Last',pdChgE:'Change €',pdChgP:'Change %',pdHistH:'HISTORY',pdNoRec:'No records in this period',
-  p9m:'9 Months',pCustom:'Custom',wUnitWord:'unit',rcSetYield:'set yield'
+  p9m:'9 Months',pCustom:'Custom',wUnitWord:'unit',rcSetYield:'set yield',wAll:'All',wAllM:'All'
 };
 function rerenderCurrent(){
   if(ST.view==='labels')return openLabelEditor();
@@ -356,7 +356,7 @@ const LABEL_KEYS=[
   ['sStatsH','ΣΤΑΤΙΣΤΙΚΑ'],['sTotalExp','Συνολική Δαπάνη'],['sProducts','Προϊόντα'],['sPurchases','Αγορές'],['sAvgChg','Μέση Διαφορά %'],['sOver10','Αύξηση >10%'],['sPurchByProd','Αγορές ανά Προϊόν'],
   ['pdbDate','Ημερομηνία'],['pdbBuys','Αγορές'],['pdbTotal','Σύνολο €'],['pdbAvg','Μέση Τιμή €'],['pdbLast','Τελευταία €'],['pdbDiff','Μεταβολή %'],['pdbBestSup','Best Supplier'],['pdbBestEur','Best €'],
   ['pdSumQty','Συν. Ποσότητα'],['pdSumSpend','Συν. Δαπάνη'],['pdAvgPrice','Μέση Τιμή'],['pdLast','Τελευταία'],['pdChgE','Μεταβολή €'],['pdChgP','Μεταβολή %'],['pdHistH','ΙΣΤΟΡΙΚΟ'],['pdNoRec','Καμία εγγραφή σε αυτή την περίοδο'],
-  ['p9m','9 Μήνες'],['pCustom','Επιλογή'],['wUnitWord','μονάδα'],['rcSetYield','βάλε παραγωγή']
+  ['p9m','9 Μήνες'],['pCustom','Επιλογή'],['wUnitWord','μονάδα'],['rcSetYield','βάλε παραγωγή'],['wAll','Όλες'],['wAllM','Όλοι']
 ];
 function openLabelEditor(){
   ST.view='labels';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='⚙️ Ονόματα καρτελών';
@@ -387,7 +387,7 @@ function sectionNav(){
   const items=[['products','📦',lbl('products','Προϊόντα')],['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Σκάναρε')],['invoices','📋',lbl('invoices','Τιμολόγια')],['recipes','🍸',lbl('recipes','Συνταγές')],['agree','🤝',lbl('agree','Συμφωνίες')],['history','📊',lbl('history','Στατιστικά')]];
   // ── Desktop: οριζόντια tabs ──
   const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:104px;white-space:nowrap;padding:10px 12px">'+emo+' '+txt+'</div>';
-  let desk='<div class="nav-desktop" style="margin-top:12px"><div class="tabs" style="flex-wrap:wrap;justify-content:center;gap:8px;margin:0">'+
+  let desk='<div class="nav-desktop" style="margin-top:12px"><div class="tabs" style="flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch;gap:8px;margin:0;padding-bottom:4px">'+
     items.map(i=>tab(i[0],i[1],i[2])).join('')+
     '<div class="tab" onclick="loadAll()" style="flex:0 0 auto;min-width:44px" title="Ανανέωση">🔄</div></div></div>';
   // ── Mobile: κάθετο αναπτυσσόμενο μενού ──
@@ -1421,7 +1421,7 @@ function dashHtml(){
   const tile=(ic,lbl,val,col)=>'<div style="flex:1;min-width:80px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:'+(col||'var(--ink)')+'">'+val+'</div><div style="font-size:10px;color:var(--muted)">'+ic+' '+lbl+'</div></div>';
   let h='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+
     tile('💰',lbl('sTotalSpend','Σύνολο αγορών'),'€'+Math.round(totalSpend),'var(--accent)')+
-    tile('🧾','Τιμολόγια',inv.length)+
+    tile('🧾',lbl('iInvoices','Τιμολόγια'),inv.length)+
     tile('📈','Μέση μεταβ.',(avgCh>=0?'+':'')+(avgCh*100).toFixed(1)+'%',avgCh>0?'var(--bad)':'var(--ok)')+
     tile('🔺','Αυξ. >10%',incr,incr>0?'var(--bad)':'var(--muted)')+
   '</div>';
@@ -1552,9 +1552,9 @@ function purchasedView(){
   const periods=[['Week','Εβδομάδα'],['Month','Μήνας'],['Quarter','3 Μήνες'],['6 Months','6 Μήνες'],['9 Months','9 Μήνες'],['Year','Έτος'],['Custom',lbl('pCustom','Επιλογή')]];
   const selCss='width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--card)';
   let h='<div class="card" style="margin-top:12px">'+
-    '<div class="field" style="margin-bottom:8px"><label>'+lbl('wCategory','Κατηγορία')+'</label><select onchange="pcSet(\'category\',this.value)" style="'+selCss+'"><option value="">Όλες</option>'+cats.map(x=>'<option'+(C.category===x?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select></div>'+
-    '<div class="field" style="margin-bottom:8px"><label>'+lbl('wSubcat','Υποκατηγορία')+'</label><select onchange="pcSet(\'sub\',this.value)" style="'+selCss+'"><option value="">Όλες</option>'+subs.map(x=>'<option'+(C.sub===x?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select></div>'+
-    '<div class="field" style="margin-bottom:8px"><label>'+lbl('wSupplier','Προμηθευτής')+'</label><select onchange="pcSet(\'supplier\',this.value)" style="'+selCss+'"><option value="">Όλοι</option>'+sups.map(x=>'<option'+(C.supplier===x?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select></div>'+
+    '<div class="field" style="margin-bottom:8px"><label>'+lbl('wCategory','Κατηγορία')+'</label><select onchange="pcSet(\'category\',this.value)" style="'+selCss+'"><option value="">'+lbl('wAll','Όλες')+'</option>'+cats.map(x=>'<option'+(C.category===x?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select></div>'+
+    '<div class="field" style="margin-bottom:8px"><label>'+lbl('wSubcat','Υποκατηγορία')+'</label><select onchange="pcSet(\'sub\',this.value)" style="'+selCss+'"><option value="">'+lbl('wAll','Όλες')+'</option>'+subs.map(x=>'<option'+(C.sub===x?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select></div>'+
+    '<div class="field" style="margin-bottom:8px"><label>'+lbl('wSupplier','Προμηθευτής')+'</label><select onchange="pcSet(\'supplier\',this.value)" style="'+selCss+'"><option value="">'+lbl('wAllM','Όλοι')+'</option>'+sups.map(x=>'<option'+(C.supplier===x?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select></div>'+
     '<div class="tabs" style="flex-wrap:wrap;margin:0">'+periods.map(([k,l])=>'<div class="tab '+(C.period===k?'active':'')+'" style="flex:0 0 auto;padding:7px 11px" onclick="pcSet(\'period\',\''+k+'\')">'+l+'</div>').join('')+'</div>';
   if(C.period==='Custom'){h+='<div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1"><label style="font-size:10px;color:var(--muted)">'+lbl('wFrom','Από')+'</label><input type="date" value="'+esc(C.from||'')+'" onchange="pcSet(\'from\',this.value)" style="width:100%;padding:7px;border:1px solid var(--line);border-radius:6px"></div><div style="flex:1"><label style="font-size:10px;color:var(--muted)">'+lbl('wTo','Έως')+'</label><input type="date" value="'+esc(C.to||'')+'" onchange="pcSet(\'to\',this.value)" style="width:100%;padding:7px;border:1px solid var(--line);border-radius:6px"></div></div>';}
   h+='</div>';
@@ -1950,7 +1950,7 @@ function priceDbView(){
   const P=ST.pd;
   const prods=ST.products.slice().sort((a,b)=>String(a.sku).localeCompare(String(b.sku)));
   if(!P.pid&&prods.length)P.pid=prods[0].id;
-  const periods=[['week','Εβδομάδα'],['month','Μήνας'],['3m','3 Μήνες'],['6m','6 Μήνες'],['9m',lbl('p9m','9 Μήνες')],['year','Έτος'],['all','Όλα']];
+  const periods=[['week',lbl('pWeek','Εβδομάδα')],['month',lbl('pMonth','Μήνας')],['3m',lbl('p3m','3 Μήνες')],['6m',lbl('p6m','6 Μήνες')],['9m',lbl('p9m','9 Μήνες')],['year',lbl('pYear','Έτος')],['all',lbl('pAll','Όλα')]];
   const from=periodFrom(P.period);
   let rows=(ST.history||[]).filter(r=>resolveProductId(r)===P.pid);
   if(from)rows=rows.filter(r=>(r.date||'')>=from);
@@ -1975,7 +1975,7 @@ function priceDbView(){
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
       tile(lbl('pdChgE','Μεταβολή €'),(chE>0?'+':'')+'€'+chE.toFixed(2),chE>0?'var(--bad)':(chE<0?'var(--ok)':'var(--muted)'))+
       tile(lbl('pdChgP','Μεταβολή %'),(chP>0?'+':'')+(chP*100).toFixed(1)+'%',chP>0?'var(--bad)':(chP<0?'var(--ok)':'var(--muted)'))+
-      tile('Τιμολόγια',nInv)+
+      tile(lbl('iInvoices','Τιμολόγια'),nInv)+
     '</div>'+
     '<div class="card" style="margin-top:10px"><div class="kv"><span class="k">🏆 Best Supplier</span><span class="v">'+esc(b.sup||'—')+' '+(b.price?('('+money(b.price)+')'):'')+'</span></div></div>';
   h+='<h3 style="font-size:13px;color:var(--muted);margin:16px 2px 6px">'+lbl('pdHistH','ΙΣΤΟΡΙΚΟ')+' ('+rows.length+')</h3>';
@@ -2058,7 +2058,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·5';
+const BUILD='v'+'2026.07.04·6';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
