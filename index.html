@@ -29,6 +29,8 @@
     .header .who{font-size:10px}
     .header .out{padding:5px 8px;font-size:11px;border-radius:12px}
   }
+  .nav-mobile{display:none}
+  @media(max-width:600px){.nav-desktop{display:none}.nav-mobile{display:block}}
   button{font-family:inherit}
   .btn{width:100%;padding:13px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-top:10px}
   .btn.ghost{background:var(--card);color:var(--accent);border:1.5px solid var(--accent)}
@@ -304,7 +306,7 @@ function supName(id){const s=ST.suppliers.find(x=>x.id===id);return s?s.name:'�
 function pricesFor(pid){return ST.prices.filter(p=>p.product_id===pid);}
 
 function goList(){ST.view='list';ST.prod=null;document.getElementById('backBtn').style.display='none';document.getElementById('hTitle').textContent='Cost IQ';renderSection();}
-function goSection(s){ST.section=s;if(s==='recipes')ST.homeView=false;renderSection();}
+function goSection(s){ST.section=s;ST.navOpen=false;if(s==='recipes')ST.homeView=false;renderSection();window.scrollTo(0,0);}
 function goHome(){ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';document.getElementById('hTitle').textContent='Cost IQ';renderSection();window.scrollTo(0,0);}
 function toggleFullscreen(){
   const d=document.documentElement;
@@ -373,18 +375,25 @@ async function saveLabels(){
   }catch(e){btn.disabled=false;btn.textContent='Αποθήκευση';toast('❌ '+(e.message||e));}
 }
 function sectionNav(){
-  const tab=(sec,emo,txt,extra)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:104px;white-space:nowrap;padding:10px 12px'+(extra||'')+'">'+emo+' '+txt+'</div>';
-  return '<div style="margin-top:12px"><div class="tabs" style="flex-wrap:wrap;justify-content:center;gap:8px;margin:0">'+
-    tab('products','📦',lbl('products','Προϊόντα'))+
-    tab('suppliers','🏢',lbl('suppliers','Προμηθευτές'))+
-    tab('orders','🛒',lbl('orders','Παραγγελίες'))+
-    tab('ocr','📷',lbl('ocr','Σκάναρε'))+
-    tab('invoices','📋',lbl('invoices','Τιμολόγια'))+
-    tab('recipes','🍸',lbl('recipes','Συνταγές'))+
-    tab('agree','🤝',lbl('agree','Συμφωνίες'))+
-    tab('history','📊',lbl('history','Στατιστικά'))+
-    '<div class="tab" onclick="loadAll()" style="flex:0 0 auto;min-width:44px" title="Ανανέωση">🔄</div></div></div>'+setupBanner();
+  const items=[['products','📦',lbl('products','Προϊόντα')],['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Σκάναρε')],['invoices','📋',lbl('invoices','Τιμολόγια')],['recipes','🍸',lbl('recipes','Συνταγές')],['agree','🤝',lbl('agree','Συμφωνίες')],['history','📊',lbl('history','Στατιστικά')]];
+  // ── Desktop: οριζόντια tabs ──
+  const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:104px;white-space:nowrap;padding:10px 12px">'+emo+' '+txt+'</div>';
+  let desk='<div class="nav-desktop" style="margin-top:12px"><div class="tabs" style="flex-wrap:wrap;justify-content:center;gap:8px;margin:0">'+
+    items.map(i=>tab(i[0],i[1],i[2])).join('')+
+    '<div class="tab" onclick="loadAll()" style="flex:0 0 auto;min-width:44px" title="Ανανέωση">🔄</div></div></div>';
+  // ── Mobile: κάθετο αναπτυσσόμενο μενού ──
+  const cur=items.find(i=>i[0]===ST.section)||items[0];
+  let mob='<div class="nav-mobile" style="margin-top:12px;position:relative;z-index:20">'+
+    '<button onclick="toggleNav()" style="width:100%;display:flex;justify-content:space-between;align-items:center;padding:13px 16px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer"><span>'+cur[1]+' '+cur[2]+'</span><span style="font-size:16px">'+(ST.navOpen?'▲':'☰')+'</span></button>';
+  if(ST.navOpen){
+    mob+='<div style="background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:6px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.12)">';
+    items.forEach(it=>{const on=it[0]===ST.section;mob+='<div onclick="goSection(\''+it[0]+'\')" style="padding:13px 16px;border-bottom:1px solid var(--line);cursor:pointer;font-weight:600;font-size:15px;'+(on?'background:var(--accent-bg);color:var(--accent)':'')+'">'+it[1]+' '+it[2]+'</div>';});
+    mob+='<div onclick="loadAll();toggleNav()" style="padding:13px 16px;cursor:pointer;color:var(--muted);font-size:14px">🔄 '+lbl('navRefresh','Ανανέωση')+'</div></div>';
+  }
+  mob+='</div>';
+  return desk+mob+setupBanner();
 }
+function toggleNav(){ST.navOpen=!ST.navOpen;rerenderCurrent();}
 function renderSection(){ if(ST.section==='suppliers') renderSuppliers(); else if(ST.section==='orders') renderOrders(); else if(ST.section==='history') renderStats(); else if(ST.section==='ocr') renderOcr(); else if(ST.section==='invoices') renderInvoices(); else if(ST.section==='recipes') renderRecipes(); else if(ST.section==='agree') renderAgreements(); else renderList(); var _w=document.getElementById('whoami'); if(_w) _w.style.display=(ST.section==='products'&&ST.view==='list')?'block':'none'; }
 function setKind(k){ST.kind=k;renderList();}
 function renderList(){
