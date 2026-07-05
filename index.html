@@ -196,7 +196,7 @@ const EN_DEF={
   rcIngredients:'INGREDIENTS',rcPickIng:'— choose ingredient —',rcTotalCost:'Total Cost',rcAddIngH:'ADD INGREDIENT',rcAddIng:'Add Ingredient',rcReal:'Real Cost',rcRealFull:'Real Cost (full batch)',rcNet:'Sale ex-VAT',rcProfit:'Net Profit',rcSaveCost:'Save Costing',rcFoodCm:'Food Cost % (CM)',wDelete:'Delete',
   rcNoIng:'No ingredients',rcSubLabel:'sub-recipe',rcCostPer:'Cost per',rcYieldH:'YIELD & COST',rcYield:'Yield (how much the batch makes)',
   sStatsH:'STATISTICS',sTotalExp:'Total Spend',sProducts:'Products',sPurchases:'Purchases',sAvgChg:'Avg Change %',sOver10:'Increase >10%',sPurchByProd:'Purchases by Product',
-  pdbDate:'Date',pdbBuys:'Purchases',pdbTotal:'Total €',pdbAvg:'Avg Price €',pdbLast:'Last €',pdbDiff:'Change %',pdbBestSup:'Best Supplier',pdbBestEur:'Best €',
+  pdbDate:'Date',pdbBuys:'Orders',pdbTotal:'Total €',pdbAvg:'Avg Price €',pdbLast:'Last €',pdbDiff:'Change %',pdbBestSup:'Best Supplier',pdbBestEur:'Best €',
   pdSumQty:'Total Quantity',pdSumSpend:'Total Spend',pdAvgPrice:'Avg Price',pdLast:'Last',pdChgE:'Change €',pdChgP:'Change %',pdHistH:'HISTORY',pdNoRec:'No records in this period',
   p9m:'9 Months',pCustom:'Custom',wUnitWord:'unit',rcSetYield:'set yield',wAll:'All',wAllM:'All'
 };
@@ -359,17 +359,17 @@ const LABEL_KEYS=[
   ['p9m','9 Μήνες'],['pCustom','Επιλογή'],['wUnitWord','μονάδα'],['rcSetYield','βάλε παραγωγή'],['wAll','Όλες'],['wAllM','Όλοι']
 ];
 function openLabelEditor(){
-  ST.view='labels';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='⚙️ Ονόματα καρτελών';
+  ST.view='labels';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='⚙️ '+L('Ονόματα καρτελών','Tab & label names');
   const c=document.getElementById('content');
   const cur=ST.lang;const m=(ST.labels&&ST.labels[cur])||{};
-  const langName=cur==='en'?'Αγγλικά (EN)':'Ελληνικά (ΕΛ)';
-  let h='<div class="card" style="margin-top:12px;background:var(--accent-bg);border-color:var(--accent)"><div style="font-size:13px;color:var(--accent);font-weight:600">Επεξεργάζεσαι: '+langName+'</div>'+
-    '<div style="font-size:12px;color:var(--muted);margin-top:4px">Άλλαξε γλώσσα με το κουμπί ΕΝ/ΕΛ πάνω και ξαναμπές εδώ, για να βάλεις ονόματα στην άλλη γλώσσα. Κενό = προεπιλογή. (Τα emoji μπαίνουν αυτόματα.)</div></div>';
+  const langName=cur==='en'?L('Αγγλικά (EN)','English (EN)'):L('Ελληνικά (ΕΛ)','Greek (EL)');
+  let h='<div class="card" style="margin-top:12px;background:var(--accent-bg);border-color:var(--accent)"><div style="font-size:13px;color:var(--accent);font-weight:600">'+L('Επεξεργάζεσαι','Editing')+': '+langName+'</div>'+
+    '<div style="font-size:12px;color:var(--muted);margin-top:4px">'+L('Άλλαξε γλώσσα με το κουμπί σημαίας πάνω και ξαναμπές εδώ, για να βάλεις ονόματα στην άλλη γλώσσα. Κενό = προεπιλογή. (Τα emoji μπαίνουν αυτόματα.)','Switch language with the flag button on top and come back here to set names for the other language. Empty = default. (Emojis are added automatically.)')+'</div></div>';
   h+='<div class="card">';
   LABEL_KEYS.forEach(([k,def])=>{
     h+='<div class="field"><label>'+esc(def)+'</label><input id="lbl-'+k+'" type="text" value="'+esc(m[k]||'')+'" placeholder="'+esc(def)+'"></div>';
   });
-  h+='<button class="btn" id="lbl-save" onclick="saveLabels()">Αποθήκευση ('+(cur==='en'?'EN':'ΕΛ')+')</button></div>';
+  h+='<button class="btn" id="lbl-save" onclick="saveLabels()">'+L('Αποθήκευση','Save')+' ('+(cur==='en'?'EN':'ΕΛ')+')</button></div>';
   c.innerHTML=h;
 }
 async function saveLabels(){
@@ -2058,7 +2058,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·9';
+const BUILD='v'+'2026.07.04·11';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
