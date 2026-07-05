@@ -16,6 +16,7 @@
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   :root{--bg:#f4f5f7;--card:#fff;--ink:#1a1a2e;--muted:#6b7280;--line:#e5e7eb;
     --accent:#1a5276;--accent-bg:#e6f1fb;--ok:#1e8449;--warn:#b9770e;--bad:#922b21;--chip:#eef1f6}
+  html{overflow-x:hidden}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;padding-bottom:30px;overflow-x:hidden}
   .wrap{max-width:720px;margin:0 auto;padding:0 14px}
   .header{background:var(--accent);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
@@ -1815,7 +1816,7 @@ function priceHistoryView(){
       const top=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
       if(top)gSup=top;
     }
-    let body='<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">'+
+    let body='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;min-width:620px;border-collapse:collapse;font-size:12px;margin-top:6px;white-space:nowrap">'+
       '<thead><tr style="color:var(--muted);font-size:11px;border-bottom:1px solid var(--line)">'+
       [lbl('wProduct','Προϊόν'),lbl('wCategory','Κατηγορία'),lbl('phhQty','Ποσ.'),lbl('phhUnit','Μον.'),lbl('phhPrev','Προηγ.'),lbl('phhPrice','Τιμή'),lbl('phhChgEur','Μεταβ. €'),lbl('phhChgPct','Μεταβ. %'),lbl('phhBest','Best')].map(c=>'<th style="padding:4px 6px;text-align:center;font-weight:600">'+c+'</th>').join('')+
       '</tr></thead><tbody>';
@@ -1842,7 +1843,7 @@ function priceHistoryView(){
         '<td style="padding:5px 6px;text-align:center;color:var(--ok);font-weight:700">'+(isBest?'✓':'')+'</td>'+
       '</tr>';
     });
-    body+='</tbody></table>';
+    body+='</tbody></table></div>';
     h+='<div class="card" style="padding:10px;margin-top:8px">'+
       '<div style="font-weight:700;font-size:14px">🧾 '+esc(gSup||'—')+'</div>'+
       '<div style="font-size:12px;color:var(--muted)">📅 '+fmtDate(g.date)+' · '+g.items.length+' προϊόντα</div>'+
@@ -2049,7 +2050,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·2';
+const BUILD='v'+'2026.07.04·3';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
