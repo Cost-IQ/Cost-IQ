@@ -188,6 +188,7 @@ const EN_DEF={
   sTotalSpend:'Total Spend',sFromHist:'from history',rSubcount:'sub-recipes',rCount:'recipes',rNoneHome:'No Sub-Recipes — press «+ New Homemade»',rNone:'No recipes here',
   mpTitle:'MANUAL PURCHASE (no invoice)',wProduct:'Product',mpSupExist:'Supplier (existing)',mpOrType:'— or type a name on the right —',mpOrName:'…or type a name (e.g market)',mpOrNamePh:'e.g market',wQty:'Quantity',wUnit:'Unit',wDate:'Date',mpUpdate:'Also update product price',mpRecent:'RECENT MANUAL',mpNone:'None yet',phOnlyCh:'Only with price change',phDeliv:'deliveries',phLines:'lines',phSearch:'🔍 Product or supplier…',
   agTarget:'Target',agAchieved:'Achieved',agPurchNoEfk:'Target Purchases (excl. excise)',agPurchEfk:'Target Purchases +Excise',agFixedMkt:'Fixed Marketing',agVarMkt:'Variable Marketing',agMktActual:'Marketing Actual',agTotalReb:'Total Rebate',agRebActual:'Rebate Actual',agProposed:'Proposed Rebate',agProducts:'PRODUCTS',agPrice:'Agreement Price €',agRebatePct:'Rebate %',agMkt:'Marketing €',agAddProduct:'Add Product',agNewBlock:'New Agreement',pdOverride:'Manually selected',pdAuto:'Auto (cheapest)',
+  oSummaryTitle:'Summary',oNoOrders:'No order (set Order on products)',oLogHist:'Save to History',oHistTitle:'Order History',oCheckDeliv:'Check Deliveries',oHistNone:'No orders in history yet.',
   phhQty:'Qty',phhUnit:'Unit',phhPrev:'Prev.',phhPrice:'Price',phhChgEur:'Chg €',phhChgPct:'Chg %',phhBest:'Best',
   rcIngredients:'INGREDIENTS',rcPickIng:'— choose ingredient —',rcTotalCost:'Total Cost',rcAddIngH:'ADD INGREDIENT',rcAddIng:'Add Ingredient',rcReal:'Real Cost',rcRealFull:'Real Cost (full batch)',rcNet:'Sale ex-VAT',rcProfit:'Net Profit',rcSaveCost:'Save Costing',rcFoodCm:'Food Cost % (CM)',wDelete:'Delete',
   rcNoIng:'No ingredients',rcSubLabel:'sub-recipe',rcCostPer:'Cost per',rcYieldH:'YIELD & COST',rcYield:'Yield (how much the batch makes)'
@@ -341,6 +342,7 @@ const LABEL_KEYS=[
   ['sTotalSpend','Σύνολο αγορών'],['sFromHist','από ιστορικό'],['rSubcount','υποσυνταγές'],['rCount','συνταγές'],['rNoneHome','Καμία υποσυνταγή'],['rNone','Καμία συνταγή εδώ'],
   ['mpTitle','ΧΕΙΡΟΚΙΝΗΤΗ ΑΓΟΡΑ (χωρίς τιμολόγιο)'],['wProduct','Προϊόν'],['mpSupExist','Προμηθευτής (υπάρχων)'],['mpOrType','— ή γράψε όνομα δεξιά —'],['mpOrName','…ή γράψε όνομα (πχ λαϊκή)'],['mpOrNamePh','πχ λαϊκή'],['wQty','Ποσότητα'],['wUnit','Μονάδα'],['wDate','Ημερομηνία'],['mpUpdate','Να ενημερώσει και την τιμή προϊόντος'],['mpRecent','ΠΡΟΣΦΑΤΕΣ ΧΕΙΡΟΚΙΝΗΤΕΣ'],['mpNone','Καμία ακόμα'],['phOnlyCh','Μόνο με μεταβολή τιμής'],['phDeliv','παραλαβές'],['phLines','γραμμές'],['phSearch','🔍 Προϊόν ή προμηθευτής…'],
   ['agTarget','Target'],['agAchieved','Achieved'],['agPurchNoEfk','Αγορές Στόχου (χωρίς ΕΦΚ)'],['agPurchEfk','Αγορές Στόχου +ΕΦΚ'],['agFixedMkt','Fixed Marketing'],['agVarMkt','Variable Marketing'],['agMktActual','Marketing Actual'],['agTotalReb','Total Rebate'],['agRebActual','Rebate Actual'],['agProposed','Proposed Rebate'],['agProducts','ΠΡΟΪΟΝΤΑ'],['agPrice','Τιμή Συμφωνίας €'],['agRebatePct','Rebate %'],['agMkt','Marketing €'],['agAddProduct','Προσθήκη Προϊόντος'],['agNewBlock','Νέα Συμφωνία'],['pdOverride','Επιλεγμένος χειροκίνητα'],['pdAuto','Αυτόματο (φθηνότερος)'],
+  ['oSummaryTitle','Σύνοψη'],['oNoOrders','Καμία παραγγελία (βάλε Order σε προϊόντα)'],['oLogHist','Καταχώρηση στο Ιστορικό'],['oHistTitle','Ιστορικό Παραγγελιών'],['oCheckDeliv','Έλεγχος Παραλαβών'],['oHistNone','Καμία παραγγελία στο ιστορικό ακόμα.'],
   ['phhQty','Ποσ.'],['phhUnit','Μον.'],['phhPrev','Προηγ.'],['phhPrice','Τιμή'],['phhChgEur','Μεταβ. €'],['phhChgPct','Μεταβ. %'],['phhBest','Best'],
   ['rcIngredients','ΥΛΙΚΑ'],['rcPickIng','— διάλεξε υλικό —'],['rcTotalCost','Συνολικό Κόστος'],['rcAddIngH','ΠΡΟΣΘΗΚΗ ΥΛΙΚΟΥ'],['rcAddIng','Προσθήκη Υλικού'],['rcReal','Πραγματικό Κόστος'],['rcRealFull','Πραγματικό Κόστος (όλη η δόση)'],['rcNet','Πώληση χωρίς ΦΠΑ'],['rcProfit','Καθαρό Κέρδος'],['rcSaveCost','Αποθήκευση Κοστολόγησης'],['rcFoodCm','Food Cost % (CM)'],['wDelete','Διαγραφή'],
   ['rcNoIng','Χωρίς υλικά'],['rcSubLabel','υποσυνταγή'],['rcCostPer','Κόστος ανά'],['rcYieldH','ΠΑΡΑΓΩΓΗ & ΚΟΣΤΟΣ'],['rcYield','Παραγωγή (πόσο βγάζει η δόση)']
@@ -372,7 +374,7 @@ async function saveLabels(){
 }
 function sectionNav(){
   const tab=(sec,emo,txt,extra)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:104px;white-space:nowrap;padding:10px 12px'+(extra||'')+'">'+emo+' '+txt+'</div>';
-  return '<div style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px);margin-top:12px"><div class="tabs" style="flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch;padding-bottom:4px;margin:0">'+
+  return '<div style="margin-top:12px"><div class="tabs" style="flex-wrap:wrap;justify-content:center;gap:8px;margin:0">'+
     tab('products','📦',lbl('products','Προϊόντα'))+
     tab('suppliers','🏢',lbl('suppliers','Προμηθευτές'))+
     tab('orders','🛒',lbl('orders','Παραγγελίες'))+
@@ -1262,7 +1264,7 @@ async function saveOrder(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 function orderSummary(){
-  ST.view='summary';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='📋 Σύνοψη';
+  ST.view='summary';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='📋 '+lbl('oSummaryTitle','Σύνοψη');
   const c=document.getElementById('content');
   // group products with order_qty>0 by best supplier
   const bySup={};
@@ -1273,7 +1275,7 @@ function orderSummary(){
   });
   const sups=Object.keys(bySup);
   let h=sectionNav();
-  if(!sups.length){h+='<div class="card muted" style="text-align:center;margin-top:14px">Καμία παραγγελία (βάλε Order σε προϊόντα)</div>';c.innerHTML=h;return;}
+  if(!sups.length){h+='<div class="card muted" style="text-align:center;margin-top:14px">'+lbl('oNoOrders','Καμία παραγγελία (βάλε Order σε προϊόντα)')+'</div>';c.innerHTML=h;return;}
   sups.sort().forEach(sup=>{
     const items=bySup[sup];
     const s=ST.suppliers.find(x=>x.name===sup)||{};
@@ -1289,7 +1291,7 @@ function orderSummary(){
       '<a class="btn" href="'+mailto+'" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')" style="flex:1;text-align:center;text-decoration:none;display:block">📧 Email</a>'+
       '<a class="btn" href="'+wa+'" target="_blank" rel="noopener" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')" style="flex:1;text-align:center;text-decoration:none;display:block;background:#25d366">🟢 WhatsApp</a>'+
     '</div>'+
-    '<button class="btn ghost" style="margin-top:8px" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')">✅ Καταχώρηση στο Ιστορικό</button>'+
+    '<button class="btn ghost" style="margin-top:8px" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')">✅ '+lbl('oLogHist','Καταχώρηση στο Ιστορικό')+'</button>'+
     '</div>';
   });
   c.innerHTML=h;
@@ -1318,11 +1320,11 @@ async function logOrder(supName){
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function renderOrderHistory(){
-  ST.view='ohist';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🕘 Ιστορικό Παραγγελιών';
+  ST.view='ohist';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🕘 '+lbl('oHistTitle','Ιστορικό Παραγγελιών');
   const c=document.getElementById('content');
   const rows=(ST.orderHistory||[]).slice();
-  let h='<button class="btn ghost" onclick="checkDeliveries()" style="margin-top:10px">📦 Έλεγχος Παραλαβών (μαρκάρει Delivered)</button>';
-  if(!rows.length){h+='<div class="card muted" style="text-align:center;margin-top:12px">Καμία παραγγελία στο ιστορικό ακόμα.</div>';c.innerHTML=h;return;}
+  let h='<button class="btn ghost" onclick="checkDeliveries()" style="margin-top:10px">📦 '+lbl('oCheckDeliv','Έλεγχος Παραλαβών')+'</button>';
+  if(!rows.length){h+='<div class="card muted" style="text-align:center;margin-top:12px">'+lbl('oHistNone','Καμία παραγγελία στο ιστορικό ακόμα.')+'</div>';c.innerHTML=h;return;}
   // group by date + supplier
   const groups={};
   rows.forEach(r=>{const sup=supName(r.supplier_id)||'—';const key=r.date+'||'+sup;(groups[key]=groups[key]||[]).push(r);});
@@ -2038,7 +2040,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·1';
+const BUILD='v'+'2026.07.04·2';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
