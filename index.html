@@ -387,7 +387,7 @@ function sectionNav(){
   const items=[['products','📦',lbl('products','Προϊόντα')],['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Σκάναρε')],['invoices','📋',lbl('invoices','Τιμολόγια')],['recipes','🍸',lbl('recipes','Συνταγές')],['agree','🤝',lbl('agree','Συμφωνίες')],['history','📊',lbl('history','Στατιστικά')]];
   // ── Desktop: οριζόντια tabs ──
   const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:104px;white-space:nowrap;padding:10px 12px">'+emo+' '+txt+'</div>';
-  let desk='<div class="nav-desktop" style="margin-top:12px"><div class="tabs" style="flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch;gap:8px;margin:0;padding-bottom:4px">'+
+  let desk='<div class="nav-desktop" style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px);margin-top:12px"><div class="tabs" style="flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch;gap:8px;margin:0;padding-bottom:4px">'+
     items.map(i=>tab(i[0],i[1],i[2])).join('')+
     '<div class="tab" onclick="loadAll()" style="flex:0 0 auto;min-width:44px" title="Ανανέωση">🔄</div></div></div>';
   // ── Mobile: κάθετο αναπτυσσόμενο μενού ──
@@ -2058,7 +2058,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·6';
+const BUILD='v'+'2026.07.04·7';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
