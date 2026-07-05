@@ -2038,7 +2038,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.03';
+const BUILD='v'+'2026.07.04·1';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
