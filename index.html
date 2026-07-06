@@ -435,14 +435,14 @@ function renderList(){
     '<div class="tab '+(ST.kind==='food'?'active':'')+'" onclick="setKind(\'food\')">🍽️ '+lbl('kindFood','Τρόφιμα')+'</div>'+
     '<div class="tab '+(ST.kind==='supplies'?'active':'')+'" onclick="setKind(\'supplies\')">📦 '+lbl('kindSupplies','Αναλώσιμα')+'</div></div>'+
     '<input class="search" id="q" placeholder="'+lbl('searchPh','🔍 Αναζήτηση…')+'" oninput="debSearch(renderList)" value="'+esc(q)+'">'+
-    '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span style="font-size:12px;color:var(--muted)">'+lbl('sortLabel','Ταξινόμηση:')+'</span>'+
+    '<div style="display:flex;gap:8px;align-items:center;margin:0 12px 8px"><span style="font-size:12px;color:var(--muted)">'+lbl('sortLabel','Ταξινόμηση:')+'</span>'+
       '<select id="sortby" onchange="ST.sortby=this.value;renderList()" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:13px">'+
         '<option value="cat"'+(ST.sortby==='cat'?' selected':'')+'>'+lbl('sortCat','Κατηγορία')+'</option>'+
         '<option value="sub"'+(ST.sortby==='sub'?' selected':'')+'>'+lbl('sortSub','Υποκατηγορία')+'</option>'+
         '<option value="name"'+(ST.sortby==='name'?' selected':'')+'>'+lbl('sortName','Όνομα (A→Ω)')+'</option>'+
         '<option value="price"'+(ST.sortby==='price'?' selected':'')+'>'+lbl('sortPrice','Τιμή (φθηνό→ακριβό)')+'</option>'+
       '</select></div>'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin:2px 2px 8px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin:2px 12px 8px">'+
       '<span class="muted" style="font-size:12px">'+items.length+' '+lbl('wordProducts','προϊόντα')+'</span>'+
       '<button class="pick" onclick="newProduct(\''+ST.kind+'\')">➕ '+lbl('addBtn','Προσθήκη')+'</button></div>';
   Object.keys(groups).sort().forEach(cat=>{
@@ -828,7 +828,7 @@ function renderRecipes(){
   const home=!!ST.homeView;
   const q=(document.getElementById('rq')?document.getElementById('rq').value:'').toLowerCase().trim();
   let h=sectionNav()+'<div style="display:flex;gap:8px;overflow-x:auto;margin:14px 0 6px;-webkit-overflow-scrolling:touch">'+
-    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'active':'')+'" style="flex:0 0 auto;white-space:nowrap;padding:8px 14px;font-size:13px" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div>';
+    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'active':'')+'" style="flex:0 0 auto;white-space:nowrap;padding:9px 14px" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div>';
   if(!ST.recipes||!ST.recipes.length){
     h+='<div class="card" style="border:1.5px solid var(--warn);background:#FFF7E6"><div style="font-size:13px;font-weight:600;color:var(--warn)">Άδειο ακόμα</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Τρέξε πρώτα το <b>import_recipes_agreements.sql</b> στο Supabase → SQL Editor, μετά πάτα 🔄.</div></div>';
     c.innerHTML=h;return;
@@ -2153,7 +2153,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·27';
+const BUILD='v'+'2026.07.04·28';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
