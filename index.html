@@ -76,7 +76,8 @@
 <div id="loginView" class="wrap center">
   <div style="width:100%;max-width:360px">
     <div class="logo">📊</div>
-    <h1 style="text-align:center;margin:0 0 4px">Cost Control</h1>
+    <h1 style="text-align:center;margin:0 0 4px">Cost IQ</h1>
+    <div id="loginShop" style="text-align:center;font-weight:700;color:var(--accent);font-size:15px;margin:0 0 2px"></div>
     <p class="muted" style="text-align:center;margin:0 0 20px;font-size:13px">Σύνδεση στο cloud</p>
     <div class="field"><label>Email</label><input id="email" type="email" autocomplete="username" placeholder="email"></div>
     <div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password" placeholder="password"></div>
@@ -91,6 +92,7 @@
     <button class="back" id="backBtn" onclick="goList()">‹</button>
     <div style="flex:1"><h1 id="hTitle">Cost IQ</h1><div class="who" id="whoami">—</div></div>
     <button class="out" onclick="goHome()" style="margin-right:6px" title="Αρχική">🏠</button>
+    <button class="out" id="shopBtn" onclick="editShop()" style="margin-right:6px;display:none" title="Όνομα μαγαζιού">✏️🏪</button>
     <button class="out" onclick="openLabelEditor()" style="margin-right:6px" title="Ονόματα καρτελών">⚙️</button>
     <button class="out" id="fsBtn" onclick="toggleFullscreen()" style="margin-right:6px" title="Πλήρης οθόνη">⛶</button>
     <button class="out" id="langBtn" onclick="toggleLang()" style="margin-right:6px"><img src="https://flagcdn.com/28x21/gb.png" alt="EN" style="height:15px;vertical-align:middle;border-radius:2px"></button>
@@ -257,8 +259,11 @@ async function enterApp(){
   const {data:{user}}=await sb.auth.getUser();
   let role='—';
   try{const {data:prof}=await sb.from('profiles').select('role').eq('id',user.id).single();if(prof)role=prof.role;}catch(e){}
+  ST.role=role;
   document.getElementById('whoami').textContent=BUILD;
   await loadAll();
+  document.getElementById('hTitle').textContent=brandTitle();
+  const sb2=document.getElementById('shopBtn');if(sb2)sb2.style.display=(ST.role==='admin')?'inline-block':'none';
 }
 const MIGRATIONS=[
   {needle:'price_history.notes',sql:"alter table price_history add column if not exists notes text;"},
@@ -283,14 +288,17 @@ async function loadAll(){
     sb.from('agreements').select('*'),
     sb.from('agreement_blocks').select('*'),
     sb.from('order_history').select('*').order('created_at',{ascending:false}).limit(500),
-    sb.from('settings').select('*').eq('key','labels').maybeSingle()
+    sb.from('settings').select('*').in('key',['labels','shop_name'])
   ]);
   ST.products=res[0].data||[];ST.suppliers=res[1].data||[];ST.prices=res[2].data||[];
   ST.orders={};(res[4].data||[]).forEach(o=>ST.orders[o.product_id]=o);
   ST.history=res[5].data||[];ST.invoices=res[6].data||[];
   ST.recipes=res[7].data||[];ST.recipeIng=res[8].data||[];ST.agreements=res[9].data||[];ST.agreementBlocks=res[10].data||[];ST.orderHistory=res[11].data||[];
-  try{const v=(res[12]&&res[12].data&&res[12].data.value)?JSON.parse(res[12].data.value):{};
+  try{const rows=(res[12]&&res[12].data)||[]; const labRow=rows.find(r=>r.key==='labels'); const shopRow=rows.find(r=>r.key==='shop_name');
+    const v=(labRow&&labRow.value)?JSON.parse(labRow.value):{};
     ST.labels=(v&&(v.el||v.en))?{el:v.el||{},en:v.en||{}}:{el:{},en:v||{}};   // legacy flat -> EN
+    ST.shopName=(shopRow&&shopRow.value)?shopRow.value:'';
+    try{if(ST.shopName)localStorage.setItem('ciq_shop',ST.shopName);}catch(e){}
   }catch(e){ST.labels={el:{},en:{}};}
   ST.best={};(res[3].data||[]).forEach(b=>ST.best[b.product_id]={price:b.best_price,sup:b.best_supplier});
   // ── έλεγχος setup: μάζεψε ό,τι SQL χρειάζεται
@@ -323,9 +331,10 @@ function setupBanner(){
 function supName(id){const s=ST.suppliers.find(x=>x.id===id);return s?s.name:'—';}
 function pricesFor(pid){return ST.prices.filter(p=>p.product_id===pid);}
 
-function goList(){ST.view='list';ST.prod=null;document.getElementById('backBtn').style.display='none';document.getElementById('hTitle').textContent='Cost IQ';renderSection();}
+function brandTitle(){return 'Cost IQ'+(ST.shopName?' · '+ST.shopName:'');}
+function goList(){ST.view='list';ST.prod=null;document.getElementById('backBtn').style.display='none';document.getElementById('hTitle').textContent=brandTitle();renderSection();}
 function goSection(s){ST.section=s;ST.navOpen=false;if(s==='recipes')ST.homeView=false;renderSection();window.scrollTo(0,0);}
-function goHome(){ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';document.getElementById('hTitle').textContent='Cost IQ';renderSection();window.scrollTo(0,0);}
+function goHome(){ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';document.getElementById('hTitle').textContent=brandTitle();renderSection();window.scrollTo(0,0);}
 function toggleFullscreen(){
   const d=document.documentElement;
   if(!document.fullscreenElement){(d.requestFullscreen||d.webkitRequestFullscreen||d.msRequestFullscreen||function(){}).call(d);}
@@ -2153,8 +2162,21 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·28';
-(async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
+const BUILD='v'+'2026.07.04·29';
+async function editShop(){
+  if(ST.role!=='admin'){toast(L('Μόνο ο διαχειριστής μπορεί','Admin only'));return;}
+  const name=prompt(L('Όνομα μαγαζιού:','Shop name:'),ST.shopName||'');
+  if(name===null)return;
+  const tid=(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id);
+  try{await sb.from('settings').upsert({tenant_id:tid,key:'shop_name',value:name.trim()},{onConflict:'tenant_id,key'});
+    ST.shopName=name.trim(); try{localStorage.setItem('ciq_shop',ST.shopName);}catch(e){}
+    document.getElementById('hTitle').textContent=brandTitle();
+    const le=document.getElementById('loginShop'); if(le)le.textContent=ST.shopName;
+    toast('✅ '+L('Αποθηκεύτηκε','Saved'));
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+(async()=>{try{const s=localStorage.getItem('ciq_shop');const el=document.getElementById('loginShop');if(s&&el)el.textContent=s;}catch(e){}
+  const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
 document.addEventListener('visibilitychange',()=>{
