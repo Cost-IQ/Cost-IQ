@@ -827,8 +827,8 @@ function renderRecipes(){
   if(!ST.rkind)ST.rkind='cocktail';
   const home=!!ST.homeView;
   const q=(document.getElementById('rq')?document.getElementById('rq').value:'').toLowerCase().trim();
-  let h=sectionNav()+'<div style="display:flex;gap:8px;overflow-x:auto;margin:14px 0 6px;-webkit-overflow-scrolling:touch">'+
-    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'active':'')+'" style="flex:0 0 auto;white-space:nowrap;padding:8px 14px;font-size:13px" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div>';
+  let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px);margin:14px 0 6px"><div class="tabs" style="flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch;gap:8px;margin:0;padding:0 12px 4px">'+
+    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'active':'')+'" style="flex:1 1 auto;min-width:130px;white-space:nowrap;padding:10px 12px" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div></div>';
   if(!ST.recipes||!ST.recipes.length){
     h+='<div class="card" style="border:1.5px solid var(--warn);background:#FFF7E6"><div style="font-size:13px;font-weight:600;color:var(--warn)">Άδειο ακόμα</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Τρέξε πρώτα το <b>import_recipes_agreements.sql</b> στο Supabase → SQL Editor, μετά πάτα 🔄.</div></div>';
     c.innerHTML=h;return;
@@ -910,11 +910,13 @@ function drawRecipe(){persistNav();
       '<div class="kv"><span class="k">'+lbl('rcProfit','Καθαρό Κέρδος')+'</span><span class="v" id="rc-profit">'+(cc.retailNet>0?'€'+cc.netProfit.toFixed(2):'—')+'</span></div>'+
       '</div>';
   }
-  c.innerHTML=topCard+
-    '<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">'+lbl('rcIngredients','ΥΛΙΚΑ')+' ('+ings.length+')</h3>'+ingHtml+
+  c.innerHTML='<div style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px);margin-top:12px"><div style="max-width:1400px;margin:0 auto">'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;align-items:start">'+
+    topCard.replace('class="card"','class="card" style="margin:0"')+
+    '<div class="card" style="margin:0"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">'+lbl('rcIngredients','ΥΛΙΚΑ')+' ('+ings.length+')</h3>'+ingHtml+
       '<div class="kv" style="margin-top:10px;border-top:2px solid var(--line);padding-top:10px"><span class="k">'+lbl('rcTotalCost','Συνολικό Κόστος')+'</span><span class="v">€'+cc.total.toFixed(2)+'</span></div>'+
     '</div>'+
-    '<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">'+lbl('rcAddIngH','ΠΡΟΣΘΗΚΗ ΥΛΙΚΟΥ')+'</h3>'+
+    '<div class="card" style="margin:0"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">'+lbl('rcAddIngH','ΠΡΟΣΘΗΚΗ ΥΛΙΚΟΥ')+'</h3>'+
       '<select id="add-ing" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--card)">'+prodOptions('')+'</select>'+
       '<div style="display:flex;gap:6px;align-items:center;margin-top:6px">'+
         '<input id="add-qty" type="number" step="0.1" placeholder="'+lbl('wQty','Ποσότητα')+'" style="flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px">'+
@@ -922,9 +924,11 @@ function drawRecipe(){persistNav();
       '</div>'+
       '<button class="btn ghost" style="margin-top:8px" onclick="recIngAdd(\''+r.id+'\')">➕ '+lbl('rcAddIng','Προσθήκη Υλικού')+'</button>'+
     '</div>'+
-    costCard+
+    costCard.replace('class="card"','class="card" style="margin:0"')+
+    '</div>'+
     '<button class="btn" id="rc-save" onclick="saveRecipe(\''+r.id+'\')" style="margin-top:14px;font-size:16px;padding:15px">💾 '+lbl('rcSaveAll','Αποθήκευση όλων')+'</button>'+
-    '<div class="card"><button class="btn" style="background:var(--bad)" onclick="delRecipe(\''+r.id+'\')">🗑 '+lbl('wDelete','Διαγραφή')+'</button></div>'+prodDatalistHtml();
+    '<div class="card"><button class="btn" style="background:var(--bad)" onclick="delRecipe(\''+r.id+'\')">🗑 '+lbl('wDelete','Διαγραφή')+'</button></div>'+
+    '</div></div>'+prodDatalistHtml();
 }
 function liveRecipe(){
   const r=ST.recipe;
@@ -2143,7 +2147,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·22';
+const BUILD='v'+'2026.07.04·23';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
