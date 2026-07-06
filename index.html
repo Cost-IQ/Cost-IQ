@@ -2089,7 +2089,7 @@ async function editPrice(id,val){
   let price=parseFloat(val);if(isNaN(price)){toast('❌ Μη έγκυρη τιμή');return;}price=Math.round(price*100)/100;
   try{await sb.from('product_prices').update({price,updated_at:new Date().toISOString()}).eq('id',id);await refreshPrices();toast('✅ Αποθηκεύτηκε');drawProd();}
   catch(e){toast('❌ '+(e.message||e));}
-}
+} 
 async function addPrice(pid){
   const sid=document.getElementById('np-sup').value;
   let price=parseFloat(document.getElementById('np-price').value);
