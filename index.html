@@ -876,7 +876,7 @@ function drawRecipe(){persistNav();
   ings.forEach((ing,i)=>{
     const l=cc.lines[i]||{serve:0};
     ingHtml+='<div style="padding:10px 0;border-bottom:1px solid var(--line)">'+
-      '<input list="ing-dl" value="'+esc(ing.ingredient||'')+'" onchange="recIngName(\''+ing.id+'\',this.value)" placeholder="'+lbl('rcPickIng','— διάλεξε υλικό —')+'" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--card)">'+
+      '<select onchange="recIngName(\''+ing.id+'\',this.value)" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--card)">'+prodOptions(ing.ingredient||'')+'</select>'+
       '<div style="display:flex;gap:6px;align-items:center;margin-top:6px">'+
         '<input type="number" step="0.1" value="'+(ing.quantity!=null?ing.quantity:'')+'" onchange="recIngQty(\''+ing.id+'\',this.value)" placeholder="'+lbl('phhQty','Ποσότητα')+'" style="flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px">'+
         '<select onchange="recIngUnit(\''+ing.id+'\',this.value)" style="padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--card)">'+unitOptions(ing.unit||'')+'</select>'+
@@ -915,7 +915,7 @@ function drawRecipe(){persistNav();
       '<div class="kv" style="margin-top:10px;border-top:2px solid var(--line);padding-top:10px"><span class="k">'+lbl('rcTotalCost','Συνολικό Κόστος')+'</span><span class="v">€'+cc.total.toFixed(2)+'</span></div>'+
     '</div>'+
     '<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">'+lbl('rcAddIngH','ΠΡΟΣΘΗΚΗ ΥΛΙΚΟΥ')+'</h3>'+
-      '<input list="ing-dl" id="add-ing" placeholder="'+lbl('rcPickIng','— διάλεξε υλικό —')+'" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--card)">'+
+      '<select id="add-ing" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--card)">'+prodOptions('')+'</select>'+
       '<div style="display:flex;gap:6px;align-items:center;margin-top:6px">'+
         '<input id="add-qty" type="number" step="0.1" placeholder="'+lbl('wQty','Ποσότητα')+'" style="flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px">'+
         '<select id="add-unit" style="padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--card)">'+unitOptions('ml')+'</select>'+
@@ -1706,7 +1706,7 @@ function renderOcr(){
       '<div class="field" style="margin:8px 0 6px"><label>'+(matched?'✅ Προϊόν':'⚠️ Διάλεξε προϊόν')+'</label><select onchange="ocrSetProd('+i+',this.value)">'+opts+'</select></div>'+
       '<div style="display:flex;gap:6px">'+
         '<div style="flex:1"><label style="font-size:10px;color:var(--muted)">'+lbl('wQty','Ποσότητα')+'</label><input type="number" value="'+(ln.qty!=null?ln.qty:'')+'" onchange="ocrSet('+i+',\'qty\',this.value)" style="width:100%;padding:7px;border:1px solid var(--line);border-radius:6px"></div>'+
-        '<div style="flex:1"><label style="font-size:10px;color:var(--muted)">Καθαρή τιμή/τεμ €</label><input type="number" step="0.01" value="'+(ln.price!=null?ln.price:'')+'" onchange="ocrSet('+i+',\'price\',this.value)" style="width:100%;padding:7px;border:1px solid var(--line);border-radius:6px"></div>'+
+        '<div style="flex:1"><label style="font-size:10px;color:var(--muted)">'+L('Τελική τιμή/τεμ (με ΕΦΚ) €','Final price/pc (incl excise) €')+'</label><input type="number" step="0.01" value="'+(ln.price!=null?ln.price:'')+'" onchange="ocrSet('+i+',\'price\',this.value)" style="width:100%;padding:7px;border:1px solid var(--line);border-radius:6px"></div>'+
         '<div style="flex:.7"><label style="font-size:10px;color:var(--muted)">Χρονιά</label><input type="number" value="'+esc(ln.vintage!=null?ln.vintage:'')+'" onchange="ocrSet('+i+',\'vintage\',this.value)" placeholder="—" style="width:100%;padding:7px;border:1px solid var(--line);border-radius:6px"></div>'+
       '</div>'+
       '<div style="display:flex;gap:6px;margin-top:6px"><div style="flex:1"><label style="font-size:10px;color:var(--muted)">Μονάδα/Συσκευασία</label><input type="text" value="'+esc(ln.unit||'')+'" onchange="ocrSet('+i+',\'unit\',this.value)" style="width:100%;padding:7px;border:1px solid var(--line);border-radius:6px"></div></div>'+
@@ -2128,7 +2128,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·19';
+const BUILD='v'+'2026.07.04·21';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
