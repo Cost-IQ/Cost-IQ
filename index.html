@@ -827,13 +827,12 @@ function renderRecipes(){
   if(!ST.rkind)ST.rkind='cocktail';
   const home=!!ST.homeView;
   const q=(document.getElementById('rq')?document.getElementById('rq').value:'').toLowerCase().trim();
-  let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px);margin:14px 0 6px"><div class="tabs" style="flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch;gap:8px;margin:0;padding:0 12px 4px">'+
-    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'active':'')+'" style="flex:1 1 auto;min-width:130px;white-space:nowrap;padding:10px 12px" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div></div>';
+  let h=sectionNav()+'<div style="display:flex;gap:8px;overflow-x:auto;margin:14px 0 6px;-webkit-overflow-scrolling:touch">'+
+    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'active':'')+'" style="flex:0 0 auto;white-space:nowrap;padding:8px 14px;font-size:13px" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div>';
   if(!ST.recipes||!ST.recipes.length){
     h+='<div class="card" style="border:1.5px solid var(--warn);background:#FFF7E6"><div style="font-size:13px;font-weight:600;color:var(--warn)">Άδειο ακόμα</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Τρέξε πρώτα το <b>import_recipes_agreements.sql</b> στο Supabase → SQL Editor, μετά πάτα 🔄.</div></div>';
     c.innerHTML=h;return;
   }
-  h+='<div style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px);margin-top:8px"><div style="max-width:1400px;margin:0 auto">';
   h+='<input class="search" id="rq" placeholder="'+lbl('rSearch','Αναζήτηση…')+'" oninput="debSearch(renderRecipes)" value="'+esc(q)+'">';
   // ── Homemade μπάρα κάτω από το search (ανά κατηγορία) ──
   if(!home){
@@ -846,6 +845,7 @@ function renderRecipes(){
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin:2px 2px 8px">'+
     '<span class="muted" style="font-size:12px">'+list.length+' '+(home?lbl('rSubcount','υποσυνταγές'):lbl('rCount','συνταγές'))+'</span>'+
     '<button class="pick" onclick="newRecipe('+(home?'true':'false')+')">+ '+(home?lbl('rNewHome','Νέα Homemade'):lbl('rNewRecipe','Νέα Συνταγή'))+'</button></div>';
+  h+='<div style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto">';
   list.sort((a,b)=>String(a.name).localeCompare(String(b.name))).forEach(r=>{
     const cc=recipeCalc(r);
     const col=cmColor(cc.costPct);
@@ -2153,7 +2153,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·25';
+const BUILD='v'+'2026.07.04·26';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
