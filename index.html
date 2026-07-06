@@ -93,7 +93,7 @@
     <button class="back" id="backBtn" onclick="goList()">‹</button>
     <div style="flex:1"><h1 id="hTitle">Cost IQ</h1><div class="who" id="whoami">—</div></div>
     <button class="out" onclick="goHome()" style="margin-right:6px" title="Αρχική">🏠</button>
-    <button class="out" id="shopBtn" onclick="editShop()" style="margin-right:6px;display:none" title="Όνομα μαγαζιού">✏️🏪</button>
+    <button class="out" id="shopBtn" onclick="openMembers()" style="margin-right:6px;display:none" title="Μαγαζί & Μέλη">👥</button>
     <button class="out" onclick="openLabelEditor()" style="margin-right:6px" title="Ονόματα καρτελών">⚙️</button>
     <button class="out" id="fsBtn" onclick="toggleFullscreen()" style="margin-right:6px" title="Πλήρης οθόνη">⛶</button>
     <button class="out" id="langBtn" onclick="toggleLang()" style="margin-right:6px"><img src="https://flagcdn.com/28x21/gb.png" alt="EN" style="height:15px;vertical-align:middle;border-radius:2px"></button>
@@ -151,7 +151,8 @@ function matchSupplier(name){
   });
   return hit;
 }
-let ST={products:[],suppliers:[],prices:[],best:{},orders:{},history:[],invoices:[],ocr:null,lang:'el',kind:'beverage',okind:'beverage',mkind:'beverage',invsub:'db',invF:null,pd:null,sortby:'cat',view:'list',prod:null,inv:null,section:'products'};
+let ST={products:[],suppliers:[],prices:[],best:{},orders:{},history:[],invoices:[],ocr:null,lang:'el',kind:'beverage',okind:'beverage',mkind:'beverage',invsub:'db',invF:null,pd:null,sortby:'cat',view:'list',prod:null,inv:null,section:'products',role:'',tenant:'',myTenant:'',tenants:[]};
+function curTenant(){return ST.tenant||ST.myTenant||(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id)||null;}
 const T={
   el:{tProducts:'📦 Προϊόντα',tSuppliers:'🏢 Προμηθευτές',tOrders:'🛒 Παραγγελίες',tHistory:'📊 Στατιστικά',tOcr:'📷 Σκάναρε',tInvoices:'📋 Τιμολόγια',tRecipes:'🍸 Συνταγές',tAgree:'🤝 Συμφωνίες',logout:'Έξοδος'},
   en:{tProducts:'📦 Products',tSuppliers:'🏢 Suppliers',tOrders:'🛒 Orders',tHistory:'📊 Stats',tOcr:'📷 Scan',tInvoices:'📋 Invoices',tRecipes:'🍸 Recipes',tAgree:'🤝 Agreements',logout:'Logout'}
@@ -205,6 +206,7 @@ const EN_DEF={
 };
 function persistNav(){try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,homeView:ST.homeView,lang:ST.lang}));}catch(e){}}
 function rerenderCurrent(){
+  if(ST.view==='members')return openMembers();
   if(ST.view==='labels')return openLabelEditor();
   if(ST.view==='ohist')return renderOrderHistory();
   if(ST.view==='summary')return orderSummary();
@@ -273,7 +275,7 @@ async function importCsv(inp){
         iInv=idx('invoice_name'), iPack=idx('packaging'), iSize=idx('size_ml'), iUnits=idx('units'),
         iMu=idx('measure_unit'), iAlc=idx('alcohol_pct'), iRet=idx('retail_price');
   if(iSku<0){toast('❌ Λείπει η στήλη sku στο CSV');return;}
-  const tid=(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id);
+  const tid=curTenant();
   if(!tid){toast('❌ Δεν βρέθηκε μαγαζί');return;}
   const num=v=>{const n=parseFloat(String(v==null?'':v).replace(',','.'));return isNaN(n)?null:n;};
   const recs=[];
@@ -318,18 +320,28 @@ async function doLogin(){
   if(error){err.innerHTML='<div class="err">❌ '+esc(error.message)+'</div>';return;}
   await enterApp();
 }
-async function doLogout(){await sb.auth.signOut();document.getElementById('appView').style.display='none';document.getElementById('loginView').style.display='flex';document.getElementById('password').value='';}
+async function doLogout(){try{localStorage.removeItem('ciq_tenant');}catch(e){}ST.tenant='';ST.role='';await sb.auth.signOut();document.getElementById('appView').style.display='none';document.getElementById('loginView').style.display='flex';document.getElementById('password').value='';}
 async function enterApp(){
   document.getElementById('loginView').style.display='none';
   document.getElementById('appView').style.display='block';
   const {data:{user}}=await sb.auth.getUser();
-  let role='—';
-  try{const {data:prof}=await sb.from('profiles').select('role').eq('id',user.id).single();if(prof)role=prof.role;}catch(e){}
-  ST.role=role;
+  let role='',mt='';
+  try{const {data:prof}=await sb.from('profiles').select('role,tenant_id').eq('id',user.id).single();if(prof){role=prof.role||'';mt=prof.tenant_id||'';}}catch(e){}
+  ST.role=role; ST.myTenant=mt; ST.userEmail=(user&&user.email)||'';
   document.getElementById('whoami').textContent=BUILD;
+  const shopB=document.getElementById('shopBtn');if(shopB)shopB.style.display=(ST.role==='admin'||ST.role==='owner')?'inline-block':'none';
+  if(ST.role==='admin'){ if(!ST.tenant){ return chooseShop(); } }
+  else { ST.tenant=mt; }
+  await enterShop();
+}
+async function enterShop(){
+  try{if(ST.tenant)localStorage.setItem('ciq_tenant',ST.tenant);}catch(e){}
   await loadAll();
   document.getElementById('hTitle').textContent=brandTitle();
-  const sb2=document.getElementById('shopBtn');if(sb2)sb2.style.display=(ST.role==='admin')?'inline-block':'none';
+  applyRoleUI();
+}
+function applyRoleUI(){
+  if(ST.role==='staff'){ if(['products','suppliers','history','invoices','recipes','agree'].indexOf(ST.section)>=0) ST.section='ocr'; renderSection(); }
 }
 const MIGRATIONS=[
   {needle:'price_history.notes',sql:"alter table price_history add column if not exists notes text;"},
@@ -341,20 +353,22 @@ async function loadAll(){
   _canon=null;
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:40vh"><span class="spin"></span></div>';
+  const T=curTenant();
+  const ft=(qb)=>T?qb.eq('tenant_id',T):qb;   // φίλτρο μαγαζιού (admin βλέπει μόνο το επιλεγμένο)
   const res=await Promise.all([
-    sb.from('products').select('*').order('category'),
-    sb.from('suppliers').select('*').order('name'),
-    sb.from('product_prices').select('*'),
+    ft(sb.from('products').select('*')).order('category'),
+    ft(sb.from('suppliers').select('*')).order('name'),
+    ft(sb.from('product_prices').select('*')),
     sb.from('product_best_price').select('product_id,best_price,best_supplier'),
-    sb.from('order_lines').select('*'),
-    sb.from('price_history').select('*').order('date',{ascending:false}).limit(400),
-    sb.from('invoices').select('*').order('date',{ascending:false}).limit(300),
-    sb.from('recipes').select('*'),
-    sb.from('recipe_ingredients').select('*'),
-    sb.from('agreements').select('*'),
-    sb.from('agreement_blocks').select('*'),
-    sb.from('order_history').select('*').order('created_at',{ascending:false}).limit(500),
-    sb.from('settings').select('*').in('key',['labels','shop_name'])
+    ft(sb.from('order_lines').select('*')),
+    ft(sb.from('price_history').select('*')).order('date',{ascending:false}).limit(400),
+    ft(sb.from('invoices').select('*')).order('date',{ascending:false}).limit(300),
+    ft(sb.from('recipes').select('*')),
+    ft(sb.from('recipe_ingredients').select('*')),
+    ft(sb.from('agreements').select('*')),
+    ft(sb.from('agreement_blocks').select('*')),
+    ft(sb.from('order_history').select('*')).order('created_at',{ascending:false}).limit(500),
+    ft(sb.from('settings').select('*')).in('key',['labels','shop_name'])
   ]);
   ST.products=res[0].data||[];ST.suppliers=res[1].data||[];ST.prices=res[2].data||[];
   ST.orders={};(res[4].data||[]).forEach(o=>ST.orders[o.product_id]=o);
@@ -465,14 +479,15 @@ async function saveLabels(){
   const map=Object.assign({},(ST.labels&&ST.labels[cur])||{});
   LABEL_KEYS.forEach(([k])=>{const v=(document.getElementById('lbl-'+k).value||'').trim();if(v)map[k]=v;else delete map[k];});
   ST.labels=ST.labels||{el:{},en:{}};ST.labels[cur]=map;
-  const tid=(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id);
+  const tid=curTenant();
   const btn=document.getElementById('lbl-save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{await sb.from('settings').upsert({tenant_id:tid,key:'labels',value:JSON.stringify(ST.labels)},{onConflict:'tenant_id,key'});
     btn.disabled=false;toast('✅ Αποθηκεύτηκε');goHome();
   }catch(e){btn.disabled=false;btn.textContent='Αποθήκευση';toast('❌ '+(e.message||e));}
 }
 function sectionNav(){
-  const items=[['products','📦',lbl('products','Προϊόντα')],['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Σκάναρε')],['invoices','📋',lbl('invoices','Τιμολόγια')],['recipes','🍸',lbl('recipes','Συνταγές')],['agree','🤝',lbl('agree','Συμφωνίες')],['history','📊',lbl('history','Στατιστικά')]];
+  let items=[['products','📦',lbl('products','Προϊόντα')],['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Σκάναρε')],['invoices','📋',lbl('invoices','Τιμολόγια')],['recipes','🍸',lbl('recipes','Συνταγές')],['agree','🤝',lbl('agree','Συμφωνίες')],['history','📊',lbl('history','Στατιστικά')]];
+  if(ST.role==='staff')items=items.filter(i=>i[0]==='ocr'||i[0]==='orders');   // staff: μόνο Σκάναρε + Παραγγελίες
   // ── Desktop: οριζόντια tabs ──
   const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:104px;white-space:nowrap;padding:10px 12px">'+emo+' '+txt+'</div>';
   let desk='<div class="nav-desktop" style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px);margin-top:12px"><div class="tabs" style="flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch;gap:8px;margin:0;padding-bottom:4px">'+
@@ -560,7 +575,7 @@ function openProd(pid){
 async function newProduct(kind){
   let name=prompt('Όνομα νέου προϊόντος (SKU):');if(!name||!name.trim())return;
   name=name.trim();name=name.charAt(0).toUpperCase()+name.slice(1);   // κεφαλαίο πρώτο γράμμα
-  const tid=(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id);
+  const tid=curTenant();
   try{const {data,error}=await sb.from('products').insert({tenant_id:tid,kind:kind||'beverage',sku:name}).select().single();
     if(error)throw error;
     ST.products.push(data);_canon=null;toast('✅ Δημιουργήθηκε');openProd(data.id);
@@ -1090,7 +1105,7 @@ async function saveRecipe(rid){
 }
 async function newRecipe(isHome){
   const name=prompt(isHome?'Όνομα νέας Homemade υποσυνταγής:':'Όνομα νέας συνταγής:');if(!name||!name.trim())return;
-  const tid=(ST.products[0]&&ST.products[0].tenant_id)||(ST.recipes[0]&&ST.recipes[0].tenant_id);
+  const tid=curTenant();
   const payload={tenant_id:tid,kind:ST.rkind||'cocktail',name:name.trim()};
   if(isHome)payload.is_homemade=true;
   try{const {data,error}=await sb.from('recipes').insert(payload).select().single();
@@ -1224,7 +1239,7 @@ async function saveAgreementProduct(id){
 }
 async function addAgreementProduct(blockId){
   const name=prompt(''+lbl('pdSku','Όνομα προϊόντος (SKU)')+' για τη συμφωνία:');if(!name||!name.trim())return;
-  const tid=(ST.agreementBlocks[0]&&ST.agreementBlocks[0].tenant_id)||(ST.products[0]&&ST.products[0].tenant_id);
+  const tid=curTenant();
   const pid=matchProduct(name.trim());const prod=pid?ST.products.find(x=>x.id===pid):null;
   const payload={tenant_id:tid,block_id:blockId,sku:name.trim(),excise_duty:prod?parseFloat(prod.efk)||null:null};
   try{const {data,error}=await sb.from('agreements').insert(payload).select().single();
@@ -1248,7 +1263,7 @@ async function delBlock(id){
 }
 async function newBlock(){
   const name=prompt('Όνομα νέας συμφωνίας (προμηθευτής):');if(!name||!name.trim())return;
-  const tid=(ST.agreementBlocks[0]&&ST.agreementBlocks[0].tenant_id)||(ST.products[0]&&ST.products[0].tenant_id);
+  const tid=curTenant();
   const pos=(ST.agreementBlocks||[]).length;
   try{const {data,error}=await sb.from('agreement_blocks').insert({tenant_id:tid,name:name.trim(),fixed_marketing:0,position:pos}).select().single();
     if(error)throw error;ST.agreementBlocks.push(data);toast('✅ Δημιουργήθηκε');renderAgreements();
@@ -1303,7 +1318,7 @@ async function addSupplier(){
   const email=(document.getElementById('su-new-em').value||'').trim();
   const phone=(document.getElementById('su-new-ph').value||'').trim();
   if(!name){toast('❌ Βάλε όνομα');return;}
-  const tid=(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id);
+  const tid=curTenant();
   try{
     const payload={name,email:email||null,phone:phone||null,aliases:[]};
     if(tid) payload.tenant_id=tid;
@@ -1319,7 +1334,7 @@ async function delSupplier(id,name){
 // Backfill: γεμίζει τιμές προμηθευτή από το ιστορικό (smart-match), όπως waBackfillSupplier_ του app
 async function backfillSupplier(sid,sname){
   if(!confirm('Να γεμίσω τις τιμές του "'+sname+'" από το ιστορικό αγορών;'))return;
-  const tid=(ST.products[0]&&ST.products[0].tenant_id);
+  const tid=curTenant();
   const supN=normStr(sname);
   // 1) Βρες γραμμές ιστορικού αυτού του προμηθευτή (όπου υπάρχει προμηθευτής)
   //    + γραμμές χωρίς προμηθευτή δεν αποδίδονται σε αυτόν (δεν ξέρουμε ποιανού είναι)
@@ -1855,7 +1870,7 @@ async function ocrAddSupplier(){
   name=prompt('Όνομα νέου προμηθευτή:',name);
   if(!name||!name.trim())return;
   name=name.trim();
-  const tid=(ST.products[0]&&ST.products[0].tenant_id);
+  const tid=curTenant();
   try{
     const {data,error}=await sb.from('suppliers').insert(tid?{name:name,tenant_id:tid,aliases:[]}:{name:name,aliases:[]}).select().single();
     if(error)throw error;
@@ -1869,7 +1884,7 @@ function ocrSetProd(i,v){ST.ocr.lines[i].productId=v||null;renderOcr();}
 function resetOcr(){ST.ocr=null;window._ocrImg=null;renderOcr();}
 async function ocrNewProduct(i){
   const ln=ST.ocr.lines[i]; const raw=(ln.raw||'').trim(); if(!raw){toast('Κενή γραμμή');return;}
-  const tid=(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id);
+  const tid=curTenant();
   try{
     const {data,error}=await sb.from('products').insert({tenant_id:tid,kind:'beverage',sku:raw,invoice_name:raw}).select().single();
     if(error)throw error;
@@ -1889,7 +1904,7 @@ async function ocrApprove(){
   if(!sid){toast('❌ Διάλεξε προμηθευτή');return;}
   const good=o.lines.filter(l=>l.productId&&(parseFloat(l.price)||0)>0);
   if(!good.length){toast('❌ Καμία έτοιμη γραμμή');return;}
-  const tid=(ST.products[0]&&ST.products[0].tenant_id);
+  const tid=curTenant();
   const supN=supName(sid);
   let gross=0;good.forEach(l=>{gross+=(parseFloat(l.price)||0)*(parseFloat(l.qty)||0);});
   const grossR=Math.round(gross*100)/100;
@@ -2229,12 +2244,91 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·30';
+const BUILD='v'+'2026.07.04·32';
+// ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
+const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
+async function chooseShop(){
+  const c=document.getElementById('content');
+  document.getElementById('hTitle').textContent='Cost IQ';
+  const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  const {data}=await sb.from('tenants').select('*').order('name');
+  ST.tenants=data||[];
+  let h='<div style="margin-top:14px"><h2 style="font-size:18px;margin:0 0 4px">🏪 '+L('Τα Μαγαζιά μου','My Shops')+'</h2>'+
+    '<p class="muted" style="font-size:13px;margin:0 0 12px">'+L('Διάλεξε μαγαζί για να μπεις','Pick a shop to enter')+'</p>';
+  (ST.tenants||[]).forEach(t=>{
+    h+='<div class="row" onclick="pickShop(\''+t.id+'\')"><div class="name">'+esc(t.name||'—')+'</div><div style="color:var(--accent);font-size:18px">›</div></div>';
+  });
+  if(!ST.tenants.length)h+='<div class="card muted" style="text-align:center">'+L('Κανένα μαγαζί ακόμα','No shops yet')+'</div>';
+  h+='<button class="btn" style="margin-top:14px" onclick="newShop()">➕ '+L('Νέο μαγαζί','New shop')+'</button></div>';
+  c.innerHTML=h;
+}
+async function pickShop(id){
+  ST.tenant=id; const t=(ST.tenants||[]).find(x=>x.id===id); ST.shopName=(t&&t.name)||'';
+  const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';
+  await enterShop();
+}
+async function newShop(){
+  const name=prompt(L('Όνομα νέου μαγαζιού:','New shop name:')); if(!name||!name.trim())return;
+  try{const {data,error}=await sb.from('tenants').insert({name:name.trim()}).select().single();
+    if(error)throw error;
+    ST.tenants.push(data); ST.tenant=data.id; ST.shopName=data.name;
+    // αποθήκευσε και το shop_name στα settings του νέου μαγαζιού
+    try{await sb.from('settings').upsert({tenant_id:data.id,key:'shop_name',value:data.name},{onConflict:'tenant_id,key'});}catch(e){}
+    toast('✅ '+L('Δημιουργήθηκε','Created')); await enterShop();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+function switchShop(){ ST.tenant=''; try{localStorage.removeItem('ciq_tenant');}catch(e){} chooseShop(); }
+async function openMembers(){
+  ST.view='members'; const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
+  document.getElementById('hTitle').textContent='👥 '+L('Μέλη','Members');
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  const {data}=await sb.from('profiles').select('id,email,role').eq('tenant_id',curTenant());
+  const members=data||[];
+  let h='<div style="margin-top:12px">';
+  h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent)"><div style="font-size:12px;color:var(--muted)">'+L('Μαγαζί','Shop')+'</div><div style="font-size:17px;font-weight:700;color:var(--accent)">'+esc(ST.shopName||'—')+'</div>'+
+    '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+
+    ((ST.role==='admin'||ST.role==='owner')?'<button class="pick" onclick="editShop()">✏️ '+L('Μετονομασία','Rename')+'</button>':'')+
+    (ST.role==='admin'?'<button class="pick" onclick="switchShop()">🔄 '+L('Αλλαγή μαγαζιού','Switch shop')+'</button>':'')+
+    '</div></div>';
+  h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">👥 '+L('Μέλη μαγαζιού','Shop members')+' ('+members.length+')</h3>';
+  if(!members.length)h+='<div class="muted" style="font-size:13px">'+L('Κανένα μέλος ακόμα','No members yet')+'</div>';
+  members.forEach(m=>{h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><div><div style="font-weight:600;font-size:14px">'+esc(m.email||'—')+'</div><div style="font-size:12px;color:var(--muted)">'+esc(m.role||'')+'</div></div></div>';});
+  h+='</div>';
+  h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">➕ '+L('Νέο μέλος','New member')+'</h3>'+
+    '<div class="field"><label>Email</label><input id="nm-email" type="email" placeholder="name@email.com"></div>'+
+    '<div class="field"><label>'+L('Κωδικός','Password')+' ('+L('τουλάχ. 6 χαρακτήρες','min 6 chars')+')</label><input id="nm-pass" type="text" placeholder="••••••"></div>'+
+    '<div class="field"><label>'+L('Ρόλος','Role')+'</label><select id="nm-role" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
+      (ST.role==='admin'?'<option value="owner">Owner ('+L('πλήρης','full')+')</option>':'')+
+      '<option value="manager">Manager ('+L('πλήρης, χωρίς μέλη','full, no members')+')</option>'+
+      '<option value="staff" selected>Staff ('+L('μόνο Σκάναρε + Παραγγελίες','only Scan + Orders')+')</option>'+
+    '</select></div>'+
+    '<button class="btn" id="nm-save" onclick="addMember()">➕ '+L('Δημιουργία μέλους','Create member')+'</button>'+
+    '<div class="muted" style="font-size:11px;margin-top:8px">'+L('Ο κωδικός δίνεται στο μέλος. Μπορεί να τον αλλάξει με «Ξέχασα τον κωδικό» αν έχει email.','Give the password to the member. They can change it via «Forgot password» if they have email.')+'</div>'+
+  '</div></div>';
+  c.innerHTML=h;
+}
+async function addMember(){
+  const email=(document.getElementById('nm-email').value||'').trim();
+  const password=document.getElementById('nm-pass').value||'';
+  const role=document.getElementById('nm-role').value||'staff';
+  if(!email||!password){toast('❌ '+L('Βάλε email & κωδικό','Enter email & password'));return;}
+  const btn=document.getElementById('nm-save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch(FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({email,password,role,tenant_id:curTenant()})});
+    const d=await r.json();
+    btn.disabled=false;btn.innerHTML='➕ '+L('Δημιουργία μέλους','Create member');
+    if(d.error){toast('❌ '+d.error);return;}
+    toast('✅ '+L('Το μέλος δημιουργήθηκε','Member created')); openMembers();
+  }catch(e){btn.disabled=false;btn.innerHTML='➕ '+L('Δημιουργία μέλους','Create member');toast('❌ '+(e.message||e));}
+}
 async function editShop(){
   if(ST.role!=='admin'){toast(L('Μόνο ο διαχειριστής μπορεί','Admin only'));return;}
   const name=prompt(L('Όνομα μαγαζιού:','Shop name:'),ST.shopName||'');
   if(name===null)return;
-  const tid=(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id);
+  const tid=curTenant();
   try{await sb.from('settings').upsert({tenant_id:tid,key:'shop_name',value:name.trim()},{onConflict:'tenant_id,key'});
     ST.shopName=name.trim(); try{localStorage.setItem('ciq_shop',ST.shopName);}catch(e){}
     document.getElementById('hTitle').textContent=brandTitle();
@@ -2243,6 +2337,7 @@ async function editShop(){
   }catch(e){toast('❌ '+(e.message||e));}
 }
 (async()=>{try{const s=localStorage.getItem('ciq_shop');const el=document.getElementById('loginShop');if(s&&el)el.textContent=s;}catch(e){}
+  try{const tt=localStorage.getItem('ciq_tenant');if(tt)ST.tenant=tt;}catch(e){}
   const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
