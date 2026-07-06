@@ -203,8 +203,10 @@ const EN_DEF={
 function rerenderCurrent(){
   if(ST.view==='labels')return openLabelEditor();
   if(ST.view==='ohist')return renderOrderHistory();
-  if(ST.section==='products'&&ST.view==='detail'&&ST.prod)return drawProd();
-  if(ST.section==='recipes'&&ST.view==='detail'&&ST.recipe)return drawRecipe();
+  if(ST.view==='summary')return orderSummary();
+  if(ST.section==='products'&&ST.view==='detail'&&ST.prod){ST.prod=ST.products.find(p=>p.id===ST.prod.id)||ST.prod;return drawProd();}
+  if(ST.section==='recipes'&&ST.view==='detail'&&ST.recipe){ST.recipe=ST.recipes.find(r=>r.id===ST.recipe.id)||ST.recipe;return drawRecipe();}
+  if(ST.section==='invoices'&&ST.inv){const fresh=ST.invoices.find(i=>i.id===ST.inv.id);if(fresh)return openInvoice(ST.inv.id);}
   renderSection();
 }
 function langFlag(){ // δείχνει τη σημαία της γλώσσας στην οποία θα πας
@@ -298,7 +300,7 @@ async function loadAll(){
     c.innerHTML='<div class="err">Σφάλμα σύνδεσης: '+esc(res[0].error.message)+'</div>';return;
   }
   try{const _s=localStorage.getItem('ciq_section');if(_s)ST.section=_s;}catch(e){}
-  renderSection();
+  rerenderCurrent();
 }
 function copySetup(){const ta=document.createElement('textarea');ta.value=ST.setupSql;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('✅ Αντιγράφηκε');}catch(e){}document.body.removeChild(ta);}
 function setupBanner(){
@@ -2089,7 +2091,7 @@ async function editPrice(id,val){
   let price=parseFloat(val);if(isNaN(price)){toast('❌ Μη έγκυρη τιμή');return;}price=Math.round(price*100)/100;
   try{await sb.from('product_prices').update({price,updated_at:new Date().toISOString()}).eq('id',id);await refreshPrices();toast('✅ Αποθηκεύτηκε');drawProd();}
   catch(e){toast('❌ '+(e.message||e));}
-} 
+}
 async function addPrice(pid){
   const sid=document.getElementById('np-sup').value;
   let price=parseFloat(document.getElementById('np-price').value);
@@ -2116,7 +2118,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·17';
+const BUILD='v'+'2026.07.04·18';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
@@ -2128,5 +2130,3 @@ document.addEventListener('visibilitychange',()=>{
 </script>
 </body>
 </html>
-
-
