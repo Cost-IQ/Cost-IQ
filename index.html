@@ -207,6 +207,7 @@ const EN_DEF={
 };
 function persistNav(){try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,homeView:ST.homeView,lang:ST.lang}));}catch(e){}}
 function rerenderCurrent(){
+  if(ST.view==='shops')return chooseShop();
   if(ST.view==='members')return openMembers();
   if(ST.view==='labels')return openLabelEditor();
   if(ST.view==='ohist')return renderOrderHistory();
@@ -2245,10 +2246,11 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·35';
+const BUILD='v'+'2026.07.04·36';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 async function chooseShop(){
+  ST.view='shops';
   const c=document.getElementById('content');
   document.getElementById('hTitle').textContent='Cost IQ';
   const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';
@@ -2265,7 +2267,7 @@ async function chooseShop(){
   c.innerHTML=h;
 }
 async function pickShop(id){
-  ST.tenant=id; const t=(ST.tenants||[]).find(x=>x.id===id); ST.shopName=(t&&t.name)||'';
+  ST.tenant=id;ST.view='list'; const t=(ST.tenants||[]).find(x=>x.id===id); ST.shopName=(t&&t.name)||'';
   const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';
   await enterShop();
 }
@@ -2273,7 +2275,7 @@ async function newShop(){
   const name=prompt(L('Όνομα νέου μαγαζιού:','New shop name:')); if(!name||!name.trim())return;
   try{const {data,error}=await sb.from('tenants').insert({name:name.trim()}).select().single();
     if(error)throw error;
-    ST.tenants.push(data); ST.tenant=data.id; ST.shopName=data.name;
+    ST.tenants.push(data); ST.tenant=data.id; ST.shopName=data.name; ST.view='list';
     // αποθήκευσε και το shop_name στα settings του νέου μαγαζιού
     try{await sb.from('settings').upsert({tenant_id:data.id,key:'shop_name',value:data.name},{onConflict:'tenant_id,key'});}catch(e){}
     toast('✅ '+L('Δημιουργήθηκε','Created')); await enterShop();
