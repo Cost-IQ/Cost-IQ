@@ -80,8 +80,9 @@
     <div id="loginShop" style="text-align:center;font-weight:700;color:var(--accent);font-size:15px;margin:0 0 2px"></div>
     <p class="muted" style="text-align:center;margin:0 0 20px;font-size:13px">Σύνδεση στο cloud</p>
     <div class="field"><label>Email</label><input id="email" type="email" autocomplete="username" placeholder="email"></div>
-    <div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password" placeholder="password"></div>
+    <div class="field"><label>Password</label><div style="display:flex;gap:6px;align-items:center"><input id="password" type="password" autocomplete="current-password" placeholder="password" style="flex:1"><button type="button" onclick="togglePw()" id="pwEye" style="background:none;border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px">👁</button></div></div>
     <button class="btn" id="loginBtn" onclick="doLogin()">Σύνδεση</button>
+    <div style="text-align:center;margin-top:10px"><a href="#" onclick="forgotPassword();return false" style="color:var(--accent);font-size:13px">Ξέχασα τον κωδικό</a></div>
     <div id="loginErr"></div>
     <div class="small">🔒 Τα δεδομένα προστατεύονται ανά μαγαζί</div>
   </div>
@@ -240,6 +241,71 @@ function normUnit(u){
 }
 function sz(m){return m?(m>=1000?(m/1000)+'L':m+'ml'):'';}
 
+function togglePw(){const p=document.getElementById('password'),e=document.getElementById('pwEye');if(!p)return;if(p.type==='password'){p.type='text';e.textContent='🙈';}else{p.type='password';e.textContent='👁';}}
+async function forgotPassword(){
+  const email=(document.getElementById('email').value||'').trim();
+  const err=document.getElementById('loginErr');
+  if(!email){err.innerHTML='<div class="err">Γράψε πρώτα το email σου πάνω, μετά πάτα «Ξέχασα τον κωδικό»</div>';return;}
+  try{const {error}=await sb.auth.resetPasswordForEmail(email);
+    if(error)throw error;
+    err.innerHTML='<div style="background:#e7f6ec;border:1px solid var(--ok);color:var(--ok);padding:10px;border-radius:10px;font-size:13px">✅ Στάλθηκε email στο '+esc(email)+' με σύνδεσμο για νέο κωδικό. Δες και τα spam.</div>';
+  }catch(e){err.innerHTML='<div class="err">❌ '+esc(e.message||e)+'</div>';}
+}
+// ── Μαζική εισαγωγή προϊόντων από CSV ──
+function parseCsv(text){
+  text=text.replace(/\r\n?/g,'\n').replace(/^\uFEFF/,'');
+  const rows=[];let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else{ if(c==='"')q=true; else if(c===',' ){row.push(cur);cur='';} else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';} else cur+=c; }
+  }
+  if(cur!==''||row.length){row.push(cur);rows.push(row);}
+  return rows.filter(r=>r.some(x=>String(x).trim()!==''));
+}
+async function importCsv(inp){
+  const f=inp.files&&inp.files[0]; if(!f)return; inp.value='';
+  const text=await f.text();
+  const rows=parseCsv(text);
+  if(rows.length<2){toast('❌ Κενό ή λάθος CSV');return;}
+  const head=rows[0].map(h=>String(h).trim().toLowerCase());
+  const idx=n=>head.indexOf(n);
+  const iSku=idx('sku'), iKind=idx('kind'), iCat=idx('category'), iSub=idx('sub_category'),
+        iInv=idx('invoice_name'), iPack=idx('packaging'), iSize=idx('size_ml'), iUnits=idx('units'),
+        iMu=idx('measure_unit'), iAlc=idx('alcohol_pct'), iRet=idx('retail_price');
+  if(iSku<0){toast('❌ Λείπει η στήλη sku στο CSV');return;}
+  const tid=(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id);
+  if(!tid){toast('❌ Δεν βρέθηκε μαγαζί');return;}
+  const num=v=>{const n=parseFloat(String(v==null?'':v).replace(',','.'));return isNaN(n)?null:n;};
+  const recs=[];
+  for(let r=1;r<rows.length;r++){
+    const c=rows[r]; const sku=(c[iSku]||'').trim(); if(!sku)continue;
+    let kind=(iKind>=0?(c[iKind]||'').trim().toLowerCase():'beverage');
+    if(['beverage','food','supplies'].indexOf(kind)<0)kind='beverage';
+    const size=iSize>=0?num(c[iSize]):null;
+    const alc=iAlc>=0?num(c[iAlc]):null;
+    const cat=iCat>=0?(c[iCat]||'').trim():''; const sub=iSub>=0?(c[iSub]||'').trim():'';
+    const rec={tenant_id:tid,kind:kind,sku:sku,
+      category:cat||null,sub_category:sub||null,
+      invoice_name:iInv>=0?((c[iInv]||'').trim()||null):null,
+      packaging:iPack>=0?((c[iPack]||'').trim()||null):null,
+      size_ml:size, units:iUnits>=0?num(c[iUnits]):null,
+      measure_unit:iMu>=0?((c[iMu]||'').trim()||null):null,
+      alcohol_pct:alc, retail_price:iRet>=0?num(c[iRet]):null};
+    if(kind==='beverage'&&alc){const efk=computeEFK(cat,sub,sku,size,alc);if(efk!=null)rec.efk=efk;}
+    recs.push(rec);
+  }
+  if(!recs.length){toast('❌ Καμία έγκυρη γραμμή');return;}
+  if(!confirm('Εισαγωγή '+recs.length+' προϊόντων στο μαγαζί;'))return;
+  let ok=0,fail=0;
+  for(let i=0;i<recs.length;i+=100){
+    const batch=recs.slice(i,i+100);
+    try{const {data,error}=await sb.from('products').insert(batch).select();
+      if(error)throw error; ok+=(data?data.length:batch.length);
+    }catch(e){fail+=batch.length;console.error(e);}
+  }
+  _canon=null; await loadAll();
+  toast('✅ Μπήκαν '+ok+' προϊόντα'+(fail?(' · '+fail+' απέτυχαν'):''));
+}
 async function doLogin(){
   const email=document.getElementById('email').value.trim();
   const password=document.getElementById('password').value;
@@ -453,7 +519,8 @@ function renderList(){
       '</select></div>'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin:2px 12px 8px">'+
       '<span class="muted" style="font-size:12px">'+items.length+' '+lbl('wordProducts','προϊόντα')+'</span>'+
-      '<button class="pick" onclick="newProduct(\''+ST.kind+'\')">➕ '+lbl('addBtn','Προσθήκη')+'</button></div>';
+      '<div style="display:flex;gap:6px"><label class="pick" style="cursor:pointer" title="Μαζική εισαγωγή από CSV">⬆️ CSV<input type="file" accept=".csv,text/csv" onchange="importCsv(this)" style="display:none"></label>'+
+      '<button class="pick" onclick="newProduct(\''+ST.kind+'\')">➕ '+lbl('addBtn','Προσθήκη')+'</button></div></div>';
   Object.keys(groups).sort().forEach(cat=>{
     if(cat)h+='<div class="cathead">'+esc(cat)+'</div>';
     groups[cat].forEach(p=>{
@@ -2162,7 +2229,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·29';
+const BUILD='v'+'2026.07.04·30';
 async function editShop(){
   if(ST.role!=='admin'){toast(L('Μόνο ο διαχειριστής μπορεί','Admin only'));return;}
   const name=prompt(L('Όνομα μαγαζιού:','Shop name:'),ST.shopName||'');
