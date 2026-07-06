@@ -200,6 +200,7 @@ const EN_DEF={
   pdSumQty:'Total Quantity',pdSumSpend:'Total Spend',pdAvgPrice:'Avg Price',pdLast:'Last',pdChgE:'Change €',pdChgP:'Change %',pdHistH:'HISTORY',pdNoRec:'No records in this period',
   p9m:'9 Months',pCustom:'Custom',wUnitWord:'unit',rcSetYield:'set yield',wAll:'All',wAllM:'All',rcSaveAll:'Save all'
 };
+function persistNav(){try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,homeView:ST.homeView,lang:ST.lang}));}catch(e){}}
 function rerenderCurrent(){
   if(ST.view==='labels')return openLabelEditor();
   if(ST.view==='ohist')return renderOrderHistory();
@@ -216,7 +217,7 @@ function langFlag(){ // δείχνει τη σημαία της γλώσσας �
 }
 function toggleLang(){
   ST.lang=ST.lang==='el'?'en':'el';
-  const lb=document.getElementById('langBtn');if(lb)lb.innerHTML=langFlag();
+  const lb=document.getElementById('langBtn');if(lb)lb.innerHTML=langFlag();persistNav();
   document.querySelectorAll('.out').forEach(b=>{if(b.getAttribute('onclick')==='doLogout()')b.textContent=t('logout');});
   rerenderCurrent();
 }
@@ -299,7 +300,16 @@ async function loadAll(){
   if(res[0].error&&!ST.products.length&&msgs.indexOf('products')>=0){
     c.innerHTML='<div class="err">Σφάλμα σύνδεσης: '+esc(res[0].error.message)+'</div>';return;
   }
-  try{const _s=localStorage.getItem('ciq_section');if(_s)ST.section=_s;}catch(e){}
+  try{const nav=JSON.parse(localStorage.getItem('ciq_nav')||localStorage.getItem('ciq_section')&&JSON.stringify({section:localStorage.getItem('ciq_section')})||'{}');
+    if(nav.section)ST.section=nav.section;
+    if(nav.lang){ST.lang=nav.lang;const lb=document.getElementById('langBtn');if(lb)lb.innerHTML=langFlag();}
+    if(nav.kind)ST.kind=nav.kind; if(nav.okind)ST.okind=nav.okind; if(nav.invsub)ST.invsub=nav.invsub;
+    ST.homeView=!!nav.homeView;
+    if(nav.prod&&nav.view==='detail'){const p=ST.products.find(x=>x.id===nav.prod);if(p){ST.prod=p;ST.view='detail';}}
+    else if(nav.recipe&&nav.view==='detail'){const r=ST.recipes.find(x=>x.id===nav.recipe);if(r){ST.recipe=r;ST.view='detail';}}
+    else if(nav.inv){const i=ST.invoices.find(x=>x.id===nav.inv);if(i)ST.inv=i;}
+    else if(nav.view==='labels'||nav.view==='ohist'||nav.view==='summary'){ST.view=nav.view;}
+  }catch(e){}
   rerenderCurrent();
 }
 function copySetup(){const ta=document.createElement('textarea');ta.value=ST.setupSql;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('✅ Αντιγράφηκε');}catch(e){}document.body.removeChild(ta);}
@@ -362,7 +372,7 @@ const LABEL_KEYS=[
   ['p9m','9 Μήνες'],['pCustom','Επιλογή'],['wUnitWord','μονάδα'],['rcSetYield','βάλε παραγωγή'],['wAll','Όλες'],['wAllM','Όλοι'],['rcSaveAll','Αποθήκευση όλων']
 ];
 function openLabelEditor(){
-  ST.view='labels';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='⚙️ '+L('Ονόματα καρτελών','Tab & label names');
+  ST.view='labels';persistNav();document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='⚙️ '+L('Ονόματα καρτελών','Tab & label names');
   const c=document.getElementById('content');
   const cur=ST.lang;const m=(ST.labels&&ST.labels[cur])||{};
   const langName=cur==='en'?L('Αγγλικά (EN)','English (EN)'):L('Ελληνικά (ΕΛ)','Greek (EL)');
@@ -406,7 +416,7 @@ function sectionNav(){
   return desk+mob+setupBanner();
 }
 function toggleNav(){ST.navOpen=!ST.navOpen;rerenderCurrent();}
-function renderSection(){ try{localStorage.setItem('ciq_section',ST.section);}catch(e){} if(ST.section==='suppliers') renderSuppliers(); else if(ST.section==='orders') renderOrders(); else if(ST.section==='history') renderStats(); else if(ST.section==='ocr') renderOcr(); else if(ST.section==='invoices') renderInvoices(); else if(ST.section==='recipes') renderRecipes(); else if(ST.section==='agree') renderAgreements(); else renderList(); var _w=document.getElementById('whoami'); if(_w) _w.style.display=(ST.section==='products'&&ST.view==='list')?'block':'none'; }
+function renderSection(){ persistNav(); if(ST.section==='suppliers') renderSuppliers(); else if(ST.section==='orders') renderOrders(); else if(ST.section==='history') renderStats(); else if(ST.section==='ocr') renderOcr(); else if(ST.section==='invoices') renderInvoices(); else if(ST.section==='recipes') renderRecipes(); else if(ST.section==='agree') renderAgreements(); else renderList(); var _w=document.getElementById('whoami'); if(_w) _w.style.display=(ST.section==='products'&&ST.view==='list')?'block':'none'; }
 function setKind(k){ST.kind=k;renderList();}
 function renderList(){
   const c=document.getElementById('content');
@@ -548,7 +558,7 @@ function prodHistoryHtml(pid){
   });
   return h+'</div>';
 }
-function drawProd(){
+function drawProd(){persistNav();
   const p=ST.prod;const c=document.getElementById('content');
   const rows=pricesFor(p.id).slice().sort((a,b)=>a.price-b.price);
   const b=ST.best[p.id]||{};
@@ -858,7 +868,7 @@ function openRecipe(rid){
   document.getElementById('hTitle').textContent=r.name;
   drawRecipe();
 }
-function drawRecipe(){
+function drawRecipe(){persistNav();
   const r=ST.recipe;const c=document.getElementById('content');
   const cc=recipeCalc(r);const col=cmColor(cc.costPct);
   const ings=ingredientsFor(r.id);
@@ -1321,7 +1331,7 @@ async function saveOrder(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 function orderSummary(){
-  ST.view='summary';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='📋 '+lbl('oSummaryTitle','Σύνοψη');
+  ST.view='summary';persistNav();document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='📋 '+lbl('oSummaryTitle','Σύνοψη');
   const c=document.getElementById('content');
   // group products with order_qty>0 by best supplier
   const bySup={};
@@ -1376,7 +1386,7 @@ async function logOrder(supName){
     toast('✅ Πέρασε στο ιστορικό ('+rows.length+')');renderOrderHistory();
   }catch(e){toast('❌ '+(e.message||e));}
 }
-function renderOrderHistory(){
+function renderOrderHistory(){ST.view='ohist';persistNav();
   ST.view='ohist';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🕘 '+lbl('oHistTitle','Ιστορικό Παραγγελιών');
   const c=document.getElementById('content');
   const rows=(ST.orderHistory||[]).slice();
@@ -2046,7 +2056,7 @@ function priceDbView(){
 }
 function openInvoice(id){
   const v=ST.invoices.find(x=>x.id===id);if(!v)return;
-  ST.inv=v;document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🧾 '+(v.supplier_name||lbl('oScanTitle','Τιμολόγιο'));
+  ST.inv=v;persistNav();document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🧾 '+(v.supplier_name||lbl('oScanTitle','Τιμολόγιο'));
   const c=document.getElementById('content');
   const lines=ST.history.filter(r=> r.invoice_id===id || ((r.supplier_name&&v.supplier_name&&normStr(r.supplier_name)===normStr(v.supplier_name))&&r.date===v.date) );
   let h='<div class="card"><h3 style="font-size:14px;margin-bottom:10px">🧾 '+esc(v.supplier_name||supName(v.supplier_id))+'</h3>'+
@@ -2118,7 +2128,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·18';
+const BUILD='v'+'2026.07.04·19';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
