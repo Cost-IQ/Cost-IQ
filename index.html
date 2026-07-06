@@ -851,11 +851,11 @@ function renderRecipes(){
     const col=cmColor(cc.costPct);
     const pctTxt=cc.costPct>0?(cc.costPct*100).toFixed(1)+'%':'—';
     let right;
-    if(home){const y=parseFloat(r.yield_qty)||0;const cpu=y>0?cc.realCost/y:0;right='<div style="text-align:right;font-size:12px"><div style="font-weight:700">€'+cc.realCost.toFixed(2)+'</div><div class="muted">'+(y>0?('€'+cpu.toFixed(4)+'/'+esc(r.yield_unit||'μον')):lbl('rcSetYield','βάλε παραγωγή'))+'</div></div>';}
+    if(home){const y=parseFloat(r.yield_qty)||0;const cpu=y>0?cc.realCost/y:0;right='<div style="text-align:right;font-size:12px"><div style="font-weight:700">€'+cc.realCost.toFixed(2)+'</div><div class="muted">'+(y>0?('€'+cpu.toFixed(4)+'/'+esc(r.yield_unit||L('μον','unit'))):lbl('rcSetYield','βάλε παραγωγή'))+'</div></div>';}
     else right='<span class="cm" style="background:'+col+'22;color:'+col+';font-size:12px;font-weight:700;padding:2px 8px;border-radius:9px">'+pctTxt+'</span>';
     h+='<div class="row" onclick="openRecipe(\''+r.id+'\')"><div style="min-width:0">'+
       '<div class="name">'+esc(r.name)+'</div>'+
-      '<div class="sub">'+ingredientsFor(r.id).length+' υλικά · Κόστος €'+cc.realCost.toFixed(2)+((!home&&cc.retail>0)?(' · Πώληση €'+cc.retail.toFixed(2)):'')+'</div>'+
+      '<div class="sub">'+ingredientsFor(r.id).length+' '+L('υλικά','ingredients')+' · '+L('Κόστος','Cost')+' €'+cc.realCost.toFixed(2)+((!home&&cc.retail>0)?(' · '+lbl('sale','Πώληση')+' €'+cc.retail.toFixed(2)):'')+'</div>'+
       '</div>'+right+'</div>';
   });
   if(!list.length)h+='<div class="card muted" style="text-align:center">'+(home?lbl('rNoneHome','Καμία υποσυνταγή — πάτα «+ Νέα Homemade»'):lbl('rNone','Καμία συνταγή εδώ'))+'</div>';
@@ -2153,7 +2153,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·26';
+const BUILD='v'+'2026.07.04·27';
 (async()=>{const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
 // αυτόματη ανανέωση δεδομένων όταν επιστρέφεις στην εφαρμογή
 let _lastRefresh=Date.now();
