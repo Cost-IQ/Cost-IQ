@@ -114,7 +114,7 @@ const OCR_URL=SUPABASE_URL+"/functions/v1/smart-worker";
 const STOP=new Set(['THE','AND','ΤΗΣ','ΤΟΥ','ΚΑΙ','ΤΟ','ΤΑ','ΜΕ','ΓΙΑ','ΑΠΟ']);
 const GRK2LAT={'Α':'A','Β':'V','Γ':'G','Δ':'D','Ε':'E','Ζ':'Z','Η':'I','Θ':'TH','Ι':'I','Κ':'K','Λ':'L','Μ':'M','Ν':'N','Ξ':'X','Ο':'O','Π':'P','Ρ':'R','Σ':'S','Τ':'T','Υ':'Y','Φ':'F','Χ':'X','Ψ':'PS','Ω':'O','Ϊ':'I','Ϋ':'Y'};
 function greeklish(s){return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().split('').map(ch=>GRK2LAT[ch]!=null?GRK2LAT[ch]:ch).join('');}
-function normStr(s){return greeklish(s).replace(/['’`.,\/()%\-]/g,'').replace(/[^\p{L}\p{N} ]/gu,' ').replace(/C/g,'K').replace(/\s+/g,' ').trim();}
+function normStr(s){return greeklish(s).replace(/['’`.,\/()%\-]/g,'').replace(/[^\p{L}\p{N} ]/gu,' ').replace(/C/g,'K').replace(/\b(FIA|FIALI|FIALH|FIALES|FIALON|FIALA|TEM|TEMAX|TEMAXIO|TEMAXIA|TMX|PKS|PCS|PC)\b/g,' ').replace(/\s+/g,' ').trim();}
 function keyWords(s){return normStr(s).split(' ').filter(w=>(/^\d+$/.test(w)&&w.length>=2)||(w.length>=3&&!STOP.has(w)));}
 function _toks(s){const set={};normStr(s).split(' ').forEach(w=>{if(w.length>=2)set[w]=true;});return set;}
 let _canon=null;
@@ -2354,7 +2354,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·44';
+const BUILD='v'+'2026.07.04·46';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 async function chooseShop(){
