@@ -925,7 +925,7 @@ function renderRecipes(){
   let h=sectionNav()+'<div style="display:flex;gap:8px;overflow-x:auto;margin:14px 0 6px;-webkit-overflow-scrolling:touch">'+
     RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'active':'')+'" style="flex:0 0 auto;white-space:nowrap;padding:9px 14px" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div>';
   if(!ST.recipes||!ST.recipes.length){
-    h+='<div class="card" style="border:1.5px solid var(--warn);background:#FFF7E6"><div style="font-size:13px;font-weight:600;color:var(--warn)">Άδειο ακόμα</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Τρέξε πρώτα το <b>import_recipes_agreements.sql</b> στο Supabase → SQL Editor, μετά πάτα 🔄.</div></div>';
+    h+='<div class="card muted" style="text-align:center;margin-top:14px">'+L('Καμία συνταγή ακόμα — πάτα «+ Νέα Συνταγή» ή «+ Νέα Homemade».','No recipes yet — tap «+ New Recipe» or «+ New Homemade».')+'</div>';
     c.innerHTML=h;return;
   }
   h+='<input class="search" id="rq" placeholder="'+lbl('rSearch','Αναζήτηση…')+'" oninput="debSearch(renderRecipes)" value="'+esc(q)+'">';
@@ -1170,7 +1170,7 @@ function renderAgreements(){
   let h=sectionNav();
   const blocks=(ST.agreementBlocks||[]).slice().sort((a,b)=>(a.position||0)-(b.position||0));
   if(!blocks.length){
-    h+='<div class="card" style="border:1.5px solid var(--warn);background:#FFF7E6"><div style="font-size:13px;font-weight:600;color:var(--warn)">Καμία συμφωνία ακόμα</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Τρέξε το <b>agreements_blocks.sql</b> στο Supabase → SQL Editor, μετά 🔄. Ή πάτα «+ Νέα Συμφωνία».</div></div>';
+    h+='<div class="card muted" style="text-align:center;margin-top:14px">'+L('Καμία συμφωνία ακόμα — πάτα «+ Νέα Συμφωνία».','No agreements yet — tap «+ New Agreement».')+'</div>';
     h+='<button class="btn" style="margin-top:10px" onclick="newBlock()">➕ '+lbl('agNewBlock','Νέα Συμφωνία')+'</button>';
     c.innerHTML=h;return;
   }
@@ -2354,7 +2354,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·46';
+const BUILD='v'+'2026.07.04·47';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 async function chooseShop(){
