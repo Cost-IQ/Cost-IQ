@@ -808,8 +808,8 @@ async function saveAllProduct(pid){
   try{
     await sb.from('products').update(upd).eq('id',pid);
     const p=ST.products.find(x=>x.id===pid);if(p)Object.assign(p,upd);ST.prod=p;_canon=null;if(upd.kind)ST.kind=upd.kind;
-    document.getElementById('hTitle').textContent=sku;
-    btn.disabled=false;toast('✅ '+L('Όλα αποθηκεύτηκαν','All saved'));drawProd();
+    btn.disabled=false;toast('✅ '+L('Όλα αποθηκεύτηκαν','All saved'));
+    goList();   // επιστροφή στη λίστα προϊόντων (στη σωστή κατηγορία Ποτά/Τρόφιμα/Αναλώσιμα)
   }catch(e){btn.disabled=false;toast('❌ '+(e.message||e));}
 }
 async function saveInfo(pid){
@@ -2354,7 +2354,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·43';
+const BUILD='v'+'2026.07.04·44';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 async function chooseShop(){
