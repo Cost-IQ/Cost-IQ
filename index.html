@@ -1302,7 +1302,10 @@ function renderSuppliers(){
   c.innerHTML=h;
 }
 async function reloadSuppliers(){
-  const {data}=await sb.from('suppliers').select('id,name,email,phone,aliases').order('name');
+  const T=curTenant();
+  let q=sb.from('suppliers').select('id,name,email,phone,aliases,tenant_id');
+  if(T)q=q.eq('tenant_id',T);
+  const {data}=await q.order('name');
   ST.suppliers=data||[];
 }
 async function saveSupplier(id){
@@ -1772,7 +1775,7 @@ async function saveManual(){
       await sb.from('product_prices').update({is_override:false}).eq('product_id',pid).neq('supplier_id',sid);
       await refreshPrices();
     }
-    const {data:hist}=await sb.from('price_history').select('*').order('date',{ascending:false}).limit(400);
+    const _th=curTenant();let _hq=sb.from('price_history').select('*');if(_th)_hq=_hq.eq('tenant_id',_th);const {data:hist}=await _hq.order('date',{ascending:false}).limit(400);
     ST.history=hist||[];
     btn.disabled=false;toast('✅ Καταγράφηκε');renderInvoices();
   }catch(e){btn.disabled=false;toast('❌ '+(e.message||e));}
@@ -1942,8 +1945,8 @@ async function ocrApprove(){
     }catch(e){console.error(e);}
   }
   await Promise.all([refreshPrices(),
-    (async()=>{const {data:hist}=await sb.from('price_history').select('*').order('date',{ascending:false}).limit(400);ST.history=hist||[];})(),
-    (async()=>{const {data:inv}=await sb.from('invoices').select('*').order('date',{ascending:false}).limit(300);ST.invoices=inv||[];})()
+    (async()=>{const _th=curTenant();let _hq=sb.from('price_history').select('*');if(_th)_hq=_hq.eq('tenant_id',_th);const {data:hist}=await _hq.order('date',{ascending:false}).limit(400);ST.history=hist||[];})(),
+    (async()=>{const _ti=curTenant();let _iq=sb.from('invoices').select('*');if(_ti)_iq=_iq.eq('tenant_id',_ti);const {data:inv}=await _iq.order('date',{ascending:false}).limit(300);ST.invoices=inv||[];})()
   ]);
   toast('✅ Καταχωρήθηκαν '+ok+' γραμμές + τιμολόγιο');
   resetOcr();
@@ -2209,8 +2212,10 @@ async function delInvoice(id){
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function refreshPrices(){
+  const _T=curTenant();
+  let _pq=sb.from('product_prices').select('id,product_id,supplier_id,price,is_override,tenant_id'); if(_T)_pq=_pq.eq('tenant_id',_T);
   const [{data:prices},{data:best}]=await Promise.all([
-    sb.from('product_prices').select('id,product_id,supplier_id,price,is_override'),
+    _pq,
     sb.from('product_best_price').select('product_id,best_price,best_supplier')
   ]);
   ST.prices=prices||[];ST.best={};(best||[]).forEach(x=>ST.best[x.product_id]={price:x.best_price,sup:x.best_supplier});
@@ -2246,7 +2251,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·36';
+const BUILD='v'+'2026.07.04·37';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 async function chooseShop(){
