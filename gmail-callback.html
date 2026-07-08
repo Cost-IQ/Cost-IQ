@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cost IQ — Σύνδεση Gmail…</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1a5276;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:20px}
+  .box{max-width:420px} .spin{width:36px;height:36px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:s 1s linear infinite;margin:0 auto 16px}
+  @keyframes s{to{transform:rotate(360deg)}} a{color:#fff}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="spin" id="spin"></div>
+  <h2 id="msg">Ολοκληρώνεται η σύνδεση με Gmail…</h2>
+  <p id="sub" style="opacity:.85;font-size:14px">Μπορείς να κλείσεις αυτό το παράθυρο σε λίγο.</p>
+</div>
+<script>
+(function(){
+  var params = new URLSearchParams(location.search);
+  var code = params.get('code');
+  var error = params.get('error');
+  var msg = document.getElementById('msg'), sub = document.getElementById('sub'), spin = document.getElementById('spin');
+  function done(ok, text){
+    spin.style.display='none';
+    msg.textContent = ok ? '✅ Συνδέθηκε!' : '❌ Απέτυχε';
+    sub.textContent = text || (ok ? 'Γύρνα στην εφαρμογή Cost IQ.' : 'Δοκίμασε ξανά από την εφαρμογή.');
+  }
+  // Στείλε το code πίσω στο app (opener) ή αποθήκευσέ το για ανάγνωση
+  try {
+    if (error) { done(false, 'Ακυρώθηκε ή σφάλμα: ' + error); return; }
+    if (!code) { done(false, 'Δεν βρέθηκε κωδικός.'); return; }
+    if (window.opener) {
+      window.opener.postMessage({ source:'costiq-gmail', code: code }, '*');
+      done(true, 'Γύρνα στην εφαρμογή — φορτώνει τα τιμολόγιά σου.');
+      setTimeout(function(){ try{window.close();}catch(e){} }, 1500);
+    } else {
+      // fallback: αποθήκευσε το code ώστε το app να το διαβάσει
+      try { localStorage.setItem('ciq_gmail_code', code); } catch(e){}
+      done(true, 'Γύρνα στην εφαρμογή Cost IQ και πάτα «Από Email».');
+    }
+  } catch(e) { done(false, String(e)); }
+})();
+</script>
+</body>
+</html>
