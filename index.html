@@ -209,6 +209,7 @@ const EN_DEF={
 };
 function persistNav(){try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,homeView:ST.homeView,lang:ST.lang}));}catch(e){}}
 function rerenderCurrent(){
+  if(ST.view==='gmail')return gmailList();
   if(ST.view==='shops')return chooseShop();
   if(ST.view==='members')return openMembers();
   if(ST.view==='labels')return openLabelEditor();
@@ -1818,6 +1819,7 @@ function renderOcr(){
     h+='<div class="card" style="margin-top:14px"><h3 style="font-size:14px;margin-bottom:10px">📷 '+lbl('oScanTitle','Τιμολόγιο')+'</h3>'+
       '<label class="btn" style="display:block;text-align:center;cursor:pointer;margin-top:0">📸 '+lbl('oShoot','Τράβα φωτό')+'<input type="file" accept="image/*" capture="environment" onchange="onOcrFile(this)" style="display:none"></label>'+
       '<label class="btn ghost" style="display:block;text-align:center;cursor:pointer">🖼️ '+lbl('oPick','Επίλεξε από αρχεία')+'<input type="file" accept="image/*" multiple onchange="onOcrFile(this)" style="display:none"></label>'+
+      '<button class="btn ghost" onclick="gmailList()" style="display:block;text-align:center;background:#1a73e8;color:#fff;border-color:#1a73e8">📧 '+L('Από Email (διάλεξε τιμολόγιο)','From Email (pick invoice)')+'</button>'+
       '<a class="btn ghost" href="https://mail.google.com/mail/mu/mp/" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;background:#ea4335;color:#fff;border-color:#ea4335">📧 '+lbl('oGmail','Άνοιξε Gmail')+'</a>'+
       '<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:2px">'+L('Στο Gmail: άνοιξε το τιμολόγιο → Κοινή χρήση/Αποθήκευση → «Επίλεξε από αρχεία»','In Gmail: open the invoice → Share/Save → «Add from Files»')+'</div>'+
       '<div id="ocr-preview" style="margin-top:12px"></div>'+
@@ -2358,9 +2360,74 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·49';
+const BUILD='v'+'2026.07.04·50';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
+// ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
+const GMAIL_URL=SUPABASE_URL+"/functions/v1/gmail-read";
+const GMAIL_CLIENT_ID="340405124904-pmulggt039rtq5l6s6ip6os2cd41n7li.apps.googleusercontent.com";
+const GMAIL_REDIRECT="https://cost-iq.github.io/Cost-IQ/gmail-callback.html";
+const GMAIL_SCOPE="https://www.googleapis.com/auth/gmail.readonly";
+async function gmailApi(payload){
+  const {data:{session}}=await sb.auth.getSession();
+  const r=await fetch(GMAIL_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(session?session.access_token:SUPABASE_KEY),"apikey":SUPABASE_KEY},body:JSON.stringify(payload)});
+  return await r.json();
+}
+function gmailConnect(){
+  const url="https://accounts.google.com/o/oauth2/v2/auth"+
+    "?client_id="+encodeURIComponent(GMAIL_CLIENT_ID)+
+    "&redirect_uri="+encodeURIComponent(GMAIL_REDIRECT)+
+    "&response_type=code&access_type=offline&prompt=consent"+
+    "&scope="+encodeURIComponent(GMAIL_SCOPE);
+  const w=window.open(url,"gmailAuth","width=480,height=640");
+  toast(L('Άνοιξε παράθυρο σύνδεσης Gmail…','Opened Gmail sign-in…'));
+  if(!w)toast(L('Επίτρεψε τα pop-ups και ξαναπροσπάθησε','Allow pop-ups and retry'));
+}
+window.addEventListener('message',async(ev)=>{
+  const d=ev.data; if(!d||d.source!=='costiq-gmail'||!d.code)return;
+  toast(L('Σύνδεση…','Connecting…'));
+  const res=await gmailApi({action:'exchange',code:d.code});
+  if(res.error){toast('❌ '+res.error);return;}
+  if(res.refresh_token){try{localStorage.setItem('ciq_gmail_rt',res.refresh_token);}catch(e){}}
+  if(res.access_token){window._gmailAT=res.access_token;}
+  toast('✅ '+L('Συνδέθηκε το Gmail','Gmail connected'));
+  gmailList();
+});
+function gmailRT(){try{return localStorage.getItem('ciq_gmail_rt')||'';}catch(e){return'';}}
+async function gmailList(){
+  const rt=gmailRT(); const at=window._gmailAT;
+  if(!rt&&!at){gmailConnect();return;}
+  ST.view='gmail'; const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
+  document.getElementById('hTitle').textContent='📧 '+L('Από Email','From Email');
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span> '+L('Φόρτωση email…','Loading emails…')+'</div>';
+  const res=await gmailApi({action:'list',refresh_token:rt,access_token:at});
+  if(res.error){c.innerHTML='<div class="card" style="border-color:var(--bad)"><b style="color:var(--bad)">❌ '+esc(res.error)+'</b><div style="margin-top:8px"><button class="btn" onclick="gmailConnect()">🔄 '+L('Ξανασύνδεση Gmail','Reconnect Gmail')+'</button></div></div>';return;}
+  const msgs=res.messages||[];
+  let h='<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin:0 4px 8px"><span class="muted" style="font-size:13px">'+msgs.length+' '+L('email με συνημμένα (60 ημερών)','emails with attachments (60 days)')+'</span><button class="pick" onclick="gmailConnect()">🔄 '+L('Ξανασύνδεση','Reconnect')+'</button></div>';
+  if(!msgs.length)h+='<div class="card muted" style="text-align:center">'+L('Δεν βρέθηκαν email με τιμολόγια (pdf/φωτο) τις τελευταίες 60 ημέρες.','No emails with invoices (pdf/photo) in the last 60 days.')+'</div>';
+  msgs.forEach(m=>{
+    const from=esc((m.from||'').replace(/<.*>/,'').trim()||m.from||'');
+    h+='<div class="card" style="padding:12px"><div style="font-weight:600;font-size:14px">'+esc(m.subject||'(χωρίς θέμα)')+'</div><div class="muted" style="font-size:12px;margin:2px 0 8px">'+from+' · '+esc((m.date||'').slice(0,16))+'</div>';
+    (m.attachments||[]).forEach(a=>{
+      h+='<button class="pick" style="display:block;width:100%;text-align:left;margin-top:4px" onclick="gmailPick(\''+m.id+'\',\''+a.attachmentId+'\',\''+esc(a.mimeType||'')+'\')">📎 '+esc(a.filename)+' → '+L('σκανάρισμα','scan')+'</button>';
+    });
+    h+='</div>';
+  });
+  h+='</div>'; c.innerHTML=h;
+}
+async function gmailPick(messageId,attachmentId,mime){
+  toast(L('Κατέβασμα…','Downloading…'));
+  const res=await gmailApi({action:'attachment',refresh_token:gmailRT(),access_token:window._gmailAT,messageId,attachmentId});
+  if(res.error){toast('❌ '+res.error);return;}
+  if(!res.data){toast('❌ '+L('Άδειο αρχείο','Empty file'));return;}
+  // PDF ή εικόνα → βάλ' το στην ουρά OCR
+  const mt=(mime&&mime.indexOf('pdf')>=0)?'application/pdf':(mime||'image/jpeg');
+  window._ocrQueue=[{b64:res.data,mediaType:mt}]; window._ocrIdx=0;
+  ST.section='ocr'; ST.view='list'; ST.ocr=null; renderSection();
+  setTimeout(()=>loadOcrFromQueue(0),50);
+  toast('✅ '+L('Έτοιμο — πάτα «Διάβασε τιμολόγιο»','Ready — tap «Read invoice»'));
+}
 async function chooseShop(){
   ST.view='shops';
   const c=document.getElementById('content');
