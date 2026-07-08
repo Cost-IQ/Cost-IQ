@@ -1460,11 +1460,13 @@ function orderSummary(){
     const subj='Παραγγελία - '+sup;
     const mailto='mailto:'+encodeURIComponent(s.email||'')+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
     const wa='https://wa.me/'+String(s.phone||'').replace(/[^0-9]/g,'')+'?text='+encodeURIComponent(body);
+    const viber='viber://forward?text='+encodeURIComponent(body);
     h+='<div class="card"><h3 style="font-size:14px;margin-bottom:8px">🏢 '+esc(sup)+'</h3>';
     items.forEach(it=>{h+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px"><span>'+esc(it.sku)+'</span><span style="font-weight:600">'+it.qty+'</span></div>';});
-    h+='<div style="display:flex;gap:8px;margin-top:10px">'+
-      '<a class="btn" href="'+mailto+'" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')" style="flex:1;text-align:center;text-decoration:none;display:block">📧 Email</a>'+
-      '<a class="btn" href="'+wa+'" target="_blank" rel="noopener" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')" style="flex:1;text-align:center;text-decoration:none;display:block;background:#25d366">🟢 WhatsApp</a>'+
+    h+='<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
+      '<a class="btn" href="'+mailto+'" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')" style="flex:1 1 45%;text-align:center;text-decoration:none;display:block">📧 Email</a>'+
+      '<a class="btn" href="'+wa+'" target="_blank" rel="noopener" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')" style="flex:1 1 45%;text-align:center;text-decoration:none;display:block;background:#25d366">🟢 WhatsApp</a>'+
+      '<a class="btn" href="'+viber+'" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')" style="flex:1 1 100%;text-align:center;text-decoration:none;display:block;background:#7360f2">🟣 Viber</a>'+
     '</div>'+
     '<button class="btn ghost" style="margin-top:8px" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')">✅ '+lbl('oLogHist','Καταχώρηση στο Ιστορικό')+'</button>'+
     '</div>';
@@ -2354,7 +2356,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·47';
+const BUILD='v'+'2026.07.04·48';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 async function chooseShop(){
