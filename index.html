@@ -179,7 +179,7 @@ const EN_DEF={
   wordSuppliers:'suppliers',hNewSupplier:'+ NEW SUPPLIER',oSummary:'Summary & Send',oHistory:'History',
   recipe_cocktail:'Spirits & Cocktails',recipe_hotcold:'Hot & Cold Beverages',recipe_food:'Food',
   sOverview:'Overview',sPriceDB:'Price DB',sPurchDB:'Purchased DB',iInvoices:'Invoices',iManual:'Manual Purchase',
-  oShoot:'Take photo',oPick:'Choose file',oRead:'Read invoice',oApprove:'Approve',oLines:'lines → Save',oScanTitle:'Invoice',
+  oShoot:'Take photo',oPick:'Choose file',oRead:'Read invoice',oApprove:'Approve',oLines:'lines → Save',oScanTitle:'Invoice',oGmail:'Open Gmail',
   pWeek:'Week',pMonth:'Month',p3m:'3 Months',p6m:'6 Months',pYear:'Year',pAll:'All',
   iSearch:'🔍 Search (supplier/number)…',iAllSup:'All Suppliers',iAllCat:'All Categories',
   iSortLabel:'Sort:',iSortDate:'Date (newest)',iSortAmount:'Amount (highest)',iSortSup:'Supplier',
@@ -437,7 +437,7 @@ const LABEL_KEYS=[
   ['oSummary','Σύνοψη & Αποστολή'],['oHistory','Ιστορικό'],
   ['recipe_cocktail','Spirits & Cocktails'],['recipe_hotcold','Hot & Cold Beverages'],['recipe_food','Food'],
   ['sOverview','Επισκόπηση'],['sPriceDB','Ιστορικό Τιμών'],['sPurchDB','Ιστορικό Αγορών'],['iInvoices','Τιμολόγια'],['iManual','Χειρ. Αγορά'],
-  ['oShoot','Τράβα φωτό'],['oPick','Επίλεξε από αρχεία'],['oRead','Διάβασε τιμολόγιο'],['oApprove','Έγκριση'],['oLines','γραμμών → Βάση'],['oScanTitle','Τιμολόγιο'],
+  ['oShoot','Τράβα φωτό'],['oPick','Επίλεξε από αρχεία'],['oRead','Διάβασε τιμολόγιο'],['oApprove','Έγκριση'],['oLines','γραμμών → Βάση'],['oScanTitle','Τιμολόγιο'],['oGmail','Άνοιξε Gmail'],
   ['pWeek','Εβδομάδα'],['pMonth','Μήνας'],['p3m','3 Μήνες'],['p6m','6 Μήνες'],['pYear','Έτος'],['pAll','Όλα'],
   ['iSearch','🔍 Αναζήτηση (προμηθευτής/αριθμός)…'],['iAllSup','Όλοι οι Προμηθευτές'],['iAllCat','Όλες οι Κατηγορίες'],
   ['iSortLabel','Ταξ/ση:'],['iSortDate','Ημερομηνία (νεότερα)'],['iSortAmount','Ποσό (μεγαλύτερα)'],['iSortSup','Προμηθευτής'],
@@ -1818,6 +1818,8 @@ function renderOcr(){
     h+='<div class="card" style="margin-top:14px"><h3 style="font-size:14px;margin-bottom:10px">📷 '+lbl('oScanTitle','Τιμολόγιο')+'</h3>'+
       '<label class="btn" style="display:block;text-align:center;cursor:pointer;margin-top:0">📸 '+lbl('oShoot','Τράβα φωτό')+'<input type="file" accept="image/*" capture="environment" onchange="onOcrFile(this)" style="display:none"></label>'+
       '<label class="btn ghost" style="display:block;text-align:center;cursor:pointer">🖼️ '+lbl('oPick','Επίλεξε από αρχεία')+'<input type="file" accept="image/*" multiple onchange="onOcrFile(this)" style="display:none"></label>'+
+      '<a class="btn ghost" href="https://mail.google.com/mail/mu/mp/" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;background:#ea4335;color:#fff;border-color:#ea4335">📧 '+lbl('oGmail','Άνοιξε Gmail')+'</a>'+
+      '<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:2px">'+L('Στο Gmail: άνοιξε το τιμολόγιο → Κοινή χρήση/Αποθήκευση → «Επίλεξε από αρχεία»','In Gmail: open the invoice → Share/Save → «Add from Files»')+'</div>'+
       '<div id="ocr-preview" style="margin-top:12px"></div>'+
       '<div id="ocr-status" style="margin-top:10px"></div></div>';
     c.innerHTML=h;return;
@@ -2356,7 +2358,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·48';
+const BUILD='v'+'2026.07.04·49';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 async function chooseShop(){
