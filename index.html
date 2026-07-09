@@ -1393,7 +1393,8 @@ function renderOrders(){
       '<div class="tab '+(ST.okind==='supplies'?'active':'')+'" onclick="setOKind(\'supplies\')">📦 '+lbl('kindSupplies','Αναλώσιμα')+'</div></div>'+
     '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="orderSummary()">📋 '+lbl('oSummary','Σύνοψη & Αποστολή')+'</button>'+
     '<button class="btn" style="flex:1;background:var(--card);color:var(--accent);border:1px solid var(--accent)" onclick="renderOrderHistory()">🕘 '+lbl('oHistory','Ιστορικό')+'</button></div>'+
-    '<input class="search" autocomplete="off" autocorrect="off" spellcheck="false" id="oq" placeholder="'+lbl('oSearch','🔍 Αναζήτηση…')+'" oninput="debSearch(renderOrders)" value="'+esc(q)+'" style="margin-top:10px">';
+    '<input class="search" autocomplete="off" autocorrect="off" spellcheck="false" id="oq" placeholder="'+lbl('oSearch','🔍 Αναζήτηση…')+'" oninput="debSearch(renderOrders)" value="'+esc(q)+'" style="margin-top:10px">'+
+    '<div class="card" style="margin-top:10px;background:var(--accent-bg);border:1px solid var(--accent);display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:var(--accent);font-weight:600">💰 '+L('Αξία αποθέματος (χωρίς ΦΠΑ)','Stock value (excl. VAT)')+'</span><span id="stockTotal" style="font-size:20px;font-weight:800;color:var(--accent)">'+money(0)+'</span></div>';
   h+='<div style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto">';
   Object.keys(groups).sort().forEach(cat=>{
     h+='<div class="cathead">'+esc(cat)+'</div>';
@@ -1415,7 +1416,7 @@ function renderOrders(){
           '<div style="flex:1"><label style="font-size:9px;color:var(--accent);font-weight:600">Order</label><input type="number" id="o-'+p.id+'-ord" value="'+(sug||'')+'" onchange="saveOrder(\''+p.id+'\')" style="width:100%;padding:6px;border:1.5px solid var(--accent);border-radius:6px;font-size:13px;font-weight:600"></div>'+
           '<button class="pick" onclick="saveOrder(\''+p.id+'\')" style="padding:8px 10px">✓</button>'+
         '</div>'+
-        '<div style="font-size:11px;color:var(--muted);margin-top:5px" id="ostk-'+p.id+'">Απόθεμα: '+stk+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:5px" id="ostk-'+p.id+'">'+L('Απόθεμα','Stock')+': '+stk+' · '+L('Αξία','Value')+': '+money(stk*(parseFloat(b.price)||0))+'</div>'+
       '</div>';
     });
     h+='</div>';
@@ -1423,15 +1424,29 @@ function renderOrders(){
   if(!items.length)h+='<div class="card muted" style="text-align:center">Κανένα προϊόν</div>';
   h+='</div></div>';
   c.innerHTML=h;
+  updateStockTotal();
   const oqEl=document.getElementById('oq');if(oqEl&&q){oqEl.focus();oqEl.setSelectionRange(oqEl.value.length,oqEl.value.length);}
 }
+function stockTotalValue(){
+  const isBev=ST.okind==='beverage';let t=0;
+  ST.products.filter(p=>p.kind===ST.okind).forEach(p=>{
+    const b=ST.best[p.id]||{};const ol=ST.orders[p.id]||{};
+    const gg=k=>{const el=document.getElementById('o-'+p.id+'-'+k);return el?(parseFloat(el.value)||0):(parseFloat(ol[k])||0);};
+    const stk=isBev?(gg('cellar_count')+gg('bar_count')+gg('floor_count')):(gg('cellar_count')+gg('kitchen_count'));
+    t+=stk*(parseFloat(b.price)||0);
+  });
+  return t;
+}
+function updateStockTotal(){const el=document.getElementById('stockTotal');if(el)el.textContent=money(stockTotalValue());}
 function calcOrd(pid){
   const isBev=ST.okind==='beverage';
   const g=k=>parseFloat((document.getElementById('o-'+pid+'-'+k)||{}).value)||0;
   const stk=isBev?(g('cellar_count')+g('bar_count')+g('floor_count')):(g('cellar_count')+g('kitchen_count'));
   const par=g('par');
-  const stkEl=document.getElementById('ostk-'+pid);if(stkEl)stkEl.textContent='Απόθεμα: '+stk;
+  const b=ST.best[pid]||{};
+  const stkEl=document.getElementById('ostk-'+pid);if(stkEl)stkEl.textContent=L('Απόθεμα','Stock')+': '+stk+' · '+L('Αξία','Value')+': '+money(stk*(parseFloat(b.price)||0));
   const ordEl=document.getElementById('o-'+pid+'-ord');if(ordEl&&document.activeElement!==ordEl)ordEl.value=Math.max(0,par-stk)||'';
+  updateStockTotal();
 }
 async function saveOrder(pid){
   const p=ST.products.find(x=>x.id===pid);const isBev=ST.okind==='beverage';
@@ -2366,7 +2381,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·59';
+const BUILD='v'+'2026.07.04·60';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
