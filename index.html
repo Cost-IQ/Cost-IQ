@@ -2152,8 +2152,11 @@ function priceHistoryView(){
       const b=pid?ST.best[pid]:null;
       const isBest=b&&b.price&&Math.abs(price-parseFloat(b.price))<0.001;
       let noteTxt=(r.notes||'').replace(/^(Τιμολόγιο|Χωρίς τιμολόγιο)$/,'').replace(/^Χρονιά\s*/,'').trim();
-      const rawp=(r.raw_product||'').trim();
-      if(!noteTxt && rawp && normStr(rawp)!==normStr(nm)) noteTxt=rawp;   // προέλευση/διαφορά από περιγραφή τιμολογίου
+      if(!noteTxt){
+        const yr=(r.raw_product||'').match(/\b(19[5-9]\d|20[0-3]\d)\b/);           // χρονιά
+        const orig=(r.raw_product||'').match(/\b(ΑΡΓΕΝΤΙΝ\S*|ΒΡΑΖΙΛ\S*|ΕΛΛΑΔ\S*|ΕΛΛΗΝ\S*|ΙΣΠΑΝ\S*|ΙΤΑΛ\S*|ΓΑΛΛ\S*|ΧΙΛΗ\S*|ΠΕΡΟΥ\S*|ΜΕΞΙΚ\S*|ΟΛΛΑΝΔ\S*|ΜΑΡΟΚ\S*|ΑΙΓΥΠΤ\S*|ΤΟΥΡΚ\S*|ΚΥΠΡ\S*|ΝΑΞ\S*|ΚΡΗΤ\S*|ΦΛΩΡΙΝ\S*|ΘΕΣΣΑΛ\S*)\b/i);  // προέλευση
+        noteTxt=(yr?yr[0]:'')+(yr&&orig?' · ':'')+(orig?orig[0]:'');
+      }
       body+='<tr style="border-bottom:1px solid var(--line)">'+
         '<td style="padding:5px 6px;text-align:left;font-weight:600">'+esc(nm)+'</td>'+
         '<td style="padding:5px 6px;text-align:center;color:var(--muted)">'+esc(cat||'—')+'</td>'+
@@ -2381,7 +2384,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·60';
+const BUILD='v'+'2026.07.04·61';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
