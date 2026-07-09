@@ -710,8 +710,9 @@ function drawProd(){persistNav();
     '<div style="display:flex;flex-direction:column;gap:14px">'+
       '<div class="card" style="margin:0"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px"'+'>💰 '+lbl('hSupPrices','ΤΙΜΕΣ ΠΡΟΜΗΘΕΥΤΩΝ')+'</h3>'+sup+
         (anyOvr?'<div style="margin-top:8px;font-size:12px;color:var(--warn)">🔒 '+lbl('pdOverride','Επιλεγμένος χειροκίνητα')+' · <a href="#" onclick="clearOverride(\''+p.id+'\');return false" style="color:var(--accent)">↺ '+lbl('pdAuto','Αυτόματο (φθηνότερος)')+'</a></div>':'')+
-        '<div class="kv" style="margin-top:10px;border-top:2px solid var(--line);padding-top:10px"><span class="k">'+lbl('pdBestPrice','Best Price')+'</span><span class="v">'+money(b.price)+'</span></div>'+
-        '<div class="kv"><span class="k">'+lbl('pdBestSup','Best Supplier')+'</span><span class="v">'+esc(b.sup||'—')+'</span></div>'+
+        '<div class="kv" style="margin-top:10px;border-top:2px solid var(--line);padding-top:10px"><span class="k">'+lbl('pdBestPrice','Best Price')+'</span><span class="v">'+(rows.length?money(rows[0].price):'—')+'</span></div>'+
+        '<div class="kv"><span class="k">'+lbl('pdBestSup','Best Supplier')+'</span><span class="v">'+(rows.length?esc(supName(rows[0].supplier_id)):'—')+'</span></div>'+
+        (anyOvr?'<div class="kv" style="margin-top:4px;border-top:1px dashed var(--line);padding-top:6px"><span class="k">🔒 '+L('Επιλεγμένος','Selected')+'</span><span class="v" style="color:var(--warn)">'+money(b.price)+' · '+esc(b.sup||'—')+'</span></div>':'')+
       '</div>'+
       '<div class="card" style="margin:0"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px"'+'>➕ '+lbl('hAddPrice','ΠΡΟΣΘΗΚΗ ΤΙΜΗΣ')+'</h3>'+
         (avail.length?
@@ -1819,9 +1820,7 @@ function renderOcr(){
     h+='<div class="card" style="margin-top:14px"><h3 style="font-size:14px;margin-bottom:10px">📷 '+lbl('oScanTitle','Τιμολόγιο')+'</h3>'+
       '<label class="btn" style="display:block;text-align:center;cursor:pointer;margin-top:0">📸 '+lbl('oShoot','Τράβα φωτό')+'<input type="file" accept="image/*" capture="environment" onchange="onOcrFile(this)" style="display:none"></label>'+
       '<label class="btn ghost" style="display:block;text-align:center;cursor:pointer">🖼️ '+lbl('oPick','Επίλεξε από αρχεία')+'<input type="file" accept="image/*" multiple onchange="onOcrFile(this)" style="display:none"></label>'+
-      '<button class="btn ghost" onclick="gmailList()" style="display:block;text-align:center;background:#1a73e8;color:#fff;border-color:#1a73e8">📧 '+L('Από Email (διάλεξε τιμολόγιο)','From Email (pick invoice)')+'</button>'+
-      '<a class="btn ghost" href="https://mail.google.com/mail/mu/mp/" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;background:#ea4335;color:#fff;border-color:#ea4335">📧 '+lbl('oGmail','Άνοιξε Gmail')+'</a>'+
-      '<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:2px">'+L('Στο Gmail: άνοιξε το τιμολόγιο → Κοινή χρήση/Αποθήκευση → «Επίλεξε από αρχεία»','In Gmail: open the invoice → Share/Save → «Add from Files»')+'</div>'+
+      '<button class="btn ghost" onclick="gmailList()" style="display:block;text-align:center;background:#1a73e8;color:#fff;border-color:#1a73e8">📧 '+L('Από Email (Διάλεξε Τιμολόγιο)','From Email (Pick Invoice)')+'</button>'+
       '<div id="ocr-preview" style="margin-top:12px"></div>'+
       '<div id="ocr-status" style="margin-top:10px"></div></div>';
     c.innerHTML=h;return;
@@ -2361,7 +2360,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·51';
+const BUILD='v'+'2026.07.04·52';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
