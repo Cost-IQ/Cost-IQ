@@ -1904,7 +1904,7 @@ function renderOcr(){
     '</div>';
   });
   const okCount=o.lines.filter(l=>l.productId&&(parseFloat(l.price)||0)>0).length;
-  h+='<button class="btn" style="margin-top:14px" onclick="ocrApprove()">✅ Έγκριση '+okCount+' γραμμών → Βάση</button>';
+  h+='<button class="btn" id="ocr-approve-btn" style="margin-top:14px" onclick="ocrApprove()">✅ Έγκριση '+okCount+' γραμμών → Βάση</button>';
   if((window._ocrQueue||[]).length>1)h+='<button class="btn ghost" style="margin-top:8px" onclick="skipOcr()">⏭️ '+L('Παράλειψη (χωρίς αποθήκευση)','Skip (without saving)')+' — '+((window._ocrIdx||0)+1)+'/'+window._ocrQueue.length+'</button>';
   h+='<div class="muted" style="font-size:12px;text-align:center;margin-top:6px">Θα ενημερωθούν τιμές προμηθευτή + ιστορικό</div>';
   c.innerHTML=h;
@@ -1946,6 +1946,7 @@ function loadOcrFromQueue(i){
   const st=document.getElementById('ocr-status'); if(st)st.innerHTML='';
 }
 function nextOcrOrReset(){
+  window._ocrBusy=false;
   const q=window._ocrQueue||[]; const nx=(window._ocrIdx||0)+1;
   if(q.length>1 && nx<q.length){ ST.ocr=null; renderOcr(); loadOcrFromQueue(nx); toast('➡️ '+L('Επόμενο τιμολόγιο','Next invoice')+' '+(nx+1)+'/'+q.length); }
   else { window._ocrQueue=null;window._ocrIdx=0; resetOcr(); }
@@ -1980,7 +1981,7 @@ function onOcrFileOLD(inp){
 }
 async function doOcr(){
   if(!window._ocrImg){toast('❌ Ανέβασε εικόνα');return;}
-  const st=document.getElementById('ocr-status');st.innerHTML='<div class="card" style="text-align:center"><span class="spin"></span> Διαβάζω το τιμολόγιο…</div>';
+  const st=document.getElementById('ocr-status');st.innerHTML='<div class="card" style="text-align:center"><span class="spin"></span> '+L('Διαβάζω το τιμολόγιο…','Reading the invoice…')+'</div>';
   try{
     const {data:{session}}=await sb.auth.getSession();
     const r=await fetch(OCR_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({imageBase64:window._ocrImg.b64,mediaType:window._ocrImg.mediaType})});
@@ -2007,7 +2008,7 @@ async function ocrAddSupplier(){
 }
 function ocrSet(i,k,v){ST.ocr.lines[i][k]=v;}
 function ocrSetProd(i,v){ST.ocr.lines[i].productId=v||null;renderOcr();}
-function resetOcr(){ST.ocr=null;window._ocrImg=null;renderOcr();}
+function resetOcr(){window._ocrBusy=false;ST.ocr=null;window._ocrImg=null;renderOcr();}
 async function ocrNewProduct(i){
   const ln=ST.ocr.lines[i]; const raw=(ln.raw||'').trim(); if(!raw){toast('Κενή γραμμή');return;}
   const name=prompt(L('Όνομα προϊόντος (πάτα OK για την περιγραφή, ή διόρθωσέ το):','Product name (OK to keep description, or edit):'), raw);
@@ -2031,16 +2032,19 @@ async function ocrRemember(i){
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function ocrApprove(){
+  if(window._ocrBusy)return;   // κλείδωμα: να μη περαστεί 2η/3η φορά
   const o=ST.ocr;const sid=document.getElementById('ocr-sup').value;const date=document.getElementById('ocr-date').value;
-  if(!sid){toast('❌ Διάλεξε προμηθευτή');return;}
+  if(!sid){toast('❌ '+L('Διάλεξε προμηθευτή','Choose a supplier'));return;}
   const good=o.lines.filter(l=>l.productId&&(parseFloat(l.price)||0)>0);
-  if(!good.length){toast('❌ Καμία έτοιμη γραμμή');return;}
+  if(!good.length){toast('❌ '+L('Καμία έτοιμη γραμμή','No ready line'));return;}
   const tid=curTenant();
   const supN=supName(sid);
   let gross=0;good.forEach(l=>{gross+=(parseFloat(l.price)||0)*(parseFloat(l.qty)||0);});
   const grossR=Math.round(gross*100)/100;
   const dup=(ST.invoices||[]).find(v=>v.supplier_id===sid&&v.date===date&&Math.abs((parseFloat(v.total_gross)||0)-grossR)<0.5);
   if(dup&&!confirm('Υπάρχει ήδη τιμολόγιο ίδιου προμηθευτή/ημερομηνίας/ποσού ('+supName(sid)+' · '+date+' · '+money(grossR)+').\n\nΣίγουρα να το ξαναπεράσεις;'))return;
+  window._ocrBusy=true;   // από εδώ και κάτω κλειδωμένο
+  const _ab=document.getElementById('ocr-approve-btn');if(_ab){_ab.disabled=true;_ab.style.opacity='.6';_ab.innerHTML='<span class="spin"></span> '+L('Καταχώρηση…','Saving…');}
   const anyBev=good.some(l=>{const p=ST.products.find(x=>x.id===l.productId);return p&&p.kind==='beverage';});
   let invId=null;
   // ανέβασμα φωτό τιμολογίου στο Storage (bucket 'invoices')
@@ -2385,7 +2389,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·62';
+const BUILD='v'+'2026.07.04·63';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
@@ -2442,7 +2446,7 @@ async function gmailList(){
     const isDone=done.has(m.id);
     if(isDone&&hideDone)return;
     const from=esc((m.from||'').replace(/<.*>/,'').trim()||m.from||'');
-    h+='<div class="card" style="padding:12px'+(isDone?';opacity:.55;background:#f0f7f0':'')+'"><div style="font-weight:600;font-size:14px">'+(isDone?'✅ ':'')+esc(m.subject||'(χωρίς θέμα)')+'</div><div class="muted" style="font-size:12px;margin:2px 0 8px">'+from+' · '+esc((m.date||'').slice(0,16))+(isDone?(' · <span style="color:var(--ok)">'+L('περάστηκε','processed')+'</span>'):'')+'</div>';
+    h+='<div class="card" style="padding:12px'+(isDone?';opacity:.55;background:#f0f7f0':'')+'"><div style="font-weight:600;font-size:14px">'+(isDone?'✅ ':'')+esc(m.subject||L('(χωρίς θέμα)','(no subject)'))+'</div><div class="muted" style="font-size:12px;margin:2px 0 8px">'+from+' · '+esc((m.date||'').slice(0,16))+(isDone?(' · <span style="color:var(--ok)">'+L('περάστηκε','processed')+'</span>'):'')+'</div>';
     (m.attachments||[]).forEach(a=>{
       h+='<button class="pick" style="display:block;width:100%;text-align:left;margin-top:4px" onclick="gmailPick(\''+m.id+'\',\''+a.attachmentId+'\',\''+esc(a.mimeType||'')+'\')">📎 '+esc(a.filename)+' → '+(isDone?L('ξανά','again'):L('σκανάρισμα','scan'))+'</button>';
     });
