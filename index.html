@@ -1394,7 +1394,7 @@ function renderOrders(){
     '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="orderSummary()">📋 '+lbl('oSummary','Σύνοψη & Αποστολή')+'</button>'+
     '<button class="btn" style="flex:1;background:var(--card);color:var(--accent);border:1px solid var(--accent)" onclick="renderOrderHistory()">🕘 '+lbl('oHistory','Ιστορικό')+'</button></div>'+
     '<input class="search" autocomplete="off" autocorrect="off" spellcheck="false" id="oq" placeholder="'+lbl('oSearch','🔍 Αναζήτηση…')+'" oninput="debSearch(renderOrders)" value="'+esc(q)+'" style="margin-top:10px">'+
-    '<div class="card" style="margin-top:10px;background:var(--accent-bg);border:1px solid var(--accent);display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:var(--accent);font-weight:600">💰 '+L('Αξία αποθέματος (χωρίς ΦΠΑ)','Stock value (excl. VAT)')+'</span><span id="stockTotal" style="font-size:20px;font-weight:800;color:var(--accent)">'+money(0)+'</span></div>';
+    '<div class="card" style="margin-top:10px;background:var(--accent-bg);border:1px solid var(--accent);display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:var(--accent);font-weight:600">💰 '+L('Αξία Αποθέματος (χωρίς ΦΠΑ)','Stock Value (excl. VAT)')+'</span><span id="stockTotal" style="font-size:20px;font-weight:800;color:var(--accent)">'+money(0)+'</span></div>';
   h+='<div style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto">';
   Object.keys(groups).sort().forEach(cat=>{
     h+='<div class="cathead">'+esc(cat)+'</div>';
@@ -1483,11 +1483,12 @@ function orderSummary(){
     h+='<div class="card"><h3 style="font-size:14px;margin-bottom:8px">🏢 '+esc(sup)+'</h3>';
     items.forEach(it=>{h+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px"><span>'+esc(it.sku)+'</span><span style="font-weight:600">'+it.qty+'</span></div>';});
     h+='<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
-      '<a class="btn" href="'+mailto+'" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')" style="flex:1 1 45%;text-align:center;text-decoration:none;display:block">📧 Email</a>'+
-      '<a class="btn" href="'+wa+'" target="_blank" rel="noopener" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')" style="flex:1 1 45%;text-align:center;text-decoration:none;display:block;background:#25d366">🟢 WhatsApp</a>'+
-      '<a class="btn" href="'+viber+'" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')" style="flex:1 1 100%;text-align:center;text-decoration:none;display:block;background:#7360f2">🟣 Viber</a>'+
+      '<a class="btn" href="'+mailto+'" style="flex:1 1 45%;text-align:center;text-decoration:none;display:block">📧 Email</a>'+
+      '<a class="btn" href="'+wa+'" target="_blank" rel="noopener" style="flex:1 1 45%;text-align:center;text-decoration:none;display:block;background:#25d366">🟢 WhatsApp</a>'+
+      '<a class="btn" href="'+viber+'" style="flex:1 1 100%;text-align:center;text-decoration:none;display:block;background:#7360f2">🟣 Viber</a>'+
     '</div>'+
-    '<button class="btn ghost" style="margin-top:8px" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')">✅ '+lbl('oLogHist','Καταχώρηση στο Ιστορικό')+'</button>'+
+    '<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px">'+L('Διάλεξε τρόπο αποστολής. Μόλις σταλεί, πάτα «Στάλθηκε».','Pick how to send. Once sent, tap «Sent».')+'</div>'+
+    '<button class="btn" style="margin-top:8px;background:var(--ok)" onclick="logOrder(\''+esc(sup).replace(/'/g,"\\'")+'\')">✅ '+L('Στάλθηκε — Καταχώρηση','Sent — Log it')+'</button>'+
     '</div>';
   });
   c.innerHTML=h;
@@ -1512,7 +1513,7 @@ async function logOrder(supName){
       const row={tenant_id:(p&&p.tenant_id),product_id:pid,cellar_count:parseFloat(ol.cellar_count)||0,bar_count:parseFloat(ol.bar_count)||0,floor_count:parseFloat(ol.floor_count)||0,kitchen_count:parseFloat(ol.kitchen_count)||0,par_level:parseFloat(ol.par_level)||0,order_qty:0,updated_at:new Date().toISOString()};
       await sb.from('order_lines').upsert(row,{onConflict:'product_id'});ST.orders[pid]=row;
     }
-    toast('✅ Πέρασε στο ιστορικό ('+rows.length+')');renderOrderHistory();
+    toast('✅ '+L('Στάλθηκε — μπήκε στο ιστορικό','Sent — logged')+' ('+rows.length+')');orderSummary();
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function renderOrderHistory(){ST.view='ohist';persistNav();
@@ -2389,7 +2390,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·63';
+const BUILD='v'+'2026.07.04·65';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
