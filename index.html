@@ -2123,7 +2123,7 @@ function priceHistoryView(){
     }
     let body='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;min-width:620px;border-collapse:collapse;font-size:12px;margin-top:6px;white-space:nowrap">'+
       '<thead><tr style="color:var(--muted);font-size:11px;border-bottom:1px solid var(--line)">'+
-      [lbl('wProduct','Προϊόν'),lbl('wCategory','Κατηγορία'),lbl('phhQty','Ποσότητα'),lbl('phhUnit','Μ/Μ'),lbl('phhPrev','Προηγούμενη Τιμή'),lbl('phhPrice','Τιμή'),lbl('phhChgEur','Μεταβολή €'),lbl('phhChgPct','Μεταβολή %'),lbl('phhBest','Best')].map(c=>'<th style="padding:4px 6px;text-align:center;font-weight:600">'+c+'</th>').join('')+
+      [lbl('wProduct','Προϊόν'),lbl('wCategory','Κατηγορία'),lbl('phhQty','Ποσότητα'),lbl('phhUnit','Μ/Μ'),lbl('phhPrev','Προηγούμενη Τιμή'),lbl('phhPrice','Τιμή'),lbl('phhChgEur','Μεταβολή €'),lbl('phhChgPct','Μεταβολή %'),lbl('thNotes','Σημειώσεις'),lbl('phhBest','Best')].map(c=>'<th style="padding:4px 6px;text-align:center;font-weight:600">'+c+'</th>').join('')+
       '</tr></thead><tbody>';
     g.items.forEach(r=>{
       const pid=resolveProductId(r);
@@ -2136,6 +2136,9 @@ function priceHistoryView(){
       const col=cp>0?'var(--bad)':(cp<0?'var(--ok)':'var(--muted)');
       const b=pid?ST.best[pid]:null;
       const isBest=b&&b.price&&Math.abs(price-parseFloat(b.price))<0.001;
+      let noteTxt=(r.notes||'').replace(/^(Τιμολόγιο|Χωρίς τιμολόγιο)$/,'').replace(/^Χρονιά\s*/,'').trim();
+      const rawp=(r.raw_product||'').trim();
+      if(!noteTxt && rawp && normStr(rawp)!==normStr(nm)) noteTxt=rawp;   // προέλευση/διαφορά από περιγραφή τιμολογίου
       body+='<tr style="border-bottom:1px solid var(--line)">'+
         '<td style="padding:5px 6px;text-align:left;font-weight:600">'+esc(nm)+'</td>'+
         '<td style="padding:5px 6px;text-align:center;color:var(--muted)">'+esc(cat||'—')+'</td>'+
@@ -2145,6 +2148,7 @@ function priceHistoryView(){
         '<td style="padding:5px 6px;text-align:center;font-weight:700">'+money(price)+'</td>'+
         '<td style="padding:5px 6px;text-align:center;color:'+col+'">'+(chE||'—')+'</td>'+
         '<td style="padding:5px 6px;text-align:center;color:'+col+';font-weight:600">'+(chP||'—')+'</td>'+
+        '<td style="padding:5px 6px;text-align:center;color:var(--accent);font-size:11px">'+(noteTxt?esc(noteTxt):'—')+'</td>'+
         '<td style="padding:5px 6px;text-align:center;color:var(--ok);font-weight:700">'+(isBest?'✓':'')+'</td>'+
       '</tr>';
     });
@@ -2362,7 +2366,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·57';
+const BUILD='v'+'2026.07.04·59';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
