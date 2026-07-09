@@ -1921,10 +1921,11 @@ function loadOcrFromQueue(i){
   const q=window._ocrQueue||[]; if(!q.length||i>=q.length)return;
   window._ocrIdx=i; window._ocrImg=q[i];
   const n=q.length; const prog=n>1?(' ('+(i+1)+'/'+n+')'):'';
+  const isPdf=(q[i].mediaType||'').indexOf('pdf')>=0;
   const dataUrl='data:'+q[i].mediaType+';base64,'+q[i].b64;
   const pv=document.getElementById('ocr-preview'); if(!pv)return;
   pv.innerHTML=(n>1?'<div style="font-weight:700;margin-bottom:6px;color:var(--accent)">📄 '+L('Τιμολόγιο','Invoice')+' '+(i+1)+'/'+n+'</div>':'')+
-    '<img src="'+dataUrl+'" style="max-width:100%;border-radius:10px;border:1px solid var(--line)">'+
+    (isPdf?'<div class="card" style="text-align:center;padding:24px;background:var(--accent-bg)">📄 PDF '+L('έτοιμο για σκανάρισμα','ready to scan')+'</div>':'<img src="'+dataUrl+'" style="max-width:100%;border-radius:10px;border:1px solid var(--line)">')+
     '<button class="btn" style="margin-top:10px" onclick="doOcr()">🔍 '+lbl('oRead','Διάβασε τιμολόγιο')+prog+'</button>';
   const st=document.getElementById('ocr-status'); if(st)st.innerHTML='';
 }
@@ -2360,7 +2361,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·50';
+const BUILD='v'+'2026.07.04·51';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
