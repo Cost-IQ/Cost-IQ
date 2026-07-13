@@ -234,6 +234,7 @@ function toggleLang(){
 }
 
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function dGRs(d){if(!d)return '';var q=String(d).split('-');return q.length===3?(q[2]+'/'+q[1]+'/'+q[0]):d;}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function money(n){return (n==null||isNaN(n))?'—':'€'+Number(n).toFixed(2);}
 function fmtDate(ds){if(!ds)return '—';const p=String(ds).split('T')[0].split('-');return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):String(ds);}
@@ -2097,6 +2098,20 @@ function evShopList(){
         '<div style="text-align:right"><b>'+x.qty+'</b> <span style="font-size:11px;color:var(--muted)">'+esc(x.unit)+'</span><div style="font-size:11px;color:var(--muted)">'+money(Math.round(x.cost*100)/100)+'</div></div>'+
       '</div>';
     });
+    // ── Κουμπιά παραγγελίας ανά προμηθευτή ──
+    const sObj=(ST.suppliers||[]).find(s2=>String(s2.name)===String(sup));
+    const lines=bySup[sup].map(x=>'• '+x.name+': '+x.qty+' '+x.unit).join('\n');
+    const body=L('Παραγγελία','Order')+' - '+((ST.shopName||'').trim()||'')+'\n'+
+      (e.name?(L('Εκδήλωση','Event')+': '+e.name+(e.event_date?(' ('+dGRs(e.event_date)+')'):'')+'\n'):'')+
+      '\n'+L('Καλησπέρα, παρακάτω η παραγγελία μας:','Hello, here is our order:')+'\n\n'+lines+'\n';
+    const mailto='mailto:'+((sObj&&sObj.email)||'')+'?subject='+encodeURIComponent(L('Παραγγελία','Order')+' - '+(e.name||''))+'&body='+encodeURIComponent(body);
+    const wa='https://wa.me/'+String((sObj&&sObj.phone)||'').replace(/[^0-9]/g,'')+'?text='+encodeURIComponent(body);
+    const vb='viber://forward?text='+encodeURIComponent(body);
+    h+='<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'+
+      '<a class="btn" href="'+mailto+'" style="flex:1 1 45%;text-align:center;text-decoration:none;display:block;padding:8px;font-size:13px">📧 Email</a>'+
+      '<a class="btn" href="'+wa+'" target="_blank" rel="noopener" style="flex:1 1 45%;text-align:center;text-decoration:none;display:block;background:#25d366;padding:8px;font-size:13px">🟢 WhatsApp</a>'+
+      '<a class="btn" href="'+vb+'" style="flex:1 1 100%;text-align:center;text-decoration:none;display:block;background:#7360f2;padding:8px;font-size:13px">🟣 Viber</a>'+
+    '</div>';
     h+='</div>';
   });
   if(ids.length)h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent);display:flex;justify-content:space-between"><b>'+L('Συνολικό Κόστος Υλικών','Total Items Cost')+'</b><b style="color:var(--accent)">'+money(Math.round(totalC*100)/100)+'</b></div>';
@@ -2402,6 +2417,82 @@ async function saveManual(){
     btn.disabled=false;toast('✅ Καταγράφηκε');renderInvoices();
   }catch(e){btn.disabled=false;toast('❌ '+(e.message||e));}
 }
+// Τελευταία ΧΡΕΩΜΕΝΗ αγορά προϊόντος από τον ΙΔΙΟ προμηθευτή (τελευταίες 45 μέρες)
+function lastPurchase(pid){
+  const sid=(document.getElementById('ocr-sup')||{}).value||'';
+  if(!sid||!pid)return null;
+  const cutoff=new Date(Date.now()-45*86400000).toISOString().slice(0,10);
+  const rows=(ST.history||[]).filter(r=>r.product_id===pid&&r.supplier_id===sid&&(parseFloat(r.price)||0)>0&&(r.date||'')>=cutoff)
+    .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  if(!rows.length)return null;
+  const r=rows[0];
+  const qty=parseFloat(r.quantity)||0, price=parseFloat(r.price)||0;
+  return {id:r.id,date:r.date,qty,price,total:qty*price};
+}
+// 🎁 Δωρεάν γραμμή = δώρο από ΠΡΟΗΓΟΥΜΕΝΟ τιμολόγιο (ίδιος προμηθευτής)
+async function ocrGiftPrev(i){
+  const ln=ST.ocr.lines[i];
+  const freeQty=parseFloat(ln.qty)||0;
+  const prev=lastPurchase(ln.productId);
+  if(!prev||freeQty<=0){toast('❌ '+L('Δεν βρέθηκε προηγούμενη αγορά','No previous purchase found'));return;}
+  const totalPcs=prev.qty+freeQty;
+  const newPrice=Math.round((prev.total/totalPcs)*100)/100;
+  if(!confirm(L('Διόρθωση τιμής προηγούμενης αγοράς:','Correct previous purchase price:')+'\n\n'+
+    prev.qty+' + '+freeQty+' '+L('δώρο','free')+' = '+totalPcs+'\n'+
+    money(prev.price)+' → '+money(newPrice)+'/'+L('τεμ','pc')))return;
+  try{
+    // Διόρθωσε το ιστορικό
+    await sb.from('price_history').update({quantity:totalPcs,price:newPrice}).eq('id',prev.id);
+    const hr=(ST.history||[]).find(x=>x.id===prev.id); if(hr){hr.quantity=totalPcs;hr.price=newPrice;}
+    // Διόρθωσε και την τρέχουσα τιμή προμηθευτή
+    const sid=(document.getElementById('ocr-sup')||{}).value||'';
+    if(sid)await sb.from('product_prices').upsert({tenant_id:curTenant(),product_id:ln.productId,supplier_id:sid,price:newPrice,is_override:false},{onConflict:'product_id,supplier_id'});
+    await refreshPrices();
+    ln.skip=true; ln.productId=null;   // η δωρεάν γραμμή δεν καταχωρείται ξεχωριστά
+    ln.giftApplied=true; ln.giftNote=L('δώρο σε προηγούμενη αγορά','gift on previous purchase');
+    renderOcr();
+    toast('🎁 '+L('Διορθώθηκε','Corrected')+' → '+money(newPrice)+'/'+L('τεμ','pc'));
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+// ── 🎁 ΔΩΡΑ (ίδιο τιμολόγιο) ──
+function ocrMergeGift(i,freeIdx){
+  const o=ST.ocr; const ln=o.lines[i]; const fl=o.lines[freeIdx];
+  const q=parseFloat(ln.qty)||0, fq=parseFloat(fl.qty)||0;
+  const tot=parseFloat(ln.lineTotal)||((parseFloat(ln.price)||0)*q);
+  const totalPcs=q+fq;
+  if(totalPcs<=0){toast('❌ '+L('Μη έγκυρες ποσότητες','Invalid quantities'));return;}
+  if(ln._preGiftQty==null){ln._preGiftQty=ln.qty;ln._preGiftPrice=ln.price;}
+  ln.qty=totalPcs;
+  ln.price=Math.round((tot/totalPcs)*100)/100;
+  ln.lineTotal=Math.round(tot*100)/100;
+  ln.giftApplied=true; ln.giftNote=q+' + '+fq+' '+L('δώρο','free');
+  fl._mergedInto=i; fl.skip=true;   // η δωρεάν γραμμή δεν καταχωρείται ξεχωριστά
+  fl.productId=null;
+  renderOcr();
+  toast('🎁 '+L('Ενώθηκε','Merged')+' — '+money(ln.price)+'/'+L('τεμ','pc'));
+}
+function ocrApplyGift(i,freeQty){
+  const ln=ST.ocr.lines[i];
+  freeQty=parseFloat(freeQty)||0;
+  const q=parseFloat(ln.qty)||0;
+  if(freeQty<=0||q<=0){toast('❌ '+L('Δώσε αριθμό δωρεάν τεμαχίων','Enter number of free items'));return;}
+  const tot=parseFloat(ln.lineTotal)||((parseFloat(ln.price)||0)*q);
+  const totalPcs=q+freeQty;
+  if(ln._preGiftQty==null){ln._preGiftQty=ln.qty;ln._preGiftPrice=ln.price;}
+  ln.qty=totalPcs;
+  ln.price=Math.round((tot/totalPcs)*100)/100;
+  ln.lineTotal=Math.round(tot*100)/100;
+  ln.giftApplied=true; ln.giftNote=q+' + '+freeQty+' '+L('δώρο','free');
+  renderOcr();
+  toast('🎁 '+money(ln.price)+'/'+L('τεμ','pc'));
+}
+function ocrUndoGift(i){
+  const o=ST.ocr; const ln=o.lines[i];
+  if(ln._preGiftQty!=null){ln.qty=ln._preGiftQty;ln.price=ln._preGiftPrice;ln.lineTotal=(parseFloat(ln.price)||0)*(parseFloat(ln.qty)||0);}
+  o.lines.forEach(l=>{if(l._mergedInto===i){l.skip=false;l._mergedInto=null;}});
+  ln.giftApplied=false;ln.giftNote=null;ln._preGiftQty=null;ln._preGiftPrice=null;
+  renderOcr();
+}
 function detectPacks(raw){
   const s=String(raw||''); const out=[]; const seen={}; let m;
   const reMul=/(\d{1,3})\s*[*x×X]\s*(\d{1,3})/g;
@@ -2499,10 +2590,58 @@ function renderOcr(){
         bx+='</div><div style="margin-top:5px;display:flex;gap:6px;align-items:center">'+L('ή γράψε','or type')+': <input type="number" id="pack-'+i+'" placeholder="τεμ/κιβ" style="width:90px;padding:4px;border:1px solid var(--line);border-radius:6px"><button class="pick" style="margin:0" onclick="ocrApplyPack('+i+',parseFloat((document.getElementById(\'pack-'+i+'\')||{}).value),\'χειροκίνητο\')">✓</button></div></div>';
         return bx;
       })()+
+      (function(){
+        // ── 🎁 ΔΩΡΑ / ΠΡΟΣΦΟΡΕΣ ──
+        if(ln.giftApplied){
+          return '<div style="margin-top:8px;font-size:12px;color:var(--ok);background:#e7f6ec;border:1px solid var(--ok);border-radius:8px;padding:7px">🎁 '+L('Δώρο','Gift')+': <b>'+esc(ln.giftNote||'')+'</b> → '+ln.qty+' '+L('τεμ','pcs')+' · <b>'+money(ln.price)+'</b>/'+L('τεμ','pc')+' <a href="#" onclick="ocrUndoGift('+i+');return false" style="color:var(--bad);margin-left:8px">'+L('αναίρεση','undo')+'</a></div>';
+        }
+        const price=parseFloat(ln.price)||0, q=parseFloat(ln.qty)||0;
+
+        // ΠΕΡΙΠΤΩΣΗ 1: Η ΙΔΙΑ η γραμμή είναι δωρεάν (0€) → δώρο από προηγούμενη αγορά;
+        if(price===0&&q>0&&ln.productId){
+          const prev=lastPurchase(ln.productId);
+          let bx='<div style="margin-top:8px;padding:8px;background:#F3F0FF;border:1px solid #7360f2;border-radius:8px;font-size:12px">'+
+            '🎁 <b>'+L('Δωρεάν','Free')+'</b> — '+q+' '+L('τεμ με 0€','pcs at 0€');
+          if(prev){
+            const newP=(prev.qty+q)>0?(prev.total/(prev.qty+q)):0;
+            bx+='<div style="margin-top:3px;color:var(--muted)">'+L('Τελευταία αγορά','Last purchase')+': '+prev.qty+' × '+money(prev.price)+' ('+dGRs(prev.date)+')</div>'+
+              '<div style="margin-top:5px"><button class="pick" style="margin:0" onclick="ocrGiftPrev('+i+')">✅ '+L('Δώρο από αυτήν','Gift from that')+' → '+money(newP)+'/'+L('τεμ','pc')+'</button></div>';
+          } else {
+            bx+='<div style="margin-top:3px;color:var(--muted)">'+L('Δεν βρέθηκε πρόσφατη αγορά — άσ\' το ή διάγραψε τη γραμμή','No recent purchase found — leave it or delete the line')+'</div>';
+          }
+          bx+='</div>';
+          return bx;
+        }
+
+        // ΠΕΡΙΠΤΩΣΗ 2: Υπάρχει ΑΛΛΗ γραμμή στο ΙΔΙΟ τιμολόγιο με 0€ (ίδιο προϊόν)
+        let freeIdx=-1;
+        if(price>0){
+          o.lines.forEach((l2,j)=>{
+            if(j===i||freeIdx>=0)return;
+            const isFree=((parseFloat(l2.price)||0)===0)&&((parseFloat(l2.qty)||0)>0);
+            if(!isFree)return;
+            const same=(l2.productId&&ln.productId&&l2.productId===ln.productId)||(normStr(l2.raw)===normStr(ln.raw));
+            if(same)freeIdx=j;
+          });
+        }
+        let bx='<div style="margin-top:8px;padding:8px;background:#F3F0FF;border:1px solid #7360f2;border-radius:8px;font-size:12px">';
+        if(freeIdx>=0){
+          const fq=parseFloat(o.lines[freeIdx].qty)||0;
+          const tot=parseFloat(ln.lineTotal)||(price*q);
+          const per=(q+fq)>0?tot/(q+fq):0;
+          bx+='🎁 <b>'+L('Βρέθηκε δωρεάν γραμμή','Free line found')+'</b>: '+fq+' '+L('τεμ με 0€','pcs at 0€')+
+            '<div style="margin-top:5px"><button class="pick" style="margin:0" onclick="ocrMergeGift('+i+','+freeIdx+')">🎁 '+q+' + '+fq+' '+L('δώρο','free')+' = '+(q+fq)+' → '+money(per)+'/'+L('τεμ','pc')+'</button></div>';
+        } else {
+          bx+='🎁 '+L('Πήρες δωρεάν τεμάχια;','Got free items?')+
+            '<div style="margin-top:5px;display:flex;gap:6px;align-items:center">'+L('δωρεάν','free')+': <input type="number" id="gift-'+i+'" placeholder="0" style="width:70px;padding:4px;border:1px solid var(--line);border-radius:6px"><button class="pick" style="margin:0" onclick="ocrApplyGift('+i+',parseFloat((document.getElementById(\'gift-'+i+'\')||{}).value))">✓</button></div>';
+        }
+        bx+='</div>';
+        return bx;
+      })()+
       (ln.productId?'<button class="pick" style="margin-top:8px" onclick="ocrRemember('+i+')">🔗 Θυμήσου «'+esc(ln.raw).slice(0,18)+'» για αυτό</button>':'')+
     '</div>';
   });
-  const okCount=o.lines.filter(l=>l.productId&&(parseFloat(l.price)||0)>0).length;
+  const okCount=o.lines.filter(l=>l.productId&&(parseFloat(l.price)||0)>0&&!l.skip).length;
   h+='<button class="btn" id="ocr-approve-btn" style="margin-top:14px" onclick="ocrApprove()">✅ Έγκριση '+okCount+' γραμμών → Βάση</button>';
   if((window._ocrQueue||[]).length>1)h+='<button class="btn ghost" style="margin-top:8px" onclick="skipOcr()">⏭️ '+L('Παράλειψη (χωρίς αποθήκευση)','Skip (without saving)')+' — '+((window._ocrIdx||0)+1)+'/'+window._ocrQueue.length+'</button>';
   h+='<div class="muted" style="font-size:12px;text-align:center;margin-top:6px">Θα ενημερωθούν τιμές προμηθευτή + ιστορικό</div>';
@@ -2634,7 +2773,7 @@ async function ocrApprove(){
   if(window._ocrBusy)return;   // κλείδωμα: να μη περαστεί 2η/3η φορά
   const o=ST.ocr;const sid=document.getElementById('ocr-sup').value;const date=document.getElementById('ocr-date').value;
   if(!sid){toast('❌ '+L('Διάλεξε προμηθευτή','Choose a supplier'));return;}
-  const good=o.lines.filter(l=>l.productId&&(parseFloat(l.price)||0)>0);
+  const good=o.lines.filter(l=>l.productId&&(parseFloat(l.price)||0)>0&&!l.skip);
   if(!good.length){toast('❌ '+L('Καμία έτοιμη γραμμή','No ready line'));return;}
   const tid=curTenant();
   const supN=supName(sid);
@@ -2988,7 +3127,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·80';
+const BUILD='v'+'2026.07.04·82';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
