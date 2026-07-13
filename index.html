@@ -901,7 +901,8 @@ async function saveInfo(pid){
   const size=sizeV===''?null:parseFloat(sizeV);
   if(!sku){toast('❌ Βάλε όνομα');return;}
   const p=ST.products.find(x=>x.id===pid);
-  const upd={sku,category:cat||null,sub_category:sub||null,invoice_name:inv||null,size_ml:size,notes:(g('pi-notes')||'').trim()||null};
+  const notesEl=document.getElementById('pi-notes');
+  const upd={sku,category:cat||null,sub_category:sub||null,invoice_name:inv||null,size_ml:size,notes:(notesEl?(notesEl.value||'').trim():'')||null};
   const packEl=document.getElementById('pi-pack'); if(packEl)upd.packaging=(packEl.value||'').trim()||null;
   const kindEl=document.getElementById('pi-kind'); if(kindEl)upd.kind=kindEl.value;
   const unitEl=document.getElementById('pi-unit'); if(unitEl)upd.measure_unit=unitEl.value||null;
@@ -1773,10 +1774,14 @@ function calcProfit(p){
     const gp=sales-purchases;
     const np=gp-labour-opex;
     const pc=purchases+labour;
+    const taxPct=parseFloat(p.tax_pct)||0;
+    const tax=(np>0)?(np*taxPct/100):0;      // φόρος μόνο σε κέρδος
+    const after=np-tax;
     return {
       sales, purchases, gp, gpPct:sales?gp/sales*100:0,
       labour, labourPct:sales?labour/sales*100:0,
       opex, np, npPct:sales?np/sales*100:0,
+      taxPct, tax, after, afterPct:sales?after/sales*100:0,
       prime:pc, primePct:sales?pc/sales*100:0,
       foodPct:sf?pFood/(inclVat?sf:sf)*100:0,
       bevPct:sb?pBev/(inclVat?sb:sb)*100:0
@@ -1799,6 +1804,8 @@ function profitResultsHtml(R){
       '<div class="kv"><span class="k">'+T('Προσωπικό','Labour')+'</span><span class="v">−'+money2(M.labour)+' <span style="color:'+badge(M.labourPct,30,35)+'">('+pct(M.labourPct)+')</span></span></div>'+
       '<div class="kv"><span class="k">'+T('Λειτουργικά','Operating')+'</span><span class="v">−'+money2(M.opex)+'</span></div>'+
       '<div class="kv" style="border-top:2px solid var(--line);padding-top:6px;font-size:16px"><span class="k"><b>'+T('ΚΑΘΑΡΟ ΚΕΡΔΟΣ','NET PROFIT')+'</b></span><span class="v" style="color:'+(M.np>=0?'var(--ok)':'var(--bad)')+'"><b>'+money2(M.np)+'</b> ('+pct(M.npPct)+')</span></div>'+
+      (M.taxPct>0?('<div class="kv"><span class="k">'+T('Φόρος','Tax')+' ('+M.taxPct+'%)</span><span class="v">−'+money2(M.tax)+'</span></div>'+
+        '<div class="kv" style="border-top:1px solid var(--line);padding-top:5px;font-size:15px"><span class="k"><b>💰 '+T('ΜΕΤΑ ΦΟΡΩΝ','AFTER TAX')+'</b></span><span class="v" style="color:'+(M.after>=0?'var(--ok)':'var(--bad)')+'"><b>'+money2(M.after)+'</b> ('+pct(M.afterPct)+')</span></div>'):'')+
       '<div style="margin-top:8px;padding:8px;border-radius:8px;background:'+(M.primePct<=65?'#e7f6ec':(M.primePct<=70?'#FFF7E6':'#FFF0F0'))+';border:1px solid '+badge(M.primePct,65,70)+'">'+
         '<div style="display:flex;justify-content:space-between;font-size:13px"><b>⚡ Prime Cost</b><b style="color:'+badge(M.primePct,65,70)+'">'+pct(M.primePct)+'</b></div>'+
         '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+T('Αγορές + Προσωπικό · ≤65%','Purchases + Labour · ≤65%')+'</div>'+
@@ -1820,7 +1827,7 @@ function drawProfit(){
   const T=(el,en)=>L(el,en);
   const per=[['month',T('Μήνας','Month')],['quarter',T('Τρίμηνο','Quarter')],['half',T('Εξάμηνο','Half')],['year',T('Έτος','Year')]];
   let h='<div style="margin-top:10px">';
-  h+='<div class="tabs" style="flex-wrap:wrap">'+per.map(x=>'<button class="tab'+((ST.pfType||'month')===x[0]?' on':'')+'" onclick="ST.pfType=\''+x[0]+'\';loadProfit()">'+x[1]+'</button>').join('')+'</div>';
+  h+='<div class="tabs" style="flex-wrap:wrap">'+per.map(x=>'<button class="tab'+((ST.pfType||'month')===x[0]?' active':'')+'" onclick="ST.pfType=\''+x[0]+'\';loadProfit()">'+x[1]+'</button>').join('')+'</div>';
   h+='<div style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="month" id="pf-when" value="'+((ST.pfDate||new Date().toISOString().slice(0,10)).slice(0,7))+'" onchange="ST.pfDate=this.value+\'-01\';loadProfit()" style="padding:8px;border:1px solid var(--line);border-radius:8px"><b style="color:var(--accent)">'+pLabel()+'</b></div>';
   h+='<div id="pf-results">'+profitResultsHtml(R)+'</div>';
   const f=(id,lb,val,ph)=>'<div class="field" style="margin-bottom:6px"><label style="font-size:12px">'+lb+'</label><input id="'+id+'" type="number" step="0.01" value="'+(val!=null&&val!==''?val:'')+'" placeholder="'+(ph||'0')+'" oninput="pfLive()"></div>';
@@ -1837,6 +1844,7 @@ function drawProfit(){
       f('pf-util',T('ΔΕΗ/Νερό/Internet','Utilities'),p.utilities)+
       f('pf-oth',T('Λοιπά Έξοδα','Other Expenses'),p.other_expenses)+
       f('pf-cash','💵 '+T('Μετρητά (αδήλωτα)','Cash (unrecorded)'),p.sales_cash_unrec)+
+      f('pf-tax','🧾 '+T('Φόρος % (προαιρετικό)','Tax % (optional)'),p.tax_pct)+
     '</div>'+
     '<div style="font-size:11px;color:var(--muted);margin:10px 0 4px">'+T('Αγορές (Αυτόματα από Τιμολόγια + Χειροκίνητες Αγορές — άφησε κενό)','Purchases (Auto from Invoices + Manual Purchases — leave empty)')+':</div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
@@ -1855,7 +1863,7 @@ function pfLive(){
   p.vat_food=pfNum('pf-vf')||13; p.vat_bev=pfNum('pf-vb')||24;
   p.wages=pfNum('pf-w'); p.social=pfNum('pf-soc');
   p.rent=pfNum('pf-rent'); p.utilities=pfNum('pf-util'); p.other_expenses=pfNum('pf-oth');
-  p.sales_cash_unrec=pfNum('pf-cash');
+  p.sales_cash_unrec=pfNum('pf-cash'); p.tax_pct=pfNum('pf-tax');
   const gv=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?parseFloat(el.value):null;};
   p.purch_food_manual=gv('pf-pf'); p.purch_bev_manual=gv('pf-pb'); p.purch_sup_manual=gv('pf-ps');
   ST.pf=p; refreshProfitNumbers();   // ΜΟΝΟ τα νούμερα — δεν ξαναφτιάχνει την οθόνη
@@ -1871,7 +1879,7 @@ async function saveProfit(){
   const row={tenant_id:curTenant(),period_start:start,period_end:end,label:pLabel(),
     sales_food:p.sales_food||0,sales_bev:p.sales_bev||0,sales_incl_vat:!!p.sales_incl_vat,
     vat_food:p.vat_food||13,vat_bev:p.vat_bev||24,sales_cash_unrec:p.sales_cash_unrec||0,
-    wages:p.wages||0,social:p.social||0,rent:p.rent||0,utilities:p.utilities||0,other_expenses:p.other_expenses||0,
+    wages:p.wages||0,social:p.social||0,rent:p.rent||0,utilities:p.utilities||0,other_expenses:p.other_expenses||0,tax_pct:p.tax_pct||0,
     purch_food_manual:p.purch_food_manual,purch_bev_manual:p.purch_bev_manual,purch_sup_manual:p.purch_sup_manual};
   try{const {error}=await sb.from('profit_periods').upsert(row,{onConflict:'tenant_id,period_start,period_end'});
     if(error)throw error; toast('✅ '+L('Αποθηκεύτηκε','Saved'));
@@ -2635,7 +2643,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·70';
+const BUILD='v'+'2026.07.04·71';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
