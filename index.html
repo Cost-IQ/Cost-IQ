@@ -2058,17 +2058,35 @@ function evShopList(){
   ids.forEach(pid=>{
     const p=(ST.products||[]).find(x=>x.id===pid); if(!p)return;
     const b=ST.best[pid]||{};
+    const price=parseFloat(b.price)||0;
+    const n=need[pid];                       // n.qty στη μονάδα της συνταγής (ml/gr/τεμ)
+    const mu=(p.measure_unit||'').toLowerCase();   // Kg | g | L | ml | pcs | τεμ | Bunch
     const size=parseFloat(p.size_ml)||0;
-    const n=need[pid];
-    // πόσες φιάλες/τεμάχια χρειάζομαι
-    let units=n.qty, unitTxt=n.unit||'';
-    if(size>0&&(n.unit==='ml'||n.unit==='gr'||!n.unit)){ units=n.qty/size; unitTxt=L('φιάλες/τεμ','bottles/pcs'); }
-    const buy=Math.ceil(units*10)/10;
-    const cost=(parseFloat(b.price)||0)*units;
+    let buyQty, buyUnit, cost;
+
+    if(mu==='kg'||mu==='l'){
+      // Η τιμή είναι ΑΝΑ ΚΙΛΟ / ΛΙΤΡΟ → μετέτρεψε γρ/ml σε κιλά/λίτρα
+      const inKgL=n.qty/1000;
+      buyQty=Math.round(inKgL*100)/100; buyUnit=(mu==='kg'?'kg':'L');
+      cost=price*inKgL;
+    } else if(mu==='g'||mu==='ml'){
+      // Η τιμή είναι ΑΝΑ ΓΡΑΜΜΑΡΙΟ / ML (σπάνιο)
+      buyQty=Math.round(n.qty*10)/10; buyUnit=mu;
+      cost=price*n.qty;
+    } else if(size>0){
+      // Συσκευασία (φιάλη/κιβώτιο) → πόσες φιάλες
+      const bottles=n.qty/size;
+      buyQty=Math.ceil(bottles*10)/10; buyUnit=L('φιάλες/τεμ','bottles/pcs');
+      cost=price*bottles;
+    } else {
+      // Τεμάχια
+      buyQty=Math.ceil(n.qty*10)/10; buyUnit=L('τεμ','pcs');
+      cost=price*n.qty;
+    }
     totalC+=cost;
-    const sup=b.sup||L('—','—');
+    const sup=b.sup||'—';
     if(!bySup[sup])bySup[sup]=[];
-    bySup[sup].push({name:p.sku,qty:buy,unit:unitTxt,raw:n.qty,rawUnit:n.unit,cost});
+    bySup[sup].push({name:p.sku,qty:buyQty,unit:buyUnit,raw:n.qty,rawUnit:n.unit,cost});
   });
   Object.keys(bySup).sort().forEach(sup=>{
     h+='<div class="card"><h3 style="font-size:13px;color:var(--accent);margin-bottom:8px">🏢 '+esc(sup)+'</h3>';
@@ -2087,8 +2105,12 @@ function evShopList(){
 }
 // ── 📄 ΠΡΟΣΦΟΡΑ ΠΕΛΑΤΗ (χωρίς κόστη!) ──
 function evOffer(){
+  evLive();
   const e=ST.event, R=evCalc();
   const m2=v=>money(Math.round((v||0)*100)/100);
+  const dGR=d=>{if(!d)return '';const q=String(d).split('-');return q.length===3?(q[2]+'/'+q[1]+'/'+q[0]):d;};
+  let shop=(ST.shopName||'').trim();
+  if(!shop){try{shop=localStorage.getItem('ciq_shop')||'';}catch(x){}}
   const items=(ST.eventItems||[]).map(it=>{
     const nm=it.recipe_id?((ST.recipes||[]).find(x=>x.id===it.recipe_id)||{}).name:((ST.products||[]).find(x=>x.id===it.product_id)||{}).sku;
     const q=parseFloat(it.qty_per_guest)||1, pg=parseFloat(it.per_guests)||1;
@@ -2097,11 +2119,11 @@ function evOffer(){
     else if(q!==1)sfx=' ('+q+'/'+L('άτομο','guest')+')';
     return '• '+(nm||'—')+sfx;
   }).join('\n');
-  const body=(ST.shopName||'Cost IQ')+'\n\n'+
+  const body=(shop?shop+'\n\n':'')+
     L('ΠΡΟΣΦΟΡΑ ΕΚΔΗΛΩΣΗΣ','EVENT OFFER')+'\n'+
     '─────────────────\n'+
     (e.name||'')+'\n'+
-    (e.event_date?(L('Ημερομηνία','Date')+': '+e.event_date+'\n'):'')+
+    (e.event_date?(L('Ημερομηνία','Date')+': '+dGR(e.event_date)+'\n'):'')+
     L('Άτομα','Guests')+': '+R.guests+'\n\n'+
     L('ΠΕΡΙΛΑΜΒΑΝΕΙ','INCLUDES')+':\n'+items+'\n'+
     (e.extra_notes?('\n'+L('Επιπλέον','Also')+': '+e.extra_notes+'\n'):'')+
@@ -2158,7 +2180,7 @@ function evResultsHtml(R){
   return '<div class="card" style="text-align:center;background:'+bg+';border:1.5px solid '+col+'">'+
     '<div style="font-size:36px;font-weight:800;color:'+col+'">'+(R.revenue>0?cm.toFixed(1)+'%':'—')+'</div>'+
     '<div style="font-size:12px;color:'+col+';font-weight:600">CM % · '+L('Κόστος','Cost')+'</div>'+
-    '<div style="font-size:10px;color:var(--muted);margin-top:2px">'+L('στόχος 20–25%','target 20–25%')+'</div>'+
+    '<div style="font-size:10px;color:var(--muted);margin-top:2px">'+L('Στόχος 20–25%','Target 20–25%')+'</div>'+
     '<div style="display:flex;justify-content:center;gap:18px;margin-top:10px;padding-top:10px;border-top:1px solid '+col+'33">'+
       '<div><div style="font-size:19px;font-weight:700;color:'+(R.profit>=0?'var(--ok)':'var(--bad)')+'">'+m2(R.profit)+'</div><div style="font-size:10px;color:var(--muted)">'+L('Κέρδος','Profit')+'</div></div>'+
       '<div><div style="font-size:19px;font-weight:700;color:var(--accent)">'+(R.revenue>0?R.marginPct.toFixed(1)+'%':'—')+'</div><div style="font-size:10px;color:var(--muted)">'+L('Περιθώριο','Margin')+'</div></div>'+
@@ -2965,7 +2987,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·77';
+const BUILD='v'+'2026.07.04·79';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
