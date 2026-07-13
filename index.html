@@ -341,18 +341,51 @@ async function enterApp(){
 }
 async function enterShop(){
   try{if(ST.tenant)localStorage.setItem('ciq_tenant',ST.tenant);}catch(e){}
+  // Αποδοχή Όρων (μία φορά ανά χρήστη)
+  let acc=null; try{const {data:{user}}=await sb.auth.getUser();const {data:pr}=await sb.from('profiles').select('terms_accepted_at,tabs').eq('id',user.id).single();if(pr){acc=pr.terms_accepted_at;ST.tabs=pr.tabs||null;}}catch(e){}
+  if(!acc){ return termsGate(); }
   // Πακέτο + συνδρομή του μαγαζιού
   try{
     const {data:t}=await sb.from('tenants').select('name,plan,paid_until').eq('id',curTenant()).single();
     if(t){ST.plan=t.plan||'advanced';ST.paidUntil=t.paid_until||null;ST.shopName=t.name||ST.shopName;}
   }catch(e){}
-  // Δικαιώματα χρήστη (on/off tabs)
-  try{const {data:{user}}=await sb.auth.getUser();const {data:pr}=await sb.from('profiles').select('tabs').eq('id',user.id).single();ST.tabs=(pr&&pr.tabs)||null;}catch(e){}
   if(!subActive()&&ST.role!=='admin'){ return lockScreen(); }
   await loadAll();
   document.getElementById('hTitle').textContent=brandTitle();
   applyRoleUI();
   subBanner();
+}
+function termsGate(){
+  ST.view='terms';
+  document.getElementById('hTitle').textContent='Cost IQ';
+  const nav=document.getElementById('nav');if(nav)nav.innerHTML='';
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card" style="margin-top:20px;max-width:640px;margin-left:auto;margin-right:auto">'+
+    '<h2 style="font-size:22px;margin:0 0 6px;color:var(--accent)">📄 '+L('Όροι Χρήσης & Απόρρητο','Terms of Service & Privacy')+'</h2>'+
+    '<p style="font-size:13px;color:var(--muted);margin:0 0 14px">'+L('Πριν ξεκινήσεις, διάβασε και αποδέξου τους όρους.','Before you start, please read and accept the terms.')+'</p>'+
+    '<div style="max-height:38vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:14px;font-size:13px;line-height:1.6;background:var(--bg)">'+
+      '<p><b>1. '+L('Τι είναι','What it is')+'</b><br>'+L('Το Cost IQ είναι βοηθητικό εργαλείο διαχείρισης κόστους για μαγαζιά εστίασης.','Cost IQ is an assistive cost-management tool for hospitality businesses.')+'</p>'+
+      '<p><b>2. '+L('Ακρίβεια — ΣΗΜΑΝΤΙΚΟ','Accuracy — IMPORTANT')+'</b><br>'+L('Η ανάγνωση τιμολογίων γίνεται με τεχνητή νοημοσύνη και <b>μπορεί να έχει λάθη</b>. Οφείλεις να ελέγχεις τα αποτελέσματα πριν τα εγκρίνεις. Το Cost IQ <b>δεν υποκαθιστά λογιστή</b>.','Invoice reading uses AI and <b>may contain errors</b>. You must verify results before approving. Cost IQ <b>does not replace an accountant</b>.')+'</p>'+
+      '<p><b>3. '+L('Συνδρομή','Subscription')+'</b><br>'+L('Η υπηρεσία παρέχεται με μηνιαία συνδρομή ανά μαγαζί. Αν δεν ανανεωθεί, η πρόσβαση αναστέλλεται μέχρι την τακτοποίηση.','Monthly subscription per shop. If not renewed, access is suspended until settled.')+'</p>'+
+      '<p><b>4. '+L('Δεδομένα','Data')+'</b><br>'+L('Τα δεδομένα σου παραμένουν δικά σου. Κάθε μαγαζί βλέπει μόνο τα δικά του. Οι φωτογραφίες τιμολογίων διαγράφονται μετά από εύλογο διάστημα.','Your data remains yours. Each shop sees only its own. Invoice photos are deleted after a reasonable period.')+'</p>'+
+      '<p><b>5. '+L('Gmail (προαιρετικό)','Gmail (optional)')+'</b><br>'+L('Αν συνδέσεις Gmail, ζητάμε πρόσβαση ΜΟΝΟ ανάγνωσης, αποκλειστικά για εύρεση τιμολογίων. Δεν αποθηκεύουμε email.','If you connect Gmail, we request READ-ONLY access, solely to find invoices. We do not store emails.')+'</p>'+
+      '<p><b>6. '+L('Ευθύνη','Liability')+'</b><br>'+L('Η υπηρεσία παρέχεται «ως έχει». Δεν ευθυνόμαστε για αποφάσεις βασισμένες σε μη ελεγμένα δεδομένα. Η ευθύνη μας δεν υπερβαίνει τη συνδρομή 3 μηνών. Ισχύει το Ελληνικό Δίκαιο.','Provided "as is". We are not liable for decisions based on unverified data. Our liability does not exceed 3 months of subscription. Greek law applies.')+'</p>'+
+    '</div>'+
+    '<div style="margin-top:12px;font-size:12px"><a href="https://cost-iq.github.io/Cost-IQ/terms.html" target="_blank" style="color:var(--accent)">'+L('Πλήρεις Όροι','Full Terms')+' ↗</a> · <a href="https://cost-iq.github.io/Cost-IQ/privacy.html" target="_blank" style="color:var(--accent)">'+L('Πολιτική Απορρήτου','Privacy Policy')+' ↗</a></div>'+
+    '<label style="display:flex;align-items:flex-start;gap:10px;margin-top:14px;cursor:pointer;font-size:14px"><input type="checkbox" id="tc-ok" onchange="document.getElementById(\'tc-btn\').disabled=!this.checked" style="margin-top:3px;width:18px;height:18px"><span>'+L('Διάβασα και αποδέχομαι τους Όρους Χρήσης και την Πολιτική Απορρήτου.','I have read and accept the Terms of Service and Privacy Policy.')+'</span></label>'+
+    '<button class="btn" id="tc-btn" disabled style="margin-top:14px;opacity:.5" onclick="acceptTerms()">✅ '+L('Αποδέχομαι & Συνέχεια','Accept & Continue')+'</button>'+
+    '<button class="btn ghost" style="margin-top:8px" onclick="doLogout()">'+L('Δεν αποδέχομαι — Έξοδος','I decline — Logout')+'</button>'+
+  '</div>';
+  const b=document.getElementById('tc-btn');if(b)b.style.opacity='.5';
+  const cb=document.getElementById('tc-ok');
+  if(cb)cb.addEventListener('change',()=>{const bb=document.getElementById('tc-btn');bb.disabled=!cb.checked;bb.style.opacity=cb.checked?'1':'.5';});
+}
+async function acceptTerms(){
+  try{const {data:{user}}=await sb.auth.getUser();
+    await sb.from('profiles').update({terms_accepted_at:new Date().toISOString()}).eq('id',user.id);
+    toast('✅ '+L('Ευχαριστούμε!','Thank you!'));
+    ST.view='list'; await enterShop();
+  }catch(e){toast('❌ '+(e.message||e));}
 }
 function subActive(){ if(!ST.paidUntil)return true; return new Date(ST.paidUntil)>=new Date(new Date().toDateString()); }
 function subDaysLeft(){ if(!ST.paidUntil)return 999; return Math.ceil((new Date(ST.paidUntil)-new Date(new Date().toDateString()))/86400000); }
@@ -2433,7 +2466,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·66';
+const BUILD='v'+'2026.07.04·67';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
