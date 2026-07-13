@@ -1925,19 +1925,22 @@ async function openEvent(id){
   drawEvent();
 }
 function closeEvent(){ ST.event=null; ST.eventItems=null; renderEvents(); }
-// Κόστος ενός item ανά ΑΤΟΜΟ
+// Κόστος ενός item ανά ΑΤΟΜΟ (λαμβάνει υπόψη το «ανά πόσα άτομα»)
 function evItemCost(it){
+  const qty=parseFloat(it.qty_per_guest)||0;
+  const per=parseFloat(it.per_guests)||1;      // π.χ. 1 σαλάτα ανά 4 άτομα → per=4
+  const effective=per>0?(qty/per):0;           // πραγματική ποσότητα ανά άτομο
   if(it.recipe_id){
     const r=(ST.recipes||[]).find(x=>x.id===it.recipe_id);
     if(!r)return 0;
     const cc=recipeCalc(r);
-    return (cc.realCost||0)*(parseFloat(it.qty_per_guest)||0);
+    return (cc.realCost||0)*effective;
   }
   if(it.product_id){
     const p=(ST.products||[]).find(x=>x.id===it.product_id);
     if(!p)return 0;
     const b=ST.best[p.id]||{};
-    return (parseFloat(b.price)||0)*(parseFloat(it.qty_per_guest)||0);
+    return (parseFloat(b.price)||0)*effective;
   }
   return 0;
 }
@@ -1971,8 +1974,8 @@ function drawEvent(){
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
       '<div class="field"><label>'+L('Ημερομηνία','Date')+'</label><input id="ev-date" type="date" value="'+esc(e.event_date||'')+'" oninput="evLive()"></div>'+
       '<div class="field"><label>👥 '+L('Άτομα','Guests')+'</label><input id="ev-guests" type="number" value="'+(e.guests||0)+'" oninput="evLive()"></div>'+
-      '<div class="field"><label>💶 '+L('Τιμή ανά άτομο','Price per guest')+'</label><input id="ev-price" type="number" step="0.01" value="'+(e.price_per_guest||'')+'" placeholder="0" oninput="evLive()"></div>'+
-      '<div class="field"><label>➕ '+L('Έξτρα κόστη','Extra costs')+'</label><input id="ev-extra" type="number" step="0.01" value="'+(e.extra_costs||'')+'" placeholder="0" oninput="evLive()"></div>'+
+      '<div class="field"><label>💶 '+L('Τιμή ανά Άτομο','Price per Guest')+'</label><input id="ev-price" type="number" step="0.01" value="'+(e.price_per_guest||'')+'" placeholder="0" oninput="evLive()"></div>'+
+      '<div class="field"><label>➕ '+L('Έξτρα Κόστη','Extra Costs')+'</label><input id="ev-extra" type="number" step="0.01" value="'+(e.extra_costs||'')+'" placeholder="0" oninput="evLive()"></div>'+
     '</div>'+
     '<div class="field"><label>'+L('Τι είναι τα έξτρα','What are the extras')+'</label><input id="ev-exnotes" value="'+esc(e.extra_notes||'')+'" placeholder="'+L('πχ 4 σερβιτόροι, μεταφορικά','e.g. 4 waiters, transport')+'" oninput="evLive()"></div>'+
     '<div class="field"><label>'+L('Κατάσταση','Status')+'</label><select id="ev-status" onchange="evLive()" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:var(--card)">'+
@@ -1980,30 +1983,156 @@ function drawEvent(){
     '</select></div>'+
   '</div>';
   // ── ΜΕΝΟΥ ──
-  h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">🍽️ '+L('Μενού / Ποτά (ανά άτομο)','Menu / Drinks (per guest)')+'</h3>';
+  h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">🍽️ '+L('Μενού / Ποτά','Menu / Drinks')+'</h3>';
   const items=ST.eventItems||[];
   if(!items.length)h+='<div class="muted" style="font-size:13px;padding:6px 0">'+L('Πρόσθεσε συνταγές ή προϊόντα','Add recipes or products')+'</div>';
+  else h+='<div style="display:flex;gap:6px;font-size:10px;color:var(--muted);padding-bottom:4px"><span style="flex:1"></span><span style="width:56px;text-align:center">'+L('Ποσότ.','Qty')+'</span><span style="width:62px;text-align:center">'+L('ανά άτομα','per guests')+'</span><span style="width:62px"></span><span style="width:34px"></span></div>';
   items.forEach(it=>{
     const nm=it.recipe_id?((ST.recipes||[]).find(x=>x.id===it.recipe_id)||{}).name:((ST.products||[]).find(x=>x.id===it.product_id)||{}).sku;
     const cpg=evItemCost(it);
-    h+='<div style="display:flex;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)">'+
-      '<div style="flex:1;font-size:14px;font-weight:600">'+esc(nm||'—')+'</div>'+
-      '<input type="number" step="0.1" value="'+(it.qty_per_guest||1)+'" onchange="evItemQty(\''+it.id+'\',this.value)" style="width:64px;padding:6px;border:1px solid var(--line);border-radius:6px;text-align:center">'+
-      '<span style="min-width:62px;text-align:right;font-weight:700;font-size:13px">'+m2(cpg)+'</span>'+
-      '<button class="del" onclick="evItemDel(\''+it.id+'\')">🗑</button>'+
+    const per=parseFloat(it.per_guests)||1;
+    h+='<div style="padding:7px 0;border-bottom:1px solid var(--line)">'+
+      '<div style="display:flex;gap:6px;align-items:center">'+
+        '<div style="flex:1;font-size:14px;font-weight:600;min-width:0">'+esc(nm||'—')+'</div>'+
+        '<input type="number" step="0.1" value="'+(it.qty_per_guest||1)+'" onchange="evItemQty(\''+it.id+'\',this.value)" style="width:56px;padding:6px;border:1px solid var(--line);border-radius:6px;text-align:center">'+
+        '<input type="number" step="1" min="1" value="'+per+'" onchange="evItemPer(\''+it.id+'\',this.value)" style="width:62px;padding:6px;border:1px solid var(--accent);border-radius:6px;text-align:center;background:var(--accent-bg)">'+
+        '<span style="width:62px;text-align:right;font-weight:700;font-size:13px">'+m2(cpg)+'</span>'+
+        '<button class="del" onclick="evItemDel(\''+it.id+'\')">🗑</button>'+
+      '</div>'+
+      (per>1?('<div style="font-size:10px;color:var(--accent);margin-top:2px">'+L('μοιράζεται','shared')+': '+(it.qty_per_guest||1)+' '+L('ανά','per')+' '+per+' '+L('άτομα','guests')+'</div>'):'')+
     '</div>';
   });
-  h+='<div style="display:flex;justify-content:space-between;padding-top:8px;font-size:14px"><b>'+L('Κόστος/άτομο (υλικά)','Cost/guest (items)')+'</b><b id="ev-pg" style="color:var(--accent)">'+m2(R.perGuest)+'</b></div>';
+  h+='<div style="display:flex;justify-content:space-between;padding-top:8px;font-size:14px"><b>'+L('Κόστος/Άτομο (Υλικά)','Cost/Guest (Items)')+'</b><b id="ev-pg" style="color:var(--accent)">'+m2(R.perGuest)+'</b></div>';
+  h+='<div style="font-size:10px;color:var(--muted);margin-top:6px">💡 '+L('π.χ. 2 ποτά ανά 1 άτομο · 1 σαλάτα ανά 4 άτομα','e.g. 2 drinks per 1 guest · 1 salad per 4 guests')+'</div>';
   h+='<select id="ev-add" style="width:100%;padding:10px;margin-top:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:var(--card)" onchange="evAddItem(this.value);this.value=\'\'">'+
     '<option value="">➕ '+L('Πρόσθεσε συνταγή ή προϊόν…','Add recipe or product…')+'</option>'+
     '<optgroup label="🍸 '+L('Συνταγές','Recipes')+'">'+(ST.recipes||[]).filter(r=>!r.is_homemade).map(r=>'<option value="r:'+r.id+'">'+esc(r.name)+'</option>').join('')+'</optgroup>'+
     '<optgroup label="📦 '+L('Προϊόντα','Products')+'">'+(ST.products||[]).map(p=>'<option value="p:'+p.id+'">'+esc(p.sku)+'</option>').join('')+'</optgroup>'+
   '</select>';
   h+='</div>';
-  h+='<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="flex:1" onclick="saveEvent()">💾 '+L('Αποθήκευση','Save')+'</button>'+
-    '<button class="btn ghost" style="flex:1;border-color:var(--bad);color:var(--bad)" onclick="delEvent()">🗑 '+L('Διαγραφή','Delete')+'</button></div>';
+  h+='<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
+    '<button class="btn" style="flex:1 1 100%" onclick="saveEvent()">💾 '+L('Αποθήκευση','Save')+'</button>'+
+    '<button class="btn ghost" style="flex:1 1 30%" onclick="evShopList()">🛒 '+L('Λίστα Αγορών','Shopping List')+'</button>'+
+    '<button class="btn ghost" style="flex:1 1 30%" onclick="evOffer()">📄 '+L('Προσφορά','Offer')+'</button>'+
+    '<button class="btn ghost" style="flex:1 1 30%" onclick="evDuplicate()">📋 '+L('Αντιγραφή','Duplicate')+'</button>'+
+    '<button class="btn ghost" style="flex:1 1 100%;border-color:var(--bad);color:var(--bad)" onclick="delEvent()">🗑 '+L('Διαγραφή','Delete')+'</button>'+
+  '</div>';
   h+='</div>';
   c.innerHTML=h;
+}
+// ── 🛒 ΛΙΣΤΑ ΑΓΟΡΩΝ (τι να παραγγείλω για την εκδήλωση) ──
+function evShopList(){
+  const e=ST.event, R=evCalc(), g=R.guests;
+  if(!g){toast('❌ '+L('Βάλε αριθμό ατόμων','Enter number of guests'));return;}
+  // Μάζεψε ΟΛΑ τα υλικά (αναλύοντας τις συνταγές σε προϊόντα)
+  const need={};   // product_id -> {qty, unit}
+  const addProd=(pid,qty,unit)=>{
+    if(!pid)return;
+    if(!need[pid])need[pid]={qty:0,unit:unit||''};
+    need[pid].qty+=qty;
+  };
+  const expand=(recId,mult,depth)=>{
+    if((depth||0)>4)return;
+    const ings=(ST.recipeIng||[]).filter(x=>x.recipe_id===recId);
+    ings.forEach(ing=>{
+      const nm=(ing.ingredient||'').trim();
+      const sub=(ST.recipes||[]).find(r=>r.is_homemade&&(r.name||'').trim().toLowerCase()===nm.toLowerCase());
+      const q=(parseFloat(ing.quantity)||0)*mult;
+      if(sub){ const y=parseFloat(sub.yield_qty)||1; expand(sub.id,q/y,(depth||0)+1); }
+      else { const p=(ST.products||[]).find(x=>(x.sku||'').trim().toLowerCase()===nm.toLowerCase());
+             if(p)addProd(p.id,q,ing.unit||''); }
+    });
+  };
+  (ST.eventItems||[]).forEach(it=>{
+    const qty=parseFloat(it.qty_per_guest)||0;
+    const pg=parseFloat(it.per_guests)||1;
+    const total=(qty/pg)*g;                    // συνολικές μερίδες/ποτά για όλη την εκδήλωση
+    if(it.recipe_id)expand(it.recipe_id,total,0);
+    else if(it.product_id)addProd(it.product_id,total,'');
+  });
+  let h='<div style="margin-top:10px"><div class="card" style="background:var(--accent-bg);border-color:var(--accent)"><b style="color:var(--accent)">🛒 '+L('Λίστα Αγορών','Shopping List')+'</b><div style="font-size:12px;color:var(--muted)">'+esc(e.name)+' · '+g+' '+L('άτομα','guests')+'</div></div>';
+  const ids=Object.keys(need);
+  if(!ids.length)h+='<div class="card muted" style="text-align:center">'+L('Πρόσθεσε πρώτα μενού','Add menu items first')+'</div>';
+  let totalC=0;
+  const bySup={};
+  ids.forEach(pid=>{
+    const p=(ST.products||[]).find(x=>x.id===pid); if(!p)return;
+    const b=ST.best[pid]||{};
+    const size=parseFloat(p.size_ml)||0;
+    const n=need[pid];
+    // πόσες φιάλες/τεμάχια χρειάζομαι
+    let units=n.qty, unitTxt=n.unit||'';
+    if(size>0&&(n.unit==='ml'||n.unit==='gr'||!n.unit)){ units=n.qty/size; unitTxt=L('φιάλες/τεμ','bottles/pcs'); }
+    const buy=Math.ceil(units*10)/10;
+    const cost=(parseFloat(b.price)||0)*units;
+    totalC+=cost;
+    const sup=b.sup||L('—','—');
+    if(!bySup[sup])bySup[sup]=[];
+    bySup[sup].push({name:p.sku,qty:buy,unit:unitTxt,raw:n.qty,rawUnit:n.unit,cost});
+  });
+  Object.keys(bySup).sort().forEach(sup=>{
+    h+='<div class="card"><h3 style="font-size:13px;color:var(--accent);margin-bottom:8px">🏢 '+esc(sup)+'</h3>';
+    bySup[sup].forEach(x=>{
+      h+='<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">'+
+        '<div style="flex:1"><b>'+esc(x.name)+'</b>'+(x.rawUnit?('<div style="font-size:11px;color:var(--muted)">'+(Math.round(x.raw*10)/10)+' '+esc(x.rawUnit)+'</div>'):'')+'</div>'+
+        '<div style="text-align:right"><b>'+x.qty+'</b> <span style="font-size:11px;color:var(--muted)">'+esc(x.unit)+'</span><div style="font-size:11px;color:var(--muted)">'+money(Math.round(x.cost*100)/100)+'</div></div>'+
+      '</div>';
+    });
+    h+='</div>';
+  });
+  if(ids.length)h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent);display:flex;justify-content:space-between"><b>'+L('Συνολικό Κόστος Υλικών','Total Items Cost')+'</b><b style="color:var(--accent)">'+money(Math.round(totalC*100)/100)+'</b></div>';
+  h+='<button class="btn ghost" style="margin-top:10px" onclick="drawEvent()">← '+L('Πίσω στην εκδήλωση','Back to event')+'</button></div>';
+  document.getElementById('content').innerHTML=h;
+  window.scrollTo(0,0);
+}
+// ── 📄 ΠΡΟΣΦΟΡΑ ΠΕΛΑΤΗ (χωρίς κόστη!) ──
+function evOffer(){
+  const e=ST.event, R=evCalc();
+  const m2=v=>money(Math.round((v||0)*100)/100);
+  const items=(ST.eventItems||[]).map(it=>{
+    const nm=it.recipe_id?((ST.recipes||[]).find(x=>x.id===it.recipe_id)||{}).name:((ST.products||[]).find(x=>x.id===it.product_id)||{}).sku;
+    const q=parseFloat(it.qty_per_guest)||1, pg=parseFloat(it.per_guests)||1;
+    let sfx='';
+    if(pg>1)sfx=' ('+q+' '+L('ανά','per')+' '+pg+' '+L('άτομα','guests')+')';
+    else if(q!==1)sfx=' ('+q+'/'+L('άτομο','guest')+')';
+    return '• '+(nm||'—')+sfx;
+  }).join('\n');
+  const body=(ST.shopName||'Cost IQ')+'\n\n'+
+    L('ΠΡΟΣΦΟΡΑ ΕΚΔΗΛΩΣΗΣ','EVENT OFFER')+'\n'+
+    '─────────────────\n'+
+    (e.name||'')+'\n'+
+    (e.event_date?(L('Ημερομηνία','Date')+': '+e.event_date+'\n'):'')+
+    L('Άτομα','Guests')+': '+R.guests+'\n\n'+
+    L('ΠΕΡΙΛΑΜΒΑΝΕΙ','INCLUDES')+':\n'+items+'\n'+
+    (e.extra_notes?('\n'+L('Επιπλέον','Also')+': '+e.extra_notes+'\n'):'')+
+    '\n─────────────────\n'+
+    L('Τιμή ανά Άτομο','Price per Guest')+': '+m2(R.price)+'\n'+
+    L('ΣΥΝΟΛΟ','TOTAL')+': '+m2(R.revenue)+'\n';
+  let h='<div style="margin-top:10px"><div class="card" style="background:var(--accent-bg);border-color:var(--accent)"><b style="color:var(--accent)">📄 '+L('Προσφορά προς πελάτη','Client offer')+'</b><div style="font-size:11px;color:var(--muted)">'+L('ΔΕΝ περιέχει τα κόστη σου','Does NOT include your costs')+'</div></div>'+
+    '<div class="card"><pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.6;margin:0">'+esc(body)+'</pre></div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+      '<a class="btn" style="flex:1 1 45%;text-align:center;text-decoration:none;display:block" href="mailto:?subject='+encodeURIComponent(L('Προσφορά','Offer')+' - '+(e.name||''))+'&body='+encodeURIComponent(body)+'">📧 Email</a>'+
+      '<a class="btn" style="flex:1 1 45%;text-align:center;text-decoration:none;display:block;background:#25d366" href="https://wa.me/?text='+encodeURIComponent(body)+'" target="_blank" rel="noopener">🟢 WhatsApp</a>'+
+      '<a class="btn" style="flex:1 1 100%;text-align:center;text-decoration:none;display:block;background:#7360f2" href="viber://forward?text='+encodeURIComponent(body)+'">🟣 Viber</a>'+
+    '</div>'+
+    '<button class="btn ghost" style="margin-top:10px" onclick="drawEvent()">← '+L('Πίσω','Back')+'</button></div>';
+  document.getElementById('content').innerHTML=h;
+  window.scrollTo(0,0);
+}
+// ── 📋 ΑΝΤΙΓΡΑΦΗ ──
+async function evDuplicate(){
+  const e=ST.event;
+  const name=prompt(L('Όνομα νέας εκδήλωσης:','New event name:'),(e.name||'')+' ('+L('αντίγραφο','copy')+')');
+  if(!name||!name.trim())return;
+  try{
+    const {data:ne,error}=await sb.from('events').insert({tenant_id:curTenant(),name:name.trim(),event_date:e.event_date,guests:e.guests,price_per_guest:e.price_per_guest,extra_costs:e.extra_costs,extra_notes:e.extra_notes,status:'draft'}).select().single();
+    if(error)throw error;
+    const rows=(ST.eventItems||[]).map(it=>({tenant_id:curTenant(),event_id:ne.id,recipe_id:it.recipe_id||null,product_id:it.product_id||null,qty_per_guest:it.qty_per_guest,per_guests:it.per_guests||1,unit:it.unit||null}));
+    if(rows.length)await sb.from('event_items').insert(rows);
+    toast('✅ '+L('Αντιγράφηκε','Duplicated'));
+    ST.event=ne; ST.eventItems=rows.map((r,i)=>({...r,id:'tmp'+i}));
+    await openEvent(ne.id);
+  }catch(err){toast('❌ '+(err.message||err));}
 }
 function evLive(){
   const e=ST.event;
@@ -2022,25 +2151,31 @@ function refreshEventNumbers(){
 }
 function evResultsHtml(R){
   const m2=v=>money(Math.round((v||0)*100)/100);
-  const col=R.marginPct>=30?'var(--ok)':(R.marginPct>=15?'#e0a800':'var(--bad)');
-  return '<div class="card" style="text-align:center;background:'+(R.marginPct>=30?'#e7f6ec':(R.marginPct>=15?'#FFF7E6':'#FFF0F0'))+';border:1.5px solid '+col+'">'+
-    '<div style="font-size:34px;font-weight:800;color:'+col+'">'+(R.revenue>0?R.marginPct.toFixed(1)+'%':'—')+'</div>'+
-    '<div style="font-size:12px;color:'+col+'">'+L('Περιθώριο Κέρδους','Profit Margin')+'</div>'+
-    '<div style="font-size:20px;font-weight:700;margin-top:6px;color:'+(R.profit>=0?'var(--ok)':'var(--bad)')+'">'+m2(R.profit)+'</div>'+
-    '<div style="font-size:11px;color:var(--muted)">'+L('Κέρδος','Profit')+'</div>'+
+  // CM% = κόστος ÷ έσοδα (όπως στα cocktails). 20-25% πράσινο, 25.1-30% κίτρινο, 30%+ κόκκινο
+  const cm=R.costPct;
+  const col=(cm>0&&cm<=25)?'var(--ok)':((cm<=30)?'#e0a800':'var(--bad)');
+  const bg=(cm>0&&cm<=25)?'#e7f6ec':((cm<=30)?'#FFF7E6':'#FFF0F0');
+  return '<div class="card" style="text-align:center;background:'+bg+';border:1.5px solid '+col+'">'+
+    '<div style="font-size:36px;font-weight:800;color:'+col+'">'+(R.revenue>0?cm.toFixed(1)+'%':'—')+'</div>'+
+    '<div style="font-size:12px;color:'+col+';font-weight:600">CM % · '+L('Κόστος','Cost')+'</div>'+
+    '<div style="font-size:10px;color:var(--muted);margin-top:2px">'+L('στόχος 20–25%','target 20–25%')+'</div>'+
+    '<div style="display:flex;justify-content:center;gap:18px;margin-top:10px;padding-top:10px;border-top:1px solid '+col+'33">'+
+      '<div><div style="font-size:19px;font-weight:700;color:'+(R.profit>=0?'var(--ok)':'var(--bad)')+'">'+m2(R.profit)+'</div><div style="font-size:10px;color:var(--muted)">'+L('Κέρδος','Profit')+'</div></div>'+
+      '<div><div style="font-size:19px;font-weight:700;color:var(--accent)">'+(R.revenue>0?R.marginPct.toFixed(1)+'%':'—')+'</div><div style="font-size:10px;color:var(--muted)">'+L('Περιθώριο','Margin')+'</div></div>'+
+    '</div>'+
   '</div>'+
   '<div class="card">'+
     '<div class="kv"><span class="k">'+L('Έσοδα','Revenue')+' ('+R.guests+' × '+m2(R.price)+')</span><span class="v">'+m2(R.revenue)+'</span></div>'+
-    '<div class="kv"><span class="k">'+L('Κόστος υλικών','Food/Drink cost')+'</span><span class="v">−'+m2(R.foodCost)+'</span></div>'+
-    '<div class="kv"><span class="k">'+L('Έξτρα (προσωπικό, μεταφορικά…)','Extra (staff, transport…)')+'</span><span class="v">−'+m2(R.extra)+'</span></div>'+
-    '<div class="kv" style="border-top:1px solid var(--line);padding-top:6px"><span class="k"><b>'+L('Συνολικό Κόστος','Total Cost')+'</b></span><span class="v"><b>'+m2(R.totalCost)+'</b> ('+R.costPct.toFixed(1)+'%)</span></div>'+
-    '<div class="kv"><span class="k">'+L('Κόστος ανά άτομο','Cost per guest')+'</span><span class="v" style="font-weight:700;color:var(--accent)">'+m2(R.costPerGuest)+'</span></div>'+
+    '<div class="kv"><span class="k">'+L('Κόστος Υλικών','Food/Drink Cost')+'</span><span class="v">'+m2(R.foodCost)+'</span></div>'+
+    '<div class="kv"><span class="k">'+L('Έξτρα (προσωπικό, μεταφορικά…)','Extra (staff, transport…)')+'</span><span class="v">'+m2(R.extra)+'</span></div>'+
+    '<div class="kv" style="border-top:1px solid var(--line);padding-top:6px"><span class="k"><b>'+L('Συνολικό Κόστος','Total Cost')+'</b></span><span class="v"><b>'+m2(R.totalCost)+'</b></span></div>'+
+    '<div class="kv"><span class="k">'+L('Κόστος ανά Άτομο','Cost per Guest')+'</span><span class="v" style="font-weight:700;color:var(--accent)">'+m2(R.costPerGuest)+'</span></div>'+
   '</div>';
 }
 async function evAddItem(v){
   if(!v)return;
   const [t,id]=v.split(':');
-  const row={tenant_id:curTenant(),event_id:ST.event.id,qty_per_guest:1};
+  const row={tenant_id:curTenant(),event_id:ST.event.id,qty_per_guest:1,per_guests:1};
   if(t==='r')row.recipe_id=id; else row.product_id=id;
   try{const {data,error}=await sb.from('event_items').insert(row).select().single();
     if(error)throw error; ST.eventItems.push(data); drawEvent();
@@ -2050,6 +2185,12 @@ async function evItemQty(id,val){
   const it=(ST.eventItems||[]).find(x=>x.id===id); if(!it)return;
   it.qty_per_guest=parseFloat(val)||0;
   try{await sb.from('event_items').update({qty_per_guest:it.qty_per_guest}).eq('id',id);}catch(e){}
+  drawEvent();
+}
+async function evItemPer(id,val){
+  const it=(ST.eventItems||[]).find(x=>x.id===id); if(!it)return;
+  it.per_guests=Math.max(1,parseFloat(val)||1);
+  try{await sb.from('event_items').update({per_guests:it.per_guests}).eq('id',id);}catch(e){}
   drawEvent();
 }
 async function evItemDel(id){
@@ -2824,7 +2965,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·73';
+const BUILD='v'+'2026.07.04·77';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
