@@ -332,7 +332,7 @@ async function enterApp(){
   const {data:{user}}=await sb.auth.getUser();
   let role='',mt='';
   try{const {data:prof}=await sb.from('profiles').select('role,tenant_id').eq('id',user.id).single();if(prof){role=prof.role||'';mt=prof.tenant_id||'';}}catch(e){}
-  ST.role=role; ST.myTenant=mt; ST.userEmail=(user&&user.email)||'';
+  ST.role=role; ST.myTenant=mt; ST.userEmail=(user&&user.email)||''; ST.myId=(user&&user.id)||'';
   document.getElementById('whoami').textContent='';
   const shopB=document.getElementById('shopBtn');if(shopB)shopB.style.display=(ST.role==='admin'||ST.role==='owner')?'inline-block':'none';
   if(ST.role==='admin'){ if(!ST.tenant){ return chooseShop(); } }
@@ -2466,7 +2466,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·67';
+const BUILD='v'+'2026.07.04·69';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
@@ -2642,17 +2642,21 @@ async function openMembers(){
   if(!members.length)h+='<div class="muted" style="font-size:13px">'+L('Κανένα μέλος ακόμα','No members yet')+'</div>';
   members.forEach(m=>{
     const canEdit=(ST.role==='admin')||(ST.role==='owner'&&m.role!=='admin'&&m.role!=='owner');
-    const tabsAll=[['products','📦'],['suppliers','🏢'],['orders','🛒'],['ocr','📷'],['invoices','📋'],['recipes','🍸'],['agree','🤝'],['history','📊']];
+    const tabsAll=[['products','📦',lbl('products','Προϊόντα')],['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Σκάναρε')],['invoices','📋',lbl('invoices','Τιμολόγια')],['recipes','🍸',lbl('recipes','Συνταγές')],['agree','🤝',lbl('agree','Συμφωνίες')],['history','📊',lbl('history','Στατιστικά')]];
     const planAllow=(ST.plan==='basic')?BASIC_TABS:tabsAll.map(t=>t[0]);
     const cur=(m.tabs&&m.tabs.length)?m.tabs:(m.role==='staff'?['ocr','orders']:planAllow);
     h+='<div style="padding:10px 0;border-bottom:1px solid var(--line)">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:600;font-size:14px">'+esc(m.email||'—')+'</div><div style="font-size:12px;color:var(--muted)">'+esc(m.role||'')+'</div></div></div>';
+      '<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:600;font-size:14px">'+esc(m.email||'—')+'</div><div style="font-size:12px;color:var(--muted)">'+esc(m.role||'')+'</div></div>'+
+      (canEdit&&m.id!==(ST.myId||'')?'<button class="pick" style="margin:0;border-color:var(--bad);color:var(--bad);padding:5px 9px" title="'+L('Διαγραφή μέλους','Delete member')+'" onclick="deleteMember(\''+m.id+'\',\''+esc(m.email||'').replace(/'/g,"\\'")+'\')">🗑</button>':'')+
+      '</div>';
     if(canEdit){
-      h+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
+      h+='<div style="font-size:11px;color:var(--muted);margin-top:6px">'+L('Πρόσβαση σε ενότητες (πάτα για on/off):','Section access (tap to toggle):')+'</div>';
+      h+='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px">';
       tabsAll.forEach(t=>{
-        const locked=planAllow.indexOf(t[0])<0;   // δεν το έχει το πακέτο
+        const locked=planAllow.indexOf(t[0])<0;
         const on=cur.indexOf(t[0])>=0&&!locked;
-        h+='<button class="pick" style="margin:0;padding:4px 8px;font-size:11px;'+(locked?'opacity:.35;cursor:not-allowed':(on?'background:var(--ok);color:#fff;border-color:var(--ok)':''))+'" '+(locked?'title="'+L('Δεν περιλαμβάνεται στο πακέτο','Not in plan')+'"':'onclick="toggleTab(\''+m.id+'\',\''+t[0]+'\')"')+'>'+t[1]+' '+(on?'✓':'')+'</button>';
+        const ttl=locked?(t[2]+' — '+L('δεν περιλαμβάνεται στο πακέτο','not in plan')):(t[2]+' — '+(on?L('έχει πρόσβαση','has access'):L('χωρίς πρόσβαση','no access')));
+        h+='<button class="pick" title="'+esc(ttl)+'" style="margin:0;padding:5px 9px;font-size:11px;display:flex;align-items:center;gap:4px;'+(locked?'opacity:.35;cursor:not-allowed':(on?'background:var(--ok);color:#fff;border-color:var(--ok)':''))+'" '+(locked?'':'onclick="toggleTab(\''+m.id+'\',\''+t[0]+'\')"')+'>'+t[1]+' <span style="font-size:10px">'+esc(t[2])+'</span> '+(on?'✓':'')+'</button>';
       });
       h+='</div>';
     }
@@ -2699,6 +2703,16 @@ async function toggleTab(uid,tab){
   const i=cur.indexOf(tab);
   if(i>=0)cur.splice(i,1); else cur.push(tab);
   try{await sb.from('profiles').update({tabs:cur}).eq('id',uid);openMembers();}catch(e){toast('❌ '+(e.message||e));}
+}
+async function deleteMember(uid,email){
+  if(!confirm(L('Διαγραφή του μέλους «','Delete member «')+email+L('»;\n\nΔεν θα μπορεί να συνδεθεί ξανά.','»?\n\nThey will no longer be able to sign in.')))return;
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch(FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({action:'delete',user_id:uid})});
+    const d=await r.json();
+    if(d.error){toast('❌ '+d.error);return;}
+    toast('✅ '+L('Το μέλος διαγράφηκε','Member deleted')); openMembers();
+  }catch(e){toast('❌ '+(e.message||e));}
 }
 async function addMember(){
   const email=(document.getElementById('nm-email').value||'').trim();
