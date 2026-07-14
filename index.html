@@ -327,7 +327,7 @@ async function doLogin(){
   if(error){err.innerHTML='<div class="err">❌ '+esc(error.message)+'</div>';return;}
   await enterApp();
 }
-async function doLogout(){try{localStorage.removeItem('ciq_tenant');}catch(e){}ST.tenant='';ST.role='';await sb.auth.signOut();document.getElementById('appView').style.display='none';document.getElementById('loginView').style.display='flex';document.getElementById('password').value='';}
+async function doLogout(){try{localStorage.removeItem('ciq_tenant');}catch(e){}ST.tenant='';ST.role='';ST.termsOk=false;await sb.auth.signOut();document.getElementById('appView').style.display='none';document.getElementById('loginView').style.display='flex';document.getElementById('password').value='';}
 async function enterApp(){
   document.getElementById('loginView').style.display='none';
   document.getElementById('appView').style.display='block';
@@ -345,6 +345,7 @@ async function enterShop(){
   try{if(ST.tenant)localStorage.setItem('ciq_tenant',ST.tenant);}catch(e){}
   // Αποδοχή Όρων (μία φορά ανά χρήστη)
   let acc=null; try{const {data:{user}}=await sb.auth.getUser();const {data:pr}=await sb.from('profiles').select('terms_accepted_at,tabs').eq('id',user.id).single();if(pr){acc=pr.terms_accepted_at;ST.tabs=pr.tabs||null;}}catch(e){}
+  ST.termsOk=!!acc;
   if(!acc){ return termsGate(); }
   // Πακέτο + συνδρομή του μαγαζιού
   try{
@@ -373,7 +374,7 @@ function termsGate(){
       '<p><b>5. '+L('Gmail (προαιρετικό)','Gmail (optional)')+'</b><br>'+L('Αν συνδέσεις Gmail, ζητάμε πρόσβαση ΜΟΝΟ ανάγνωσης, αποκλειστικά για εύρεση τιμολογίων. Δεν αποθηκεύουμε email.','If you connect Gmail, we request READ-ONLY access, solely to find invoices. We do not store emails.')+'</p>'+
       '<p><b>6. '+L('Ευθύνη','Liability')+'</b><br>'+L('Η υπηρεσία παρέχεται «ως έχει». Δεν ευθυνόμαστε για αποφάσεις βασισμένες σε μη ελεγμένα δεδομένα. Η ευθύνη μας δεν υπερβαίνει τη συνδρομή 3 μηνών. Ισχύει το Ελληνικό Δίκαιο.','Provided "as is". We are not liable for decisions based on unverified data. Our liability does not exceed 3 months of subscription. Greek law applies.')+'</p>'+
     '</div>'+
-    '<div style="margin-top:12px;font-size:12px"><a href="https://cost-iq.github.io/Cost-IQ/terms.html" target="_blank" style="color:var(--accent)">'+L('Πλήρεις Όροι','Full Terms')+' ↗</a> · <a href="https://cost-iq.github.io/Cost-IQ/privacy.html" target="_blank" style="color:var(--accent)">'+L('Πολιτική Απορρήτου','Privacy Policy')+' ↗</a></div>'+
+    '<div style="margin-top:12px;font-size:12px"><a href="https://cost-iq.github.io/Cost-IQ/terms.html" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--accent)">'+L('Πλήρεις Όροι','Full Terms')+' ↗</a> · <a href="https://cost-iq.github.io/Cost-IQ/privacy.html" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--accent)">'+L('Πολιτική Απορρήτου','Privacy Policy')+' ↗</a></div>'+
     '<label style="display:flex;align-items:flex-start;gap:10px;margin-top:14px;cursor:pointer;font-size:14px"><input type="checkbox" id="tc-ok" onchange="document.getElementById(\'tc-btn\').disabled=!this.checked" style="margin-top:3px;width:18px;height:18px"><span>'+L('Διάβασα και αποδέχομαι τους Όρους Χρήσης και την Πολιτική Απορρήτου.','I have read and accept the Terms of Service and Privacy Policy.')+'</span></label>'+
     '<button class="btn" id="tc-btn" disabled style="margin-top:14px;opacity:.5" onclick="acceptTerms()">✅ '+L('Αποδέχομαι & Συνέχεια','Accept & Continue')+'</button>'+
     '<button class="btn ghost" style="margin-top:8px" onclick="doLogout()">'+L('Δεν αποδέχομαι — Έξοδος','I decline — Logout')+'</button>'+
@@ -385,10 +386,26 @@ function termsGate(){
 async function acceptTerms(){
   try{const {data:{user}}=await sb.auth.getUser();
     await sb.from('profiles').update({terms_accepted_at:new Date().toISOString()}).eq('id',user.id);
+    ST.termsOk=true;
     toast('✅ '+L('Ευχαριστούμε!','Thank you!'));
     ST.view='list'; await enterShop();
   }catch(e){toast('❌ '+(e.message||e));}
 }
+// ── ΦΡΟΥΡΟΣ: αν γυρίσει πίσω από τους Όρους χωρίς αποδοχή, ξαναδείξε την οθόνη ──
+async function guardTerms(){
+  if(ST.termsOk)return;                       // ήδη αποδεκτοί σε αυτή τη συνεδρία
+  const app=document.getElementById('appView');
+  if(!app||app.style.display==='none')return; // δεν είναι μέσα στην εφαρμογή
+  try{
+    const {data:{user}}=await sb.auth.getUser(); if(!user)return;
+    const {data:pr}=await sb.from('profiles').select('terms_accepted_at').eq('id',user.id).single();
+    if(pr&&pr.terms_accepted_at){ST.termsOk=true;return;}
+    if(ST.view!=='terms')termsGate();          // δεν αποδέχτηκε → ξαναδείξ' το
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)guardTerms();});
+window.addEventListener('focus',guardTerms);
+window.addEventListener('pageshow',guardTerms);
 function subActive(){ if(!ST.paidUntil)return true; return new Date(ST.paidUntil)>=new Date(new Date().toDateString()); }
 function subDaysLeft(){ if(!ST.paidUntil)return 999; return Math.ceil((new Date(ST.paidUntil)-new Date(new Date().toDateString()))/86400000); }
 function lockScreen(){
@@ -3222,7 +3239,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·86';
+const BUILD='v'+'2026.07.04·87';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
