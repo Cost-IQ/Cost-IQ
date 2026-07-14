@@ -1496,6 +1496,7 @@ function renderOrders(){
           '<button class="pick" onclick="saveOrder(\''+p.id+'\')" style="padding:8px 10px">✓</button>'+
         '</div>'+
         '<div style="font-size:11px;color:var(--muted);margin-top:5px" id="ostk-'+p.id+'">'+L('Απόθεμα','Stock')+': '+stk+' · '+L('Αξία','Value')+': '+money(stk*(parseFloat(b.price)||0))+'</div>'+
+        (ol.last_delivery?('<div style="font-size:10px;color:var(--ok)">📦 '+L('Τελευταία παράδοση','Last delivery')+': '+(ol.last_delivery_qty||0)+' ('+dGRs(ol.last_delivery)+')</div>'):'')+
       '</div>';
     });
     h+='</div>';
@@ -1712,6 +1713,67 @@ function renderStats(){
   else h+=overviewHtml();
   c.innerHTML=h;
   if(sub==='profit')loadProfit();
+}
+// ═══════════ ⚠️ ΕΛΕΓΧΟΣ ΠΑΡΑΛΑΒΗΣ ═══════════
+async function checkDelivery(sid,invDate,lines){
+  if(!sid||!lines||!lines.length)return;
+  const cutoff=new Date(Date.now()-21*86400000).toISOString().slice(0,10);   // παραγγελίες τελευταίων 21 ημερών
+  // Εκκρεμείς παραγγελίες αυτού του προμηθευτή
+  const pend=(ST.orderHistory||[]).filter(r=>r.supplier_id===sid&&(r.status||'')==='Pending'&&(r.date||'')>=cutoff);
+  if(!pend.length)return;
+
+  const missing=[], received=[];
+  const byProd={};
+  lines.forEach(l=>{ if(l.productId)byProd[l.productId]=(byProd[l.productId]||0)+(parseFloat(l.qty)||0); });
+
+  for(const po of pend){
+    const got=byProd[po.product_id]||0;
+    const ord=parseFloat(po.qty)||0;
+    if(got>0){
+      received.push({po,ord,got});
+      const st=(got>=ord)?'Complete':'Partial';
+      try{await sb.from('order_history').update({status:st}).eq('id',po.id);}catch(e){}
+      po.status=st;
+      if(got<ord)missing.push({name:po.sku,ord,got,miss:Math.round((ord-got)*10)/10});
+    }
+  }
+  if(!received.length)return;
+
+  // ── Ενημέρωση αποθέματος (ΜΟΝΟ αν υπάρχει αποθηκευμένο απόθεμα) ──
+  let stockMsg=[];
+  for(const r of received){
+    const pid=r.po.product_id;
+    const ol=ST.orders[pid]; if(!ol)continue;
+    const p=(ST.products||[]).find(x=>x.id===pid); if(!p)continue;
+    const isBev=p.kind==='beverage';
+    const cur=stockOf(ol,isBev);
+    if(cur<=0)continue;                       // δεν έχει σώσει απόθεμα → μη πειράξεις
+    const field=isBev?'cellar_count':'cellar_count';
+    const newVal=(parseFloat(ol[field])||0)+r.got;
+    const row={tenant_id:p.tenant_id,product_id:pid,
+      cellar_count:isBev?newVal:(parseFloat(ol.cellar_count)||0)+r.got,
+      bar_count:parseFloat(ol.bar_count)||0,floor_count:parseFloat(ol.floor_count)||0,
+      kitchen_count:parseFloat(ol.kitchen_count)||0,par_level:parseFloat(ol.par_level)||0,
+      order_qty:parseFloat(ol.order_qty)||0,
+      last_delivery:invDate||null,last_delivery_qty:r.got,
+      updated_at:new Date().toISOString()};
+    try{await sb.from('order_lines').upsert(row,{onConflict:'product_id'});ST.orders[pid]=row;}catch(e){}
+    stockMsg.push(p.sku+': '+cur+' + '+r.got+' = '+(cur+r.got));
+  }
+
+  // ── Μήνυμα ──
+  let msg='';
+  if(missing.length){
+    msg='⚠️ '+L('ΔΕΝ ΗΡΘΑΝ ΟΛΑ','NOT ALL DELIVERED')+'\n\n';
+    missing.forEach(m=>{msg+='• '+m.name+': '+L('παρήγγειλες','ordered')+' '+m.ord+' · '+L('ήρθαν','received')+' '+m.got+' → '+L('λείπουν','missing')+' '+m.miss+'\n';});
+  } else {
+    msg='✅ '+L('Όλα παραλήφθηκαν σωστά','All delivered correctly')+'\n';
+  }
+  if(stockMsg.length){
+    msg+='\n📦 '+L('Απόθεμα ενημερώθηκε','Stock updated')+' ('+dGRs(invDate)+'):\n';
+    stockMsg.forEach(x=>{msg+='• '+x+'\n';});
+  }
+  alert(msg);
 }
 // ═══════════ ΚΕΡΔΟΦΟΡΙΑ (Profit / P&L) ═══════════
 function profitView(){ return '<div id="profitBox" class="card center" style="min-height:30vh"><span class="spin"></span></div>'; }
@@ -2834,6 +2896,7 @@ async function ocrApprove(){
   ]);
   toast('✅ Καταχωρήθηκαν '+ok+' γραμμές + τιμολόγιο');
   await markGmailDone();
+  await checkDelivery(sid,date,good);   // ⚠️ έλεγχος παραλαβής + ενημέρωση αποθέματος
   nextOcrOrReset();
 }
 
@@ -3143,7 +3206,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·84';
+const BUILD='v'+'2026.07.04·85';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
