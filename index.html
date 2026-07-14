@@ -2057,19 +2057,24 @@ function evShopList(){
   if(!ids.length)h+='<div class="card muted" style="text-align:center">'+L('Πρόσθεσε πρώτα μενού','Add menu items first')+'</div>';
   let totalC=0;
   const bySup={};
+  ST._shopRows={};   // για να θυμάται τις επιλογές προμηθευτή
   ids.forEach(pid=>{
     const p=(ST.products||[]).find(x=>x.id===pid); if(!p)return;
-    const b=ST.best[pid]||{};
-    const price=parseFloat(b.price)||0;
-    const n=need[pid];                       // n.qty στη μονάδα της συνταγής (ml/gr/τεμ)
-    const mu=(p.measure_unit||'').toLowerCase();   // Kg | g | L | ml | pcs | τεμ | Bunch
+    // Ποιος προμηθευτής; (επιλογή χρήστη ή ο φθηνότερος)
+    const rows=(ST.prices||[]).filter(x=>x.product_id===pid&&(parseFloat(x.price)||0)>0)
+      .map(x=>({sid:x.supplier_id,name:supName(x.supplier_id),price:parseFloat(x.price)||0}))
+      .sort((a,b2)=>a.price-b2.price);
+    const chosenSid=(ST.evSup&&ST.evSup[pid])||((rows[0]||{}).sid)||null;
+    const chosen=rows.find(x=>x.sid===chosenSid)||rows[0]||{name:'—',price:0};
+    const price=chosen.price||0;
+    const n=need[pid];
+    const mu=(p.measure_unit||'').toLowerCase();
     const size=parseFloat(p.size_ml)||0;
-    const ru=(n.unit||'').toLowerCase();           // μονάδα συνταγής (gr/ml/τεμ)
+    const ru=(n.unit||'').toLowerCase();
     const isWeight=(ru==='gr'||ru==='g'||mu==='kg'||mu==='g');
     let buyQty, buyUnit, cost;
 
     if(mu==='kg'||mu==='l'){
-      // Τιμή ΑΝΑ ΚΙΛΟ / ΛΙΤΡΟ
       const inKgL=n.qty/1000;
       buyQty=Math.round(inKgL*100)/100; buyUnit=(mu==='kg'?L('κιλά','kg'):L('λίτρα','L'));
       cost=price*inKgL;
@@ -2077,7 +2082,6 @@ function evShopList(){
       buyQty=Math.round(n.qty*10)/10; buyUnit=mu;
       cost=price*n.qty;
     } else if(size>0){
-      // Συσκευασία → φιάλες ή κιλά ανάλογα το είδος
       const packs=n.qty/size;
       buyQty=Math.ceil(packs*10)/10;
       buyUnit=isWeight?L('συσκ. (κιλά)','packs (kg)'):L('φιάλες/τεμ','bottles/pcs');
@@ -2087,16 +2091,21 @@ function evShopList(){
       cost=price*n.qty;
     }
     totalC+=cost;
-    const sup=b.sup||'—';
+    const sup=chosen.name||'—';
     if(!bySup[sup])bySup[sup]=[];
-    bySup[sup].push({name:p.sku,qty:buyQty,unit:buyUnit,raw:n.qty,rawUnit:n.unit,cost});
+    bySup[sup].push({pid,name:p.sku,qty:buyQty,unit:buyUnit,raw:n.qty,rawUnit:n.unit,cost,rows,chosenSid:chosen.sid});
   });
   Object.keys(bySup).sort().forEach(sup=>{
     h+='<div class="card"><h3 style="font-size:13px;color:var(--accent);margin-bottom:8px">🏢 '+esc(sup)+'</h3>';
     bySup[sup].forEach(x=>{
-      h+='<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">'+
-        '<div style="flex:1"><b>'+esc(x.name)+'</b>'+(x.rawUnit?('<div style="font-size:11px;color:var(--muted)">'+(function(){var u=(x.rawUnit||'').toLowerCase();if((u==='gr'||u==='g')&&x.raw>=1000)return (Math.round(x.raw/1000*100)/100)+' '+L('κιλά','kg');if(u==='ml'&&x.raw>=1000)return (Math.round(x.raw/1000*100)/100)+' L';return (Math.round(x.raw*10)/10)+' '+esc(x.rawUnit);})()+'</div>'):'')+'</div>'+
-        '<div style="text-align:right"><b>'+x.qty+'</b> <span style="font-size:11px;color:var(--muted)">'+esc(x.unit)+'</span><div style="font-size:11px;color:var(--muted)">'+money(Math.round(x.cost*100)/100)+'</div></div>'+
+      h+='<div style="padding:7px 0;border-bottom:1px solid var(--line);font-size:13px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center">'+
+          '<div style="flex:1"><b>'+esc(x.name)+'</b>'+(x.rawUnit?('<div style="font-size:11px;color:var(--muted)">'+(function(){var u=(x.rawUnit||'').toLowerCase();if((u==='gr'||u==='g')&&x.raw>=1000)return (Math.round(x.raw/1000*100)/100)+' '+L('κιλά','kg');if(u==='ml'&&x.raw>=1000)return (Math.round(x.raw/1000*100)/100)+' L';return (Math.round(x.raw*10)/10)+' '+esc(x.rawUnit);})()+'</div>'):'')+'</div>'+
+          '<div style="text-align:right"><b>'+x.qty+'</b> <span style="font-size:11px;color:var(--muted)">'+esc(x.unit)+'</span><div style="font-size:11px;color:var(--muted)">'+money(Math.round(x.cost*100)/100)+'</div></div>'+
+        '</div>'+
+        ((x.rows&&x.rows.length>1)?('<select onchange="evSetSup(\''+x.pid+'\',this.value)" style="width:100%;margin-top:5px;padding:5px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--card)">'+
+          x.rows.map(r=>'<option value="'+r.sid+'"'+(r.sid===x.chosenSid?' selected':'')+'>'+esc(r.name)+' · '+money(r.price)+'</option>').join('')+
+        '</select>'):'')+
       '</div>';
     });
     // ── Κουμπιά παραγγελίας ανά προμηθευτή ──
@@ -2119,6 +2128,11 @@ function evShopList(){
   h+='<button class="btn ghost" style="margin-top:10px" onclick="drawEvent()">← '+L('Πίσω στην εκδήλωση','Back to event')+'</button></div>';
   document.getElementById('content').innerHTML=h;
   window.scrollTo(0,0);
+}
+function evSetSup(pid,sid){
+  if(!ST.evSup)ST.evSup={};
+  ST.evSup[pid]=sid;
+  evShopList();   // ξαναϋπολόγισε με τον νέο προμηθευτή
 }
 // ── 📄 ΠΡΟΣΦΟΡΑ ΠΕΛΑΤΗ (χωρίς κόστη!) ──
 function evOffer(){
@@ -3129,7 +3143,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·83';
+const BUILD='v'+'2026.07.04·84';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
