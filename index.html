@@ -80,7 +80,7 @@
     <div id="loginShop" style="text-align:center;font-weight:700;color:var(--accent);font-size:15px;margin:0 0 2px"></div>
     <p class="muted" id="loginSubtitle" style="text-align:center;margin:0 0 20px;font-size:13px">Σύνδεση στο cloud</p>
     <div class="field"><label>Email</label><input id="email" type="email" autocomplete="username" placeholder="email"></div>
-    <div class="field"><label id="loginPwLbl">Password</label><div style="display:flex;gap:6px;align-items:center"><input id="password" type="password" autocomplete="current-password" placeholder="password" style="flex:1"><button type="button" onclick="togglePw()" id="pwEye" style="background:none;border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px">👁</button></div></div>
+    <div class="field"><label id="loginPwLbl">Password</label><div style="display:flex;gap:6px;align-items:center"><input id="password" type="password" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="password" style="flex:1"><button type="button" onclick="togglePw()" id="pwEye" style="background:none;border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px">👁</button></div></div>
     <button class="btn" id="loginBtn" onclick="doLogin()">Σύνδεση</button>
     <div style="text-align:center;margin-top:10px"><a href="#" id="loginForgot" onclick="forgotPassword();return false" style="color:var(--accent);font-size:13px">Ξέχασα τον κωδικό</a></div>
     <div id="loginErr"></div>
@@ -3306,7 +3306,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·92';
+const BUILD='v'+'2026.07.04·94';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
@@ -3334,21 +3334,57 @@ window.addEventListener('message',async(ev)=>{
   toast(L('Σύνδεση…','Connecting…'));
   const res=await gmailApi({action:'exchange',code:d.code});
   if(res.error){toast('❌ '+res.error);return;}
-  if(res.refresh_token){try{localStorage.setItem('ciq_gmail_rt',res.refresh_token);}catch(e){}}
+  if(res.refresh_token){
+    try{await sb.from('gmail_accounts').upsert({tenant_id:curTenant(),refresh_token:res.refresh_token,email:res.email||null,connected_by:ST.userEmail||null,connected_at:new Date().toISOString()},{onConflict:'tenant_id'});}
+    catch(e){console.error('gmail save',e);}
+    try{localStorage.setItem('ciq_gmail_rt',res.refresh_token);}catch(e){}   // εφεδρικό
+  }
   if(res.access_token){window._gmailAT=res.access_token;}
   toast('✅ '+L('Συνδέθηκε το Gmail','Gmail connected'));
   gmailList();
 });
-function gmailRT(){try{return localStorage.getItem('ciq_gmail_rt')||'';}catch(e){return'';}}
+function gmailRT(){ return ST.gmailRT || (function(){try{return localStorage.getItem('ciq_gmail_rt')||'';}catch(e){return'';}})(); }
+async function loadGmailToken(){
+  try{
+    const {data}=await sb.rpc('get_gmail_token');
+    if(data){ST.gmailRT=data;return data;}
+  }catch(e){}
+  try{
+    const {data}=await sb.from('gmail_accounts').select('refresh_token,email').eq('tenant_id',curTenant()).maybeSingle();
+    if(data&&data.refresh_token){ST.gmailRT=data.refresh_token;ST.gmailEmail=data.email||'';return data.refresh_token;}
+  }catch(e){}
+  return gmailRT();
+}
+async function gmailDisconnect(){
+  if(!confirm(L('Αποσύνδεση Gmail από το μαγαζί; Κανείς δεν θα βλέπει τιμολόγια από email.','Disconnect Gmail from the shop? Nobody will see email invoices.')))return;
+  try{await sb.from('gmail_accounts').delete().eq('tenant_id',curTenant());}catch(e){}
+  ST.gmailRT=''; try{localStorage.removeItem('ciq_gmail_rt');}catch(e){}
+  toast('✅ '+L('Αποσυνδέθηκε','Disconnected')); gmailList();
+}
 async function gmailList(){
-  const rt=gmailRT(); const at=window._gmailAT;
-  if(!rt&&!at){gmailConnect();return;}
   ST.view='gmail'; const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
   document.getElementById('hTitle').textContent='📧 '+L('Από Email','From Email');
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span> '+L('Φόρτωση email…','Loading emails…')+'</div>';
+  const canConnect=(ST.role==='admin'||ST.role==='owner');
+  const rt=await loadGmailToken(); const at=window._gmailAT;
+  if(!rt&&!at){
+    if(canConnect){
+      c.innerHTML='<div class="card" style="text-align:center;margin-top:20px;padding:24px">'+
+        '<div style="font-size:40px">📧</div>'+
+        '<h3 style="margin:10px 0 6px">'+L('Σύνδεσε το Gmail του μαγαζιού','Connect the shop Gmail')+'</h3>'+
+        '<p style="font-size:13px;color:var(--muted);margin-bottom:14px">'+L('Συνδέεις ΜΙΑ φορά. Μετά δίνεις πρόσβαση σε όποιον θέλεις — χωρίς να δώσεις κωδικούς Google.','Connect ONCE. Then grant access to whoever you want — without sharing Google passwords.')+'</p>'+
+        '<button class="btn" onclick="gmailConnect()">🔗 '+L('Σύνδεση Gmail','Connect Gmail')+'</button></div>';
+    } else {
+      c.innerHTML='<div class="card" style="text-align:center;margin-top:20px;padding:24px;border:1.5px solid #e0a800;background:#FFF7E6">'+
+        '<div style="font-size:40px">🔒</div>'+
+        '<h3 style="margin:10px 0 6px">'+L('Δεν έχεις πρόσβαση','No access')+'</h3>'+
+        '<p style="font-size:13px;color:var(--muted)">'+L('Ζήτα από τον ιδιοκτήτη πρόσβαση στο Gmail του μαγαζιού (👥 Μέλη).','Ask the owner for access to the shop Gmail (👥 Members).')+'</p></div>';
+    }
+    return;
+  }
   const res=await gmailApi({action:'list',refresh_token:rt,access_token:at});
-  if(res.error){c.innerHTML='<div class="card" style="border-color:var(--bad)"><b style="color:var(--bad)">❌ '+esc(res.error)+'</b><div style="margin-top:8px"><button class="btn" onclick="gmailConnect()">🔄 '+L('Ξανασύνδεση Gmail','Reconnect Gmail')+'</button></div></div>';return;}
+  if(res.error){c.innerHTML='<div class="card" style="border-color:var(--bad)"><b style="color:var(--bad)">❌ '+esc(res.error)+'</b>'+(canConnect?('<div style="margin-top:8px"><button class="btn" onclick="gmailConnect()">🔄 '+L('Ξανασύνδεση Gmail','Reconnect Gmail')+'</button></div>'):('<div style="margin-top:8px;font-size:13px;color:var(--muted)">'+L('Ζήτα από τον ιδιοκτήτη να ξανασυνδέσει το Gmail.','Ask the owner to reconnect Gmail.')+'</div>'))+'</div>';return;}
   // ποια έχουν ήδη περαστεί (κοινό ανά μαγαζί)
   let done=new Set();
   try{const {data:dn}=await sb.from('gmail_done').select('gmail_id').eq('tenant_id',curTenant());(dn||[]).forEach(x=>done.add(x.gmail_id));}catch(e){}
@@ -3356,7 +3392,7 @@ async function gmailList(){
   window._gmailMsgs={}; msgs.forEach(m=>{window._gmailMsgs[m.id]=m.subject||'';});
   const hideDone=ST.gmailHideDone;
   const doneCount=msgs.filter(m=>done.has(m.id)).length;
-  let h='<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin:0 4px 8px"><span class="muted" style="font-size:13px">'+msgs.length+' '+L('email με συνημμένα','emails with attachments')+(doneCount?(' · '+doneCount+' ✅'):'')+'</span><button class="pick" onclick="gmailConnect()">🔄 '+L('Ξανασύνδεση','Reconnect')+'</button></div>';
+  let h='<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin:0 4px 8px"><span class="muted" style="font-size:13px">'+msgs.length+' '+L('email με συνημμένα','emails with attachments')+(doneCount?(' · '+doneCount+' ✅'):'')+'</span>'+((ST.role==='admin'||ST.role==='owner')?('<span style="display:flex;gap:5px"><button class="pick" style="margin:0" onclick="gmailConnect()">🔄 '+L('Ξανασύνδεση','Reconnect')+'</button><button class="pick" style="margin:0;border-color:var(--bad);color:var(--bad)" onclick="gmailDisconnect()">🔌 '+L('Αποσύνδεση','Disconnect')+'</button></span>'):'')+'</div>';
   if(doneCount)h+='<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:0 4px 8px;cursor:pointer"><input type="checkbox" '+(hideDone?'checked':'')+' onchange="ST.gmailHideDone=this.checked;gmailList()"> '+L('Κρύψε τα περασμένα','Hide processed')+'</label>';
   if(!msgs.length)h+='<div class="card muted" style="text-align:center">'+L('Δεν βρέθηκαν email με τιμολόγια (pdf/φωτο).','No emails with invoices (pdf/photo).')+'</div>';
   msgs.forEach(m=>{
@@ -3451,7 +3487,7 @@ async function openMembers(){
   document.getElementById('hTitle').textContent='👥 '+L('Μέλη','Members');
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
-  const {data}=await sb.from('profiles').select('id,email,role,tabs,full_name,job_title').eq('tenant_id',curTenant());
+  const {data}=await sb.from('profiles').select('id,email,role,tabs,full_name,job_title,gmail_access').eq('tenant_id',curTenant());
   const members=data||[]; ST._members=members;
   let h='<div style="margin-top:12px">';
   // ── ΠΑΚΕΤΟ & ΣΥΝΔΡΟΜΗ (admin) ──
@@ -3511,6 +3547,16 @@ async function openMembers(){
         h+='<button class="pick" title="'+esc(ttl)+'" style="margin:0;padding:5px 9px;font-size:11px;display:flex;align-items:center;gap:4px;'+(locked?'opacity:.35;cursor:not-allowed':(on?'background:var(--ok);color:#fff;border-color:var(--ok)':''))+'" '+(locked?'':'onclick="toggleTab(\''+m.id+'\',\''+t[0]+'\')"')+'>'+t[1]+' <span style="font-size:10px">'+esc(t[2])+'</span> '+(on?'✓':'')+'</button>';
       });
       h+='</div>';
+      // 📧 Πρόσβαση στο Gmail του μαγαζιού (on/off) — μόνο admin/owner το ορίζει
+      if(ST.role==='admin'||ST.role==='owner'){
+        const ga=(m.role==='owner'||m.role==='admin')||!!m.gmail_access;
+        const locked=(m.role==='owner'||m.role==='admin');
+        h+='<div style="margin-top:6px">'+
+          '<button class="pick" style="margin:0;padding:4px 9px;font-size:11px;'+(ga?'background:var(--ok);color:#fff;border-color:var(--ok)':'')+(locked?';opacity:.6;cursor:not-allowed':'')+'" '+
+          (locked?('title="'+L('Ο ιδιοκτήτης έχει πάντα πρόσβαση','Owner always has access')+'"'):('onclick="toggleGmailAccess(\''+m.id+'\','+(ga?'false':'true')+')"'))+'>'+
+          '📧 '+L('Τιμολόγια από Email','Email invoices')+' '+(ga?'✓':'✗')+'</button>'+
+        '</div>';
+      }
     }
     h+='</div>';
   });
@@ -3600,6 +3646,12 @@ async function changeJob(uid,job){
     toast('✅ '+(jobLabel(job)||L('Θέση','Title'))+(j.tabs?(' · '+L('δικαιώματα ορίστηκαν','permissions set')):''));
     openMembers();
   }catch(e){toast('❌ '+(e.message||e));openMembers();}
+}
+async function toggleGmailAccess(uid,val){
+  try{await sb.from('profiles').update({gmail_access:!!val}).eq('id',uid);
+    toast(val?('✅ '+L('Δόθηκε πρόσβαση στο Gmail','Gmail access granted')):('🔒 '+L('Αφαιρέθηκε η πρόσβαση','Access removed')));
+    openMembers();
+  }catch(e){toast('❌ '+(e.message||e));}
 }
 async function editMemberName(uid){
   const m=(ST._members||[]).find(x=>x.id===uid)||{};
