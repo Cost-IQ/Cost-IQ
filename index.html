@@ -437,8 +437,17 @@ async function acceptTerms(){
   try{
     const {data:{user}}=await sb.auth.getUser();
     if(!user)throw new Error(L('Δεν βρέθηκε χρήστης','No user found'));
-    const {error}=await sb.from('profiles').update({terms_accepted_at:new Date().toISOString()}).eq('id',user.id);
-    if(error)throw error;
+    // 1η προσπάθεια: RPC (παρακάμπτει RLS με ασφάλεια)
+    let saved=false;
+    try{const {error:rpcErr}=await sb.rpc('accept_terms'); if(!rpcErr)saved=true;}catch(e){}
+    // 2η προσπάθεια: κανονικό update (αν υπάρχει δικαίωμα)
+    if(!saved){
+      const {error}=await sb.from('profiles').update({terms_accepted_at:new Date().toISOString()}).eq('id',user.id);
+      if(error)throw error;
+    }
+    // Επαλήθευση ότι όντως σώθηκε
+    const {data:chk}=await sb.from('profiles').select('terms_accepted_at').eq('id',user.id).maybeSingle();
+    if(!chk||!chk.terms_accepted_at)throw new Error(L('Η αποδοχή δεν αποθηκεύτηκε (RLS). Τρέξε το SQL: accept_terms().','Acceptance was not saved (RLS). Run the SQL: accept_terms().'));
     ST.termsOk=true;
     toast('✅ '+L('Ευχαριστούμε!','Thank you!'));
     ST.view='list';
@@ -446,8 +455,7 @@ async function acceptTerms(){
   }catch(e){
     ST.termsOk=false;
     if(btn){btn.disabled=false;btn.innerHTML='✅ '+L('Αποδέχομαι & Συνέχεια','Accept & Continue');}
-    toast('❌ '+(e.message||e));
-    alert(L('Σφάλμα αποθήκευσης: ','Save error: ')+(e.message||e)+'\n\n'+L('Λείπει η στήλη terms_accepted_at; Τρέξε το SQL.','Missing terms_accepted_at column? Run the SQL.'));
+    alert('❌ '+(e.message||e));
   }
 }
 // ── ΦΡΟΥΡΟΣ: αν γυρίσει πίσω από τους Όρους χωρίς αποδοχή, ξαναδείξε την οθόνη ──
@@ -3298,7 +3306,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·91';
+const BUILD='v'+'2026.07.04·92';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
