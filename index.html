@@ -1905,7 +1905,7 @@ async function renderEvents(){
     const st={draft:['#e0a800',L('Πρόχειρο','Draft')],confirmed:['var(--ok)',L('Κλεισμένο','Confirmed')],done:['var(--muted)',L('Ολοκληρώθηκε','Done')]}[e.status||'draft'];
     h+='<div class="row" onclick="openEvent(\''+e.id+'\')" style="margin-top:8px">'+
       '<div style="flex:1"><div class="name">'+esc(e.name||'—')+'</div>'+
-      '<div style="font-size:12px;color:var(--muted)">'+esc(e.event_date||'')+' · '+(e.guests||0)+' '+L('άτομα','guests')+'</div></div>'+
+      '<div style="font-size:12px;color:var(--muted)">'+esc(dGRs(e.event_date||''))+' · '+(e.guests||0)+' '+L('άτομα','guests')+(e.location?(' · 📍 '+esc(e.location)):'')+'</div></div>'+
       '<span style="font-size:11px;font-weight:700;color:'+st[0]+'">'+st[1]+'</span>'+
       '<div style="color:var(--accent);font-size:18px;margin-left:8px">›</div></div>';
   });
@@ -1972,6 +1972,7 @@ function drawEvent(){
   // ── ΣΤΟΙΧΕΙΑ ──
   h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">📋 '+L('Στοιχεία Εκδήλωσης','Event Details')+'</h3>'+
     '<div class="field"><label>'+L('Όνομα','Name')+'</label><input id="ev-name" value="'+esc(e.name||'')+'" oninput="evLive()"></div>'+
+    '<div class="field"><label>📍 '+L('Τοποθεσία','Location')+'</label><input id="ev-loc" value="'+esc(e.location||'')+'" placeholder="'+L('πχ Κτήμα Αριάδνη, Νάξος','e.g. Ariadne Estate, Naxos')+'" oninput="evLive()"></div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
       '<div class="field"><label>'+L('Ημερομηνία','Date')+'</label><input id="ev-date" type="date" value="'+esc(e.event_date||'')+'" oninput="evLive()"></div>'+
       '<div class="field"><label>👥 '+L('Άτομα','Guests')+'</label><input id="ev-guests" type="number" value="'+(e.guests||0)+'" oninput="evLive()"></div>'+
@@ -2140,6 +2141,7 @@ function evOffer(){
     '─────────────────\n'+
     (e.name||'')+'\n'+
     (e.event_date?(L('Ημερομηνία','Date')+': '+dGR(e.event_date)+'\n'):'')+
+    (e.location?(L('Τοποθεσία','Location')+': '+e.location+'\n'):'')+
     L('Άτομα','Guests')+': '+R.guests+'\n\n'+
     L('ΠΕΡΙΛΑΜΒΑΝΕΙ','INCLUDES')+':\n'+items+'\n'+
     (e.extra_notes?('\n'+L('Επιπλέον','Also')+': '+e.extra_notes+'\n'):'')+
@@ -2163,7 +2165,7 @@ async function evDuplicate(){
   const name=prompt(L('Όνομα νέας εκδήλωσης:','New event name:'),(e.name||'')+' ('+L('αντίγραφο','copy')+')');
   if(!name||!name.trim())return;
   try{
-    const {data:ne,error}=await sb.from('events').insert({tenant_id:curTenant(),name:name.trim(),event_date:e.event_date,guests:e.guests,price_per_guest:e.price_per_guest,extra_costs:e.extra_costs,extra_notes:e.extra_notes,status:'draft'}).select().single();
+    const {data:ne,error}=await sb.from('events').insert({tenant_id:curTenant(),name:name.trim(),location:e.location||null,event_date:e.event_date,guests:e.guests,price_per_guest:e.price_per_guest,extra_costs:e.extra_costs,extra_notes:e.extra_notes,status:'draft'}).select().single();
     if(error)throw error;
     const rows=(ST.eventItems||[]).map(it=>({tenant_id:curTenant(),event_id:ne.id,recipe_id:it.recipe_id||null,product_id:it.product_id||null,qty_per_guest:it.qty_per_guest,per_guests:it.per_guests||1,unit:it.unit||null}));
     if(rows.length)await sb.from('event_items').insert(rows);
@@ -2175,7 +2177,7 @@ async function evDuplicate(){
 function evLive(){
   const e=ST.event;
   const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
-  e.name=g('ev-name'); e.event_date=g('ev-date'); e.guests=parseFloat(g('ev-guests'))||0;
+  e.name=g('ev-name'); e.location=g('ev-loc'); e.event_date=g('ev-date'); e.guests=parseFloat(g('ev-guests'))||0;
   e.price_per_guest=parseFloat(g('ev-price'))||0; e.extra_costs=parseFloat(g('ev-extra'))||0;
   e.extra_notes=g('ev-exnotes'); e.status=g('ev-status');
   refreshEventNumbers();   // ΜΟΝΟ τα νούμερα — δεν ξαναφτιάχνει τη σελίδα
@@ -2237,7 +2239,7 @@ async function evItemDel(id){
 }
 async function saveEvent(){
   evLive(); const e=ST.event;
-  try{const {error}=await sb.from('events').update({name:e.name,event_date:e.event_date||null,guests:e.guests||0,price_per_guest:e.price_per_guest||0,extra_costs:e.extra_costs||0,extra_notes:e.extra_notes||null,status:e.status||'draft'}).eq('id',e.id);
+  try{const {error}=await sb.from('events').update({name:e.name,location:e.location||null,event_date:e.event_date||null,guests:e.guests||0,price_per_guest:e.price_per_guest||0,extra_costs:e.extra_costs||0,extra_notes:e.extra_notes||null,status:e.status||'draft'}).eq('id',e.id);
     if(error)throw error; toast('✅ '+L('Αποθηκεύτηκε','Saved'));
   }catch(err){toast('❌ '+(err.message||err));}
 }
@@ -3127,7 +3129,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·82';
+const BUILD='v'+'2026.07.04·83';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
