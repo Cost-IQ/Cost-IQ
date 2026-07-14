@@ -3287,7 +3287,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·88';
+const BUILD='v'+'2026.07.04·89';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
@@ -3432,7 +3432,7 @@ async function openMembers(){
   document.getElementById('hTitle').textContent='👥 '+L('Μέλη','Members');
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
-  const {data}=await sb.from('profiles').select('id,email,role,tabs,full_name').eq('tenant_id',curTenant());
+  const {data}=await sb.from('profiles').select('id,email,role,tabs,full_name,job_title').eq('tenant_id',curTenant());
   const members=data||[]; ST._members=members;
   let h='<div style="margin-top:12px">';
   // ── ΠΑΚΕΤΟ & ΣΥΝΔΡΟΜΗ (admin) ──
@@ -3469,11 +3469,14 @@ async function openMembers(){
     h+='<div style="padding:10px 0;border-bottom:1px solid var(--line)">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="flex:1;min-width:0">'+
         '<div style="font-weight:600;font-size:14px">'+esc(m.full_name||m.email||'—')+'</div>'+
-        (m.full_name?('<div style="font-size:11px;color:var(--muted)">'+esc(m.email||'')+'</div>'):'')+
-        (canEdit?('<div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap">'+
+        '<div style="font-size:11px;color:var(--muted)">'+(m.job_title?('<b style="color:var(--accent)">'+esc(jobLabel(m.job_title))+'</b> · '):'')+esc(m.email||'')+'</div>'+
+        (canEdit?('<div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;align-items:center">'+
           '<button class="pick" style="margin:0;padding:3px 7px;font-size:11px" onclick="editMemberName(\''+m.id+'\')">✏️ '+L('Όνομα','Name')+'</button>'+
-          '<select onchange="changeRole(\''+m.id+'\',this.value)" style="padding:3px 6px;font-size:11px;border:1px solid var(--line);border-radius:6px;background:var(--card)">'+
-            ['staff','manager','owner'].map(function(rr){var can=(ST.role==='admin')||(rr!=='owner');return can?('<option value="'+rr+'"'+((m.role||'staff')===rr?' selected':'')+'>'+({staff:L('Staff','Staff'),manager:L('Manager','Manager'),owner:L('Owner','Owner')}[rr])+'</option>'):'';}).join('')+
+          '<select onchange="changeJob(\''+m.id+'\',this.value)" title="'+L('Θέση — ορίζει αυτόματα δικαιώματα','Job title — sets permissions')+'" style="padding:3px 6px;font-size:11px;border:1px solid var(--accent);border-radius:6px;background:var(--accent-bg)">'+
+            Object.keys(JOBS).map(function(k){return '<option value="'+k+'"'+((m.job_title||'')===k?' selected':'')+'>'+esc(jobLabel(k))+'</option>';}).join('')+
+          '</select>'+
+          '<select onchange="changeRole(\''+m.id+'\',this.value)" title="'+L('Ρόλος ασφαλείας','Security role')+'" style="padding:3px 6px;font-size:11px;border:1px solid var(--line);border-radius:6px;background:var(--card)">'+
+            ['staff','manager','owner'].map(function(rr){var can=(ST.role==='admin')||(rr!=='owner');return can?('<option value="'+rr+'"'+((m.role||'staff')===rr?' selected':'')+'>'+({staff:'🔒 Staff',manager:'🔓 Manager',owner:'👑 Owner'}[rr])+'</option>'):'';}).join('')+
           '</select>'+
         '</div>'):('<div style="font-size:12px;color:var(--muted)">'+esc(m.role||'')+'</div>'))+
       '</div>'+
@@ -3497,7 +3500,10 @@ async function openMembers(){
     '<div class="field"><label>'+L('Ονοματεπώνυμο','Full name')+'</label><input id="nm-name" type="text" placeholder="'+L('πχ Μαρία Παπαδοπούλου','e.g. Maria Smith')+'"></div>'+
     '<div class="field"><label>Email</label><input id="nm-email" type="email" placeholder="name@email.com"></div>'+
     '<div class="field"><label>'+L('Κωδικός','Password')+' ('+L('τουλάχ. 6 χαρακτήρες','min 6 chars')+')</label><input id="nm-pass" type="text" placeholder="••••••"></div>'+
-    '<div class="field"><label>'+L('Ρόλος','Role')+'</label><select id="nm-role" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
+    '<div class="field"><label>'+L('Θέση (ορίζει αυτόματα δικαιώματα)','Job title (sets permissions)')+'</label><select id="nm-job" style="width:100%;padding:12px;border:1px solid var(--accent);border-radius:10px;font-size:16px;background:var(--accent-bg)">'+
+      Object.keys(JOBS).map(function(k){return '<option value="'+k+'">'+esc(jobLabel(k))+'</option>';}).join('')+
+    '</select></div>'+
+    '<div class="field"><label>'+L('Ρόλος ασφαλείας','Security role')+'</label><select id="nm-role" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
       (ST.role==='admin'?'<option value="owner">Owner ('+L('πλήρης','full')+')</option>':'')+
       '<option value="manager">Manager ('+L('πλήρης, χωρίς μέλη','full, no members')+')</option>'+
       '<option value="staff" selected>Staff ('+L('μόνο Σκάναρε + Παραγγελίες','only Scan + Orders')+')</option>'+
@@ -3545,6 +3551,35 @@ async function deleteMember(uid,email){
     toast('✅ '+L('Το μέλος διαγράφηκε','Member deleted')); openMembers();
   }catch(e){toast('❌ '+(e.message||e));}
 }
+// ═══════════ ΘΕΣΕΙΣ ΕΡΓΑΣΙΑΣ (πρότυπα δικαιωμάτων) ═══════════
+const JOBS={
+  '':            {el:'— Χωρίς θέση —',    en:'— No title —',      tabs:null},
+  'owner':       {el:'Ιδιοκτήτης',        en:'Owner',             tabs:['products','suppliers','orders','ocr','invoices','recipes','events','agree','history']},
+  'gm':          {el:'Γενικός Διευθυντής',en:'General Manager',   tabs:['products','suppliers','orders','ocr','invoices','recipes','events','agree','history']},
+  'fbmanager':   {el:'F&B Manager',       en:'F&B Manager',       tabs:['products','suppliers','orders','ocr','invoices','recipes','events','history']},
+  'barmanager':  {el:'Bar Manager',       en:'Bar Manager',       tabs:['products','suppliers','orders','ocr','recipes','events']},
+  'chef':        {el:'Chef',              en:'Chef',              tabs:['products','suppliers','orders','recipes','events']},
+  'souschef':    {el:'Sous Chef',         en:'Sous Chef',         tabs:['products','orders','recipes']},
+  'bartender':   {el:'Bartender',         en:'Bartender',         tabs:['orders','recipes']},
+  'barista':     {el:'Barista',           en:'Barista',           tabs:['orders','recipes']},
+  'waiter':      {el:'Σερβιτόρος',        en:'Waiter',            tabs:['orders']},
+  'storekeeper': {el:'Υπεύθυνος Αποθήκης',en:'Storekeeper',       tabs:['products','orders','ocr']},
+  'accountant':  {el:'Λογιστήριο',        en:'Accounting',        tabs:['invoices','history']}
+};
+function jobLabel(k){const j=JOBS[k||''];return j?(ST.lang==='en'?j.en:j.el):'';}
+async function changeJob(uid,job){
+  const j=JOBS[job||'']; if(!j)return;
+  const upd={job_title:job||null};
+  // Πρότυπα δικαιώματα (μόνο όσα επιτρέπει το πακέτο)
+  if(j.tabs){
+    const planAllow=(ST.plan==='basic')?BASIC_TABS:['products','suppliers','orders','ocr','invoices','recipes','events','agree','history'];
+    upd.tabs=j.tabs.filter(t=>planAllow.indexOf(t)>=0);
+  }
+  try{await sb.from('profiles').update(upd).eq('id',uid);
+    toast('✅ '+(jobLabel(job)||L('Θέση','Title'))+(j.tabs?(' · '+L('δικαιώματα ορίστηκαν','permissions set')):''));
+    openMembers();
+  }catch(e){toast('❌ '+(e.message||e));openMembers();}
+}
 async function editMemberName(uid){
   const m=(ST._members||[]).find(x=>x.id===uid)||{};
   const nm=prompt(L('Ονοματεπώνυμο:','Full name:'), m.full_name||'');
@@ -3569,7 +3604,7 @@ async function addMember(){
   const btn=document.getElementById('nm-save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{
     const {data:{session}}=await sb.auth.getSession();
-    const r=await fetch(FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({email,password,role,full_name:(document.getElementById('nm-name')||{}).value||'',tenant_id:curTenant()})});
+    const r=await fetch(FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({email,password,role,full_name:(document.getElementById('nm-name')||{}).value||'',job_title:(document.getElementById('nm-job')||{}).value||'',tenant_id:curTenant()})});
     const d=await r.json();
     btn.disabled=false;btn.innerHTML='➕ '+L('Δημιουργία μέλους','Create member');
     if(d.error){toast('❌ '+d.error);return;}
