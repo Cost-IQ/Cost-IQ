@@ -345,8 +345,8 @@ async function enterShop(){
   try{if(ST.tenant)localStorage.setItem('ciq_tenant',ST.tenant);}catch(e){}
   // Αποδοχή Όρων (μία φορά ανά χρήστη)
   let acc=null; try{const {data:{user}}=await sb.auth.getUser();const {data:pr}=await sb.from('profiles').select('terms_accepted_at,tabs').eq('id',user.id).single();if(pr){acc=pr.terms_accepted_at;ST.tabs=pr.tabs||null;}}catch(e){}
-  ST.termsOk=!!acc;
-  if(!acc){ return termsGate(); }
+  if(acc)ST.termsOk=true;
+  if(!ST.termsOk){ return termsGate(); }
   // Πακέτο + συνδρομή του μαγαζιού
   try{
     const {data:t}=await sb.from('tenants').select('name,plan,paid_until').eq('id',curTenant()).single();
@@ -432,12 +432,23 @@ function openPrivacyFull(){
   );
 }
 async function acceptTerms(){
-  try{const {data:{user}}=await sb.auth.getUser();
-    await sb.from('profiles').update({terms_accepted_at:new Date().toISOString()}).eq('id',user.id);
+  const btn=document.getElementById('tc-btn');
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
+  try{
+    const {data:{user}}=await sb.auth.getUser();
+    if(!user)throw new Error(L('Δεν βρέθηκε χρήστης','No user found'));
+    const {error}=await sb.from('profiles').update({terms_accepted_at:new Date().toISOString()}).eq('id',user.id);
+    if(error)throw error;
     ST.termsOk=true;
     toast('✅ '+L('Ευχαριστούμε!','Thank you!'));
-    ST.view='list'; await enterShop();
-  }catch(e){toast('❌ '+(e.message||e));}
+    ST.view='list';
+    await enterShop();
+  }catch(e){
+    ST.termsOk=false;
+    if(btn){btn.disabled=false;btn.innerHTML='✅ '+L('Αποδέχομαι & Συνέχεια','Accept & Continue');}
+    toast('❌ '+(e.message||e));
+    alert(L('Σφάλμα αποθήκευσης: ','Save error: ')+(e.message||e)+'\n\n'+L('Λείπει η στήλη terms_accepted_at; Τρέξε το SQL.','Missing terms_accepted_at column? Run the SQL.'));
+  }
 }
 // ── ΦΡΟΥΡΟΣ: αν γυρίσει πίσω από τους Όρους χωρίς αποδοχή, ξαναδείξε την οθόνη ──
 async function guardTerms(){
@@ -3287,7 +3298,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·89';
+const BUILD='v'+'2026.07.04·91';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
@@ -3563,6 +3574,8 @@ const JOBS={
   'bartender':   {el:'Bartender',         en:'Bartender',         tabs:['orders','recipes']},
   'barista':     {el:'Barista',           en:'Barista',           tabs:['orders','recipes']},
   'waiter':      {el:'Σερβιτόρος',        en:'Waiter',            tabs:['orders']},
+  'captain':     {el:'Captain',           en:'Captain',           tabs:['orders','recipes']},
+  'maitre':      {el:'Maitre',            en:'Maitre',            tabs:['products','orders','recipes','events']},
   'storekeeper': {el:'Υπεύθυνος Αποθήκης',en:'Storekeeper',       tabs:['products','orders','ocr']},
   'accountant':  {el:'Λογιστήριο',        en:'Accounting',        tabs:['invoices','history']}
 };
