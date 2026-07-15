@@ -215,6 +215,8 @@ function rerenderCurrent(){
   if(ST.view==='members')return openMembers();
   if(ST.view==='labels')return openLabelEditor();
   if(ST.view==='ohist')return renderOrderHistory();
+  if(ST.view==='stakes')return stockTakeHistory();
+  if(ST.view==='stakeDetail')return renderSection();
   if(ST.view==='summary')return orderSummary();
   if(ST.section==='products'&&ST.view==='detail'&&ST.prod){ST.prod=ST.products.find(p=>p.id===ST.prod.id)||ST.prod;return drawProd();}
   if(ST.section==='recipes'&&ST.view==='detail'&&ST.recipe){ST.recipe=ST.recipes.find(r=>r.id===ST.recipe.id)||ST.recipe;return drawRecipe();}
@@ -1558,7 +1560,9 @@ function renderOrders(){
     '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="orderSummary()">📋 '+lbl('oSummary','Σύνοψη & Αποστολή')+'</button>'+
     '<button class="btn" style="flex:1;background:var(--card);color:var(--accent);border:1px solid var(--accent)" onclick="renderOrderHistory()">🕘 '+lbl('oHistory','Ιστορικό')+'</button></div>'+
     '<input class="search" autocomplete="off" autocorrect="off" spellcheck="false" id="oq" placeholder="'+lbl('oSearch','🔍 Αναζήτηση…')+'" oninput="debSearch(renderOrders)" value="'+esc(q)+'" style="margin-top:10px">'+
-    '<div class="card" style="margin-top:10px;background:var(--accent-bg);border:1px solid var(--accent);display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:var(--accent);font-weight:600">💰 '+L('Αξία Αποθέματος (χωρίς ΦΠΑ)','Stock Value (excl. VAT)')+'</span><span id="stockTotal" style="font-size:20px;font-weight:800;color:var(--accent)">'+money(0)+'</span></div>';
+    '<div class="card" style="margin-top:10px;background:var(--accent-bg);border:1px solid var(--accent)"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:var(--accent);font-weight:600">💰 '+L('Αξία Αποθέματος (χωρίς ΦΠΑ)','Stock Value (excl. VAT)')+'</span><span id="stockTotal" style="font-size:20px;font-weight:800;color:var(--accent)">'+money(0)+'</span></div>'+
+      (ST.plan!=='basic'?('<div style="display:flex;gap:8px;margin-top:10px"><button class="pick" style="flex:1;margin:0;background:var(--accent);color:#fff;border-color:var(--accent);padding:9px" onclick="saveStockTake()">📸 '+L('Κλείδωσε απογραφή','Save stock-take')+'</button>'+
+      '<button class="pick" style="flex:1;margin:0;padding:9px" onclick="stockTakeHistory()">📚 '+L('Ιστορικό απογραφών','Stock-take history')+'</button></div>'):'')+'</div>';
   h+='<div style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto">';
   Object.keys(groups).sort().forEach(cat=>{
     h+='<div class="cathead">'+esc(cat)+'</div>';
@@ -1603,6 +1607,101 @@ function stockTotalValue(){
   return t;
 }
 function updateStockTotal(){const el=document.getElementById('stockTotal');if(el)el.textContent=money(stockTotalValue());}
+// ═══════════ 📸 ΑΠΟΓΡΑΦΕΣ (Stock Takes) ═══════════
+function kindLabel(k){return k==='beverage'?('🍺 '+lbl('kindBeverage','Ποτά')):(k==='food'?('🍽️ '+lbl('kindFood','Τρόφιμα')):('📦 '+lbl('kindSupplies','Αναλώσιμα')));}
+// Μαζεύει τις τρέχουσες γραμμές αποθέματος του ενεργού τμήματος (από τα πεδία ή τη βάση)
+function currentStockLines(){
+  const isBev=ST.okind==='beverage';const lines=[];let total=0;
+  ST.products.filter(p=>p.kind===ST.okind).forEach(p=>{
+    const b=ST.best[p.id]||{};const ol=ST.orders[p.id]||{};
+    const gg=k=>{const el=document.getElementById('o-'+p.id+'-'+k);return el?(parseFloat(el.value)||0):(parseFloat(ol[k])||0);};
+    const stk=isBev?(gg('cellar_count')+gg('bar_count')+gg('floor_count')):(gg('cellar_count')+gg('kitchen_count'));
+    if(stk<=0)return;                       // μόνο προϊόντα με ποσότητα
+    const price=parseFloat(b.price)||0;const val=stk*price;total+=val;
+    lines.push({product_id:p.id,sku:p.sku,category:p.category||'',qty:stk,unit_price:price,line_value:Math.round(val*100)/100});
+  });
+  return {lines,total:Math.round(total*100)/100};
+}
+async function saveStockTake(){
+  if(ST.plan==='basic'){toast('🔒 '+L('Το αρχείο απογραφών είναι στο πακέτο ADVANCED','Stock-take archive is an ADVANCED feature'));return;}
+  const {lines,total}=currentStockLines();
+  if(!lines.length){toast('❌ '+L('Δεν υπάρχει απόθεμα σε αυτό το τμήμα (βάλε ποσότητες πρώτα)','No stock in this section (enter quantities first)'));return;}
+  const today=new Date().toISOString().slice(0,10);
+  const d=prompt(L('Ημερομηνία απογραφής (YYYY-MM-DD):','Stock-take date (YYYY-MM-DD):'),today);
+  if(d===null)return;
+  const take_date=(String(d).trim()||today);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(take_date)){toast('❌ '+L('Λάθος ημερομηνία (πχ 2026-01-31)','Bad date (e.g. 2026-01-31)'));return;}
+  if(!confirm(kindLabel(ST.okind)+' · '+money(total)+' · '+dGRs(take_date)+'\n\n'+L('Να κλειδωθεί αυτή η απογραφή;','Save this stock-take?')))return;
+  const tid=curTenant();
+  try{
+    const {data:head,error:hErr}=await sb.from('stock_takes').insert({tenant_id:tid,kind:ST.okind,take_date:take_date,total_value:total,item_count:lines.length,created_by:ST.userEmail||null}).select().single();
+    if(hErr)throw hErr;
+    const rows=lines.map(l=>({take_id:head.id,tenant_id:tid,product_id:l.product_id,sku:l.sku,category:l.category,qty:l.qty,unit_price:l.unit_price,line_value:l.line_value}));
+    const {error:lErr}=await sb.from('stock_take_lines').insert(rows);
+    if(lErr)throw lErr;
+    toast('✅ '+L('Απογραφή αποθηκεύτηκε','Stock-take saved')+' · '+money(total));
+  }catch(e){toast('❌ '+(e.message||e)+' — '+L('έτρεξες το SQL απογραφών;','did you run the stock-takes SQL?'));}
+}
+async function stockTakeHistory(){
+  if(ST.plan==='basic'){toast('🔒 '+L('Το αρχείο απογραφών είναι στο πακέτο ADVANCED','Stock-take archive is an ADVANCED feature'));return;}
+  ST.view='stakes';const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
+  document.getElementById('hTitle').textContent='📚 '+L('Απογραφές','Stock-takes');
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  let takes=[];
+  try{const {data}=await sb.from('stock_takes').select('*').eq('tenant_id',curTenant()).order('take_date',{ascending:false}).order('created_at',{ascending:false});takes=data||[];}catch(e){}
+  const canDelete=(ST.role==='admin'||ST.role==='owner');
+  let h='<div style="margin-top:10px">';
+  h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent);font-size:12px;color:var(--muted)">📸 '+L('Κλειδωμένες απογραφές αποθέματος ανά τμήμα & ημερομηνία. Πάτα μία για ανάλυση ανά προϊόν.','Locked stock snapshots per section & date. Tap one for per-product detail.')+'</div>';
+  if(!takes.length){h+='<div class="card muted" style="text-align:center;margin-top:12px">'+L('Καμία απογραφή ακόμα — πάτα «📸 Κλείδωσε απογραφή» στις Παραγγελίες.','No stock-takes yet — tap «📸 Save stock-take» in Orders.')+'</div>';c.innerHTML=h+'</div>';return;}
+  // ομαδοποίηση ανά ημερομηνία για ωραία εμφάνιση
+  takes.forEach(t=>{
+    h+='<div class="row" onclick="openStockTake(\''+t.id+'\')" style="margin-top:8px">'+
+      '<div style="flex:1;min-width:0"><div class="name">'+kindLabel(t.kind)+' · <span style="color:var(--accent)">'+money(t.total_value)+'</span></div>'+
+      '<div style="font-size:12px;color:var(--muted)">📅 '+dGRs(t.take_date)+' · '+t.item_count+' '+L('προϊόντα','products')+(t.created_by?(' · '+esc(t.created_by)):'')+'</div></div>'+
+      (canDelete?'<button class="del" onclick="event.stopPropagation();delStockTake(\''+t.id+'\',\''+esc(kindLabel(t.kind))+' '+dGRs(t.take_date)+'\')">🗑</button>':'')+
+      '<div style="color:var(--accent);font-size:18px;margin-left:6px">›</div></div>';
+  });
+  h+='</div>';c.innerHTML=h;
+}
+async function openStockTake(id){
+  ST.view='stakeDetail';const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','stockTakeHistory()');}
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  let head=null,lines=[];
+  try{const {data:h1}=await sb.from('stock_takes').select('*').eq('id',id).single();head=h1;
+    const {data:l1}=await sb.from('stock_take_lines').select('*').eq('take_id',id);lines=l1||[];}catch(e){}
+  if(!head){c.innerHTML='<div class="err">'+L('Δεν βρέθηκε','Not found')+'</div>';return;}
+  document.getElementById('hTitle').textContent=kindLabel(head.kind)+' · '+dGRs(head.take_date);
+  lines.sort((a,b)=>(b.line_value||0)-(a.line_value||0));
+  let h='<div style="margin-top:10px"><div class="card" style="background:var(--accent-bg);border-color:var(--accent);text-align:center">'+
+    '<div style="font-size:28px;font-weight:800;color:var(--accent)">'+money(head.total_value)+'</div>'+
+    '<div style="font-size:13px;color:var(--accent)">'+kindLabel(head.kind)+' · '+dGRs(head.take_date)+' · '+head.item_count+' '+L('προϊόντα','products')+'</div></div>';
+  h+='<div class="card" style="padding:10px;width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;min-width:520px;border-collapse:collapse;font-size:12px;white-space:nowrap">'+
+    '<thead><tr style="background:var(--ink);color:#fff">'+[lbl('wProduct','Προϊόν'),lbl('wCategory','Κατηγορία'),lbl('phhQty','Ποσότητα'),lbl('pdAvgPrice','Τιμή'),lbl('pdSumSpend','Αξία')].map(x=>'<th style="padding:7px 8px">'+x+'</th>').join('')+'</tr></thead><tbody>';
+  lines.forEach((r,i)=>{
+    h+='<tr style="'+(i%2?'background:#fafbfc':'')+';border-bottom:1px solid var(--line)">'+
+      '<td style="padding:6px 8px;text-align:left;font-weight:600;white-space:normal">'+esc(r.sku||'—')+'</td>'+
+      '<td style="padding:6px 8px;text-align:center;color:var(--muted)">'+esc(r.category||'—')+'</td>'+
+      '<td style="padding:6px 8px;text-align:center">'+fmtQty(r.qty)+'</td>'+
+      '<td style="padding:6px 8px;text-align:center">'+money(r.unit_price)+'</td>'+
+      '<td style="padding:6px 8px;text-align:center;font-weight:700">'+money(r.line_value)+'</td>'+
+    '</tr>';
+  });
+  h+='</tbody></table></div></div></div>';
+  if(ST.role==='admin'||ST.role==='owner')h+='<button class="btn ghost" style="border-color:var(--bad);color:var(--bad);margin-top:10px" onclick="delStockTake(\''+head.id+'\',\''+esc(kindLabel(head.kind))+' '+dGRs(head.take_date)+'\',true)">🗑 '+L('Διαγραφή απογραφής','Delete stock-take')+'</button>';
+  h+='</div>';c.innerHTML=h;
+}
+async function delStockTake(id,label,goBack){
+  if(ST.role!=='admin'&&ST.role!=='owner'){toast('❌ '+L('Μόνο owner/admin','Owner/admin only'));return;}
+  if(!confirm(L('Διαγραφή απογραφής','Delete stock-take')+' «'+label+'»;\n'+L('Δεν αναιρείται.','Cannot be undone.')))return;
+  try{
+    await sb.from('stock_take_lines').delete().eq('take_id',id);
+    await sb.from('stock_takes').delete().eq('id',id);
+    toast('🗑 '+L('Διαγράφηκε','Deleted'));
+    if(goBack)stockTakeHistory();else stockTakeHistory();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
 function calcOrd(pid){
   const isBev=ST.okind==='beverage';
   const g=k=>parseFloat((document.getElementById('o-'+pid+'-'+k)||{}).value)||0;
@@ -3307,7 +3406,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·98';
+const BUILD='v'+'2026.07.04·100';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
