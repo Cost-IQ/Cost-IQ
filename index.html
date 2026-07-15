@@ -1977,7 +1977,7 @@ function profitResultsHtml(R){
     '</div>';
   };
   let h=cardP('📊 '+T('Δηλωμένη','Declared'),D,'');
-  if(R.hasCash)h+=cardP('💵 '+T('Πραγματική (με μετρητά)','Real (incl. cash)'),RE,T('+ αδήλωτα μετρητά','+ unrecorded cash'));
+  if(R.hasCash)h+=cardP('💵 '+T('Πραγματική (με μετρητά)','Real (incl. cash)'),RE,T('+ μετρητά','+ cash'));
   h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">📈 '+T('Δείκτες','Ratios')+'</h3>'+
     '<div class="kv"><span class="k">Food Cost</span><span class="v" style="color:'+badge(D.foodPct,30,35)+'">'+pct(D.foodPct)+' <span style="font-size:11px;color:var(--muted)">(≤30%)</span></span></div>'+
     '<div class="kv"><span class="k">Beverage Cost</span><span class="v" style="color:'+badge(D.bevPct,25,30)+'">'+pct(D.bevPct)+' <span style="font-size:11px;color:var(--muted)">(≤25%)</span></span></div>'+
@@ -2007,7 +2007,7 @@ function drawProfit(){
       f('pf-rent',T('Ενοίκιο','Rent'),p.rent)+
       f('pf-util',T('ΔΕΗ/Νερό/Internet','Utilities'),p.utilities)+
       f('pf-oth',T('Λοιπά Έξοδα','Other Expenses'),p.other_expenses)+
-      f('pf-cash','💵 '+T('Μετρητά (αδήλωτα)','Cash (unrecorded)'),p.sales_cash_unrec)+
+      f('pf-cash','💵 '+T('Μετρητά','Cash'),p.sales_cash_unrec)+
       f('pf-tax','🧾 '+T('Φόρος % (προαιρετικό)','Tax % (optional)'),p.tax_pct)+
     '</div>'+
     '<div style="font-size:11px;color:var(--muted);margin:10px 0 4px">'+T('Αγορές (Αυτόματα από Τιμολόγια + Χειροκίνητες Αγορές — άφησε κενό)','Purchases (Auto from Invoices + Manual Purchases — leave empty)')+':</div>'+
@@ -3306,7 +3306,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·94';
+const BUILD='v'+'2026.07.04·95';
 // ═══════════ MULTI-TENANT: Μαγαζιά & Μέλη ═══════════
 const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 // ─────────── GMAIL INTEGRATION (Φάση 1) ───────────
