@@ -214,7 +214,7 @@ const EN_DEF={
   pdSumQty:'Total Quantity',pdSumSpend:'Total Spend',pdAvgPrice:'Avg Price',pdLast:'Last',pdChgE:'Change €',pdChgP:'Change %',pdHistH:'HISTORY',pdNoRec:'No records in this period',
   p9m:'9 Months',pCustom:'Custom',wUnitWord:'unit',rcSetYield:'set yield',wAll:'All',wAllM:'All',rcSaveAll:'Save all'
 };
-function persistNav(){try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,homeView:ST.homeView,lang:ST.lang}));}catch(e){}}
+function persistNav(){try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,repsub:ST.repsub,homeView:ST.homeView,lang:ST.lang}));}catch(e){}}
 function rerenderCurrent(){
   if(ST.section==='events')return renderEvents();
   if(ST.view==='gmail')return gmailList();
@@ -560,7 +560,7 @@ async function loadAll(){
   try{const nav=JSON.parse(localStorage.getItem('ciq_nav')||localStorage.getItem('ciq_section')&&JSON.stringify({section:localStorage.getItem('ciq_section')})||'{}');
     if(nav.section)ST.section=nav.section;
     if(nav.lang){ST.lang=nav.lang;const lb=document.getElementById('langBtn');if(lb)lb.innerHTML=langFlag();}
-    if(nav.kind)ST.kind=nav.kind; if(nav.okind)ST.okind=nav.okind; if(nav.invsub)ST.invsub=nav.invsub;
+    if(nav.kind)ST.kind=nav.kind; if(nav.okind)ST.okind=nav.okind; if(nav.invsub)ST.invsub=nav.invsub; if(nav.repsub)ST.repsub=nav.repsub;
     ST.homeView=!!nav.homeView;
     if(nav.prod&&nav.view==='detail'){const p=ST.products.find(x=>x.id===nav.prod);if(p){ST.prod=p;ST.view='detail';}}
     else if(nav.recipe&&nav.view==='detail'){const r=ST.recipes.find(x=>x.id===nav.recipe);if(r){ST.recipe=r;ST.view='detail';}}
@@ -2364,7 +2364,7 @@ function drawProfit(){
   box.style.display='block';box.style.minHeight='0';
   const T=(el,en)=>L(el,en);
   const per=[['month',T('Μήνας','Month')],['quarter',T('Τρίμηνο','Quarter')],['half',T('Εξάμηνο','Half')],['year',T('Έτος','Year')]];
-  let h='<div style="margin-top:10px">';
+  let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:1400px;margin:0 auto">';
   h+='<div class="tabs" style="flex-wrap:wrap">'+per.map(x=>'<button class="tab'+((ST.pfType||'month')===x[0]?' active':'')+'" onclick="ST.pfType=\''+x[0]+'\';loadProfit()">'+x[1]+'</button>').join('')+'</div>';
   h+='<div style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="month" id="pf-when" value="'+((ST.pfDate||new Date().toISOString().slice(0,10)).slice(0,7))+'" onchange="ST.pfDate=this.value+\'-01\';loadProfit()" style="padding:8px;border:1px solid var(--line);border-radius:8px"><b style="color:var(--accent)">'+pLabel()+'</b></div>';
   const f=(id,lb,val,ph)=>'<div class="field" style="margin-bottom:6px"><label style="font-size:12px">'+lb+'</label><input id="'+id+'" type="number" step="0.01" value="'+(val!=null&&val!==''?val:'')+'" placeholder="'+(ph||'0')+'" oninput="pfLive()"></div>';
@@ -2395,7 +2395,7 @@ function drawProfit(){
   '</div>';
   // ΔΕΞΙΑ: Αποτελέσματα
   h+='<div id="pf-results">'+profitResultsHtml(R)+'</div>';
-  h+='</div></div>';
+  h+='</div></div></div>';
   box.innerHTML=h;
 }
 function pfLive(){
@@ -3684,7 +3684,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·126';
+const BUILD='v'+'2026.07.04·127';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
