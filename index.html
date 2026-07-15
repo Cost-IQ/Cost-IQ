@@ -1907,8 +1907,8 @@ function setRepSub(s){ST.repsub=s;renderStats();}
 function renderStats(){
   const c=document.getElementById('content');
   const sub=ST.repsub||'overview';
-  const b=(id,l)=>'<div class="tab '+(sub===id?'active':'')+'" style="flex:0 0 auto;padding:9px 12px;white-space:nowrap" onclick="setRepSub(\''+id+'\')">'+l+'</div>';
-  let h=sectionNav()+'<div class="tabs" style="margin-top:8px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;padding-bottom:4px">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+(ST.plan!=='basic'?b('menu','🍽️ '+lbl('sMenuEng','Menu Engineering')):'')+'</div>';
+  const b=(id,l)=>'<div class="tab '+(sub===id?'active':'')+'" style="flex:1 1 0;padding:9px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;font-size:13px" onclick="setRepSub(\''+id+'\')">'+l+'</div>';
+  let h=sectionNav()+'<div class="tabs" style="margin-top:8px;flex-wrap:nowrap;gap:5px">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+(ST.plan!=='basic'?b('menu','🍽️ '+lbl('sMenuEng','Menu Engineering')):'')+'</div>';
   if(sub==='price')h+=priceDbView();
   else if(sub==='purchased')h+=purchasedView();
   else if(sub==='profit')h+=profitView();
@@ -1941,8 +1941,8 @@ function scoreClass(score,cmHigh,sellHigh){
 function menuEngCalc(){
   const kind=ST.meKind||'cocktail';
   const recs=(ST.recipes||[]).filter(r=>r.kind===kind && !r.is_homemade);
-  const sold=ST.meSold||{};
-  const off=ST.meOff||{};
+  const sold=ST.meSold||(ST.meSold={});
+  const off=ST.meOff||(ST.meOff={});
   const rows=[];
   let totalSold=0,totalRev=0,totalCM=0,activeCount=0,sumCM=0;
   recs.forEach(r=>{
@@ -1978,6 +1978,8 @@ function loadMenuEng(){
 }
 function menuEngView(){
   if(ST.plan==='basic')return '<div class="card muted" style="text-align:center;margin-top:14px">🔒 '+L('Advanced feature','Advanced feature')+'</div>';
+  if(!ST.meKind)ST.meKind='cocktail';
+  ST.meSold=ST.meSold||{}; ST.meOff=ST.meOff||{};
   const kind=ST.meKind||'cocktail';
   const R=menuEngCalc();
   let h='<div style="margin-top:10px">';
@@ -3608,7 +3610,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·102';
+const BUILD='v'+'2026.07.04·103';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
