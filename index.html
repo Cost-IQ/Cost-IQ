@@ -1069,6 +1069,12 @@ function recipeCalc(rec,depth){
   return {lines,total,waste,realCost,retail,retailNet,netProfit,costPct};
 }
 const RKINDS=[['cocktail','Spirits & Cocktails'],['hotcold','Hot & Cold Beverages'],['food','Food']];
+const RSUBS={
+  cocktail:[['Classics','Classics'],['Signature','Signature'],['Non-Alcoholic','Non-Alcoholic']],
+  hotcold:[['Καφέδες','Coffee'],['Ροφήματα','Hot Drinks'],['Χυμοί & Smoothies','Juices & Smoothies'],['Αναψυκτικά','Soft Drinks']],
+  food:[['Σαλάτες','Salads'],['Ορεκτικά','Starters'],['Κυρίως','Mains'],['Γλυκά','Desserts']]
+};
+function subLabel(kind,val){const arr=RSUBS[kind]||[];const f=arr.find(x=>x[0]===val);return f?(ST.lang==='en'?f[1]:f[0]):val;}
 const RUNITS=['ml','g','τεμ'];
 function setRkind(k){ST.rkind=k;renderRecipes();}
 function prodDatalistHtml(){
@@ -1143,6 +1149,34 @@ function openRecipe(rid){
   document.getElementById('hTitle').textContent=r.name;
   drawRecipe();
 }
+// Κάρτα «Υποκατηγορία» στη φόρμα συνταγής (έτοιμες + δικές του + ➕ Νέα)
+function subcatCardHtml(r){
+  const kind=r.kind||'cocktail';
+  const preset=RSUBS[kind]||[];
+  const cur=r.sub_category||'';
+  // μάζεψε και τυχόν custom υποκατηγορίες που υπάρχουν ήδη σε συνταγές αυτής της κατηγορίας
+  const custom=[...new Set((ST.recipes||[]).filter(x=>x.kind===kind&&x.sub_category).map(x=>x.sub_category))]
+    .filter(v=>!preset.some(p=>p[0]===v));
+  let opts='<option value="">'+L('— χωρίς —','— none —')+'</option>';
+  preset.forEach(p=>{opts+='<option value="'+esc(p[0])+'"'+(cur===p[0]?' selected':'')+'>'+esc(ST.lang==='en'?p[1]:p[0])+'</option>';});
+  custom.forEach(v=>{opts+='<option value="'+esc(v)+'"'+(cur===v?' selected':'')+'>'+esc(v)+'</option>';});
+  opts+='<option value="__new__">➕ '+L('Νέα Υποκατηγορία','New Sub-Category')+'</option>';
+  return '<div class="card" style="margin:0 0 14px"><div class="field" style="margin:0"><label>'+lbl('wSubcat','Υποκατηγορία')+'</label>'+
+    '<select onchange="changeRecipeSub(\''+r.id+'\',this.value)" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+opts+'</select></div></div>';
+}
+async function changeRecipeSub(rid,val){
+  const r=ST.recipes.find(x=>x.id===rid); if(!r)return;
+  if(val==='__new__'){
+    const nv=prompt(L('Νέα υποκατηγορία:','New sub-category:'),'');
+    if(nv===null){drawRecipe();return;}
+    val=nv.trim();
+    if(!val){drawRecipe();return;}
+  }
+  try{await sb.from('recipes').update({sub_category:val||null}).eq('id',rid);
+    if(r)r.sub_category=val||null; ST.recipe=r;
+    toast('✅ '+L('Αποθηκεύτηκε','Saved')); drawRecipe();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
 function drawRecipe(){persistNav();
   const r=ST.recipe;const c=document.getElementById('content');
   const cc=recipeCalc(r);const col=cmColor(cc.costPct);
@@ -1189,6 +1223,7 @@ function drawRecipe(){persistNav();
     topCard+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;align-items:start;margin-top:14px">'+
       '<div>'+
+        subcatCardHtml(r)+
         '<div class="card" style="margin:0 0 14px"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">'+lbl('rcIngredients','ΥΛΙΚΑ')+' ('+ings.length+')</h3>'+ingHtml+
           '<div class="kv" style="margin-top:10px;border-top:2px solid var(--line);padding-top:10px"><span class="k">'+lbl('rcTotalCost','Συνολικό Κόστος')+'</span><span class="v">€'+cc.total.toFixed(2)+'</span></div>'+
         '</div>'+
@@ -1946,7 +1981,8 @@ function scoreClass(score,cmHigh,sellHigh){
 // Υπολογίζει την ανάλυση από τα recipes της κατηγορίας + τις πωλήσεις (ST.meSold) + on/off (ST.meOff)
 function menuEngCalc(){
   const kind=ST.meKind||'cocktail';
-  const recs=(ST.recipes||[]).filter(r=>r.kind===kind && !r.is_homemade);
+  const sub=ST.meSub||'';
+  const recs=(ST.recipes||[]).filter(r=>r.kind===kind && !r.is_homemade && (!sub || r.sub_category===sub));
   const sold=ST.meSold||(ST.meSold={});
   const off=ST.meOff||(ST.meOff={});
   const rows=[];
@@ -1991,9 +2027,20 @@ function menuEngView(){
   let h='<div style="margin-top:10px">';
   // επιλογέας κατηγορίας
   h+='<div style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:8px">'+
-    MKINDS.map(([k,label])=>'<div class="tab '+(kind===k?'active':'')+'" style="flex:0 0 auto;white-space:nowrap;padding:9px 14px" onclick="ST.meKind=\''+k+'\';renderStats()">'+esc(label)+'</div>').join('')+'</div>';
+    MKINDS.map(([k,label])=>'<div class="tab '+(kind===k?'active':'')+'" style="flex:0 0 auto;white-space:nowrap;padding:9px 14px" onclick="ST.meKind=\''+k+'\';ST.meSub=\'\';renderStats()">'+esc(label)+'</div>').join('')+'</div>';
+  // φίλτρο υποκατηγορίας (έτοιμες + όσες υπάρχουν στις συνταγές)
+  const preset=RSUBS[kind]||[];
+  const usedSubs=[...new Set((ST.recipes||[]).filter(r=>r.kind===kind&&!r.is_homemade&&r.sub_category).map(r=>r.sub_category))];
+  const allSubs=[]; preset.forEach(p=>{if(!allSubs.includes(p[0]))allSubs.push(p[0]);}); usedSubs.forEach(s=>{if(!allSubs.includes(s))allSubs.push(s);});
+  if(allSubs.length){
+    const curSub=ST.meSub||'';
+    h+='<div class="field" style="margin-bottom:8px"><select onchange="ST.meSub=this.value;renderStats()" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:var(--card)">'+
+      '<option value="">'+L('Όλες οι Υποκατηγορίες','All Sub-Categories')+'</option>'+
+      allSubs.map(s=>'<option value="'+esc(s)+'"'+(curSub===s?' selected':'')+'>'+esc(subLabel(kind,s))+'</option>').join('')+
+    '</select></div>';
+  }
   h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent);font-size:12px;color:var(--muted)">💡 '+L('Βάλε πόσα πούλησε το κάθε επιλεγμένο προιον. Το σκορ (0-100) συνδυάζει κέρδος × δημοτικότητα. Βγάλε από την ανάλυση όσα δεν θες (π.χ. signature) με το ✓/✗. Μετά αποθήκευσε με ημερομηνία για να συγκρίνεις μήνες.','Enter how many each item sold. Score (0-100) combines profit × popularity. Exclude items you do not want (e.g. signature). Then save with a date to compare months.')+'</div>';
-  const recs=(ST.recipes||[]).filter(r=>r.kind===kind && !r.is_homemade);
+  const recs=(ST.recipes||[]).filter(r=>r.kind===kind && !r.is_homemade && (!ST.meSub || r.sub_category===ST.meSub));
   if(!recs.length){h+='<div class="card muted" style="text-align:center">'+L('Καμία συνταγή σε αυτή την κατηγορία. Φτιάξε συνταγές πρώτα (με τιμή πώλησης).','No recipes in this category. Create recipes first (with selling price).')+'</div><div style="margin-top:10px">'+menuEngHistoryBtn()+'</div></div>';return h;}
   // ── Κάρτες αποτελεσμάτων ──
   if(R.activeCount){
@@ -3617,7 +3664,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·112';
+const BUILD='v'+'2026.07.04·113';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
