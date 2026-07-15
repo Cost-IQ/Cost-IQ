@@ -1597,10 +1597,11 @@ function renderOrders(){
   if(q)items=items.filter(p=>(p.sku||'').toLowerCase().includes(q)||(p.category||'').toLowerCase().includes(q));
   const groups={};items.forEach(p=>{const k=p.category||'—';(groups[k]=groups[k]||[]).push(p);});
   let h=sectionNav()+
+    '<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto">'+
     '<div class="tabs lap-tabs">'+
       '<div class="tab '+(ST.okind==='beverage'?'active':'')+'" onclick="setOKind(\'beverage\')">🍺 '+lbl('kindBeverage','Ποτά')+'</div>'+
       '<div class="tab '+(ST.okind==='food'?'active':'')+'" onclick="setOKind(\'food\')">🍽️ '+lbl('kindFood','Φαγητό')+'</div>'+
-      '<div class="tab '+(ST.okind==='supplies'?'active':'')+'" onclick="setOKind(\'supplies\')">📦 '+lbl('kindSupplies','Αναλώσιμα')+'</div></div>'+
+      '<div class="tab '+(ST.okind==='supplies'?'active':'')+'" onclick="setOKind(\'supplies\')">📦 '+lbl('kindSupplies','Αναλώσιμα')+'</div></div></div></div>'+
     '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="orderSummary()">📋 '+lbl('oSummary','Σύνοψη & Αποστολή')+'</button>'+
     '<button class="btn" style="flex:1;background:var(--card);color:var(--accent);border:1px solid var(--accent)" onclick="renderOrderHistory()">🕘 '+lbl('oHistory','Ιστορικό')+'</button></div>'+
     '<input class="search" autocomplete="off" autocorrect="off" spellcheck="false" id="oq" placeholder="'+lbl('oSearch','🔍 Αναζήτηση…')+'" oninput="debSearch(renderOrders)" value="'+esc(q)+'" style="margin-top:10px">'+
@@ -3678,7 +3679,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·120';
+const BUILD='v'+'2026.07.04·121';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
