@@ -1938,10 +1938,10 @@ function menuKindLabel(k){const f=MKINDS.find(x=>x[0]===k);return f?f[1]:k;}
 // Κατηγορία & χρώμα από σκορ
 function scoreClass(score,cmHigh,sellHigh){
   // 4 τετράγωνα: κέρδος(CM) × δημοτικότητα(πωλήσεις)
-  if(sellHigh&&cmHigh)return {k:'champion',emo:'🟢',col:'var(--ok)',el:'Πρωταθλητής',en:'Champion',tipEl:'Κράτα & πρόβαλέ το',tipEn:'Keep & promote'};
-  if(sellHigh&&!cmHigh)return {k:'fix',emo:'🟡',col:'#e0a800',el:'Θέλει διόρθωση',en:'Needs fixing',tipEl:'Ανέβασε τιμή ή ρίξε κόστος',tipEn:'Raise price or cut cost'};
-  if(!sellHigh&&cmHigh)return {k:'hidden',emo:'🔵',col:'var(--accent)',el:'Κρυμμένος θησαυρός',en:'Hidden gem',tipEl:'Διαφήμισέ το · καλύτερη θέση στο μενού',tipEn:'Promote it · better menu spot'};
-  return {k:'cut',emo:'🔴',col:'var(--bad)',el:'Υποψήφιο για κόψιμο',en:'Consider cutting',tipEl:'Σκέψου να το βγάλεις από το μενού',tipEn:'Consider removing from menu'};
+  if(sellHigh&&cmHigh)return {k:'champion',emo:'🟢',col:'var(--ok)',el:'Πρωταθλητής',en:'Champion',tipEl:'Κράτα & Πρόβαλέ το',tipEn:'Keep & Promote it'};
+  if(sellHigh&&!cmHigh)return {k:'fix',emo:'🟡',col:'#e0a800',el:'Θέλει Διόρθωση',en:'Needs Fixing',tipEl:'Ανέβασε Τιμή ή Ρίξε Κόστος',tipEn:'Raise Price or Cut Cost'};
+  if(!sellHigh&&cmHigh)return {k:'hidden',emo:'🔵',col:'var(--accent)',el:'Κρυμμένος Θησαυρός',en:'Hidden Gem',tipEl:'Διαφήμισέ το · Καλύτερη Θέση στο Μενού',tipEn:'Promote it · Better Menu Spot'};
+  return {k:'cut',emo:'🔴',col:'var(--bad)',el:'Υποψήφιο για Κόψιμο',en:'Consider Cutting',tipEl:'Σκέψου να το Βγάλεις από το Μενού',tipEn:'Consider Removing from Menu'};
 }
 // Υπολογίζει την ανάλυση από τα recipes της κατηγορίας + τις πωλήσεις (ST.meSold) + on/off (ST.meOff)
 function menuEngCalc(){
@@ -2014,14 +2014,14 @@ function menuEngView(){
     h+='<div class="card" style="padding:12px;margin-top:8px;border-left:4px solid '+r.cls.col+'">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'+
         '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+r.cls.emo+' '+esc(r.name)+'</div>'+
-          '<div style="font-size:11px;color:var(--muted)">'+L('Πώληση','Sale')+' '+money(r.price)+' · '+L('κόστος','cost')+' '+money(r.cost)+' · '+L('συνεισφορά','contribution')+' <b style="color:'+r.cls.col+'">'+money(r.cm)+'</b>'+(r.mix>0?(' · '+r.mix.toFixed(1)+'% '+L('των πωλήσεων','of sales')):'')+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+L('Πώληση','Sale')+' '+money(r.price)+' · '+L('Κόστος','Cost')+' '+money(r.cost)+' · '+L('Συνεισφορά','Contribution')+' <b style="color:'+r.cls.col+'">'+money(r.cm)+'</b>'+(r.mix>0?(' · '+r.mix.toFixed(1)+'% '+L('των Πωλήσεων','of Sales')):'')+'</div>'+
         '</div>'+
         '<div style="text-align:center;min-width:52px"><div style="font-size:24px;font-weight:800;color:'+r.cls.col+'">'+r.score+'</div><div style="font-size:9px;color:var(--muted)">score</div></div>'+
       '</div>'+
       '<div style="display:flex;gap:8px;align-items:center;margin-top:8px">'+
-        '<div style="flex:1"><label style="font-size:10px;color:var(--muted)">'+L('Πόσα πούλησε','Number sold')+'</label>'+
+        '<div style="flex:1"><label style="font-size:10px;color:var(--muted)">'+L('Πόσα Πούλησε','Number Sold')+'</label>'+
           '<input type="number" min="0" value="'+(ST.meSold[r.id]!=null?ST.meSold[r.id]:'')+'" onchange="ST.meSold[\''+r.id+'\']=this.value;renderStats()" placeholder="0" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:15px"></div>'+
-        '<button class="pick" style="margin:0;padding:8px 10px;align-self:flex-end;background:var(--ok);color:#fff;border-color:var(--ok)" title="'+L('Στην ανάλυση — πάτα για εξαίρεση','In analysis — tap to exclude')+'" onclick="ST.meOff[\''+r.id+'\']=true;renderStats()">✓ '+L('μέσα','in')+'</button>'+
+        '<button class="pick" style="margin:0;padding:8px 10px;align-self:flex-end;background:var(--ok);color:#fff;border-color:var(--ok)" title="'+L('Στην ανάλυση — πάτα για εξαίρεση','In analysis — tap to exclude')+'" onclick="ST.meOff[\''+r.id+'\']=true;renderStats()">✓ '+L('Μέσα','In')+'</button>'+
       '</div>'+
       '<div style="font-size:12px;color:'+r.cls.col+';margin-top:8px;font-weight:600">'+cls.lab+' — <span style="font-weight:400;color:var(--muted)">'+cls.tip+'</span></div>'+
     '</div>';
@@ -2099,16 +2099,16 @@ async function openMenuAnalysis(id){
   if(!head){c.innerHTML='<div class="err">'+L('Δεν βρέθηκε','Not found')+'</div>';return;}
   document.getElementById('hTitle').textContent=menuKindLabel(head.rkind)+' · '+dGRs(head.analysis_date);
   lines.sort((a,b)=>(b.score||0)-(a.score||0));
-  const KL={champion:['🟢','var(--ok)',L('Πρωταθλητής','Champion')],fix:['🟡','#e0a800',L('Θέλει διόρθωση','Needs fixing')],hidden:['🔵','var(--accent)',L('Κρυμμένος θησαυρός','Hidden gem')],cut:['🔴','var(--bad)',L('Υποψήφιο για κόψιμο','Consider cutting')]};
+  const KL={champion:['🟢','var(--ok)',L('Πρωταθλητής','Champion')],fix:['🟡','#e0a800',L('Θέλει Διόρθωση','Needs Fixing')],hidden:['🔵','var(--accent)',L('Κρυμμένος Θησαυρός','Hidden Gem')],cut:['🔴','var(--bad)',L('Υποψήφιο για Κόψιμο','Consider Cutting')]};
   let h='<div style="margin-top:10px"><div class="card" style="background:var(--accent-bg);border-color:var(--accent);text-align:center">'+
     '<div style="font-size:15px;font-weight:700;color:var(--accent)">'+menuKindLabel(head.rkind)+'</div>'+
-    '<div style="font-size:13px;color:var(--muted)">📅 '+dGRs(head.analysis_date)+' · '+head.total_sold+' '+L('πωλήσεις','sold')+' · '+money(head.total_cm)+' '+L('συνεισφορά','contribution')+'</div></div>';
+    '<div style="font-size:13px;color:var(--muted)">📅 '+dGRs(head.analysis_date)+' · '+head.total_sold+' '+L('πωλήσεις','sold')+' · '+money(head.total_cm)+' '+L('Συνεισφορά','Contribution')+'</div></div>';
   lines.forEach(r=>{
     const kl=KL[r.klass]||['⚪','var(--muted)',''];
     h+='<div class="card" style="padding:10px;margin-top:6px;border-left:4px solid '+kl[1]+'">'+
       '<div style="display:flex;justify-content:space-between;align-items:center">'+
         '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+kl[0]+' '+esc(r.name)+'</div>'+
-          '<div style="font-size:11px;color:var(--muted)">'+r.number_sold+' '+L('πωλήσεις','sold')+' · '+r.sales_mix.toFixed(1)+'% · '+L('συνεισφορά','contribution')+' '+money(r.contribution)+' · '+kl[2]+'</div></div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+r.number_sold+' '+L('πωλήσεις','sold')+' · '+r.sales_mix.toFixed(1)+'% · '+L('Συνεισφορά','Contribution')+' '+money(r.contribution)+' · '+kl[2]+'</div></div>'+
         '<div style="text-align:center;min-width:48px"><div style="font-size:22px;font-weight:800;color:'+kl[1]+'">'+r.score+'</div><div style="font-size:9px;color:var(--muted)">score</div></div>'+
       '</div></div>';
   });
@@ -3617,7 +3617,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·108';
+const BUILD='v'+'2026.07.04·110';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
