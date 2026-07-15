@@ -1907,8 +1907,8 @@ function setRepSub(s){ST.repsub=s;renderStats();}
 function renderStats(){
   const c=document.getElementById('content');
   const sub=ST.repsub||'overview';
-  const b=(id,l)=>'<div class="tab '+(sub===id?'active':'')+'" style="flex:0 0 auto;padding:9px 12px" onclick="setRepSub(\''+id+'\')">'+l+'</div>';
-  let h=sectionNav()+'<div class="tabs" style="margin-top:8px;flex-wrap:wrap">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+(ST.plan!=='basic'?b('menu','🍽️ '+lbl('sMenuEng','Menu Engineering')):'')+'</div>';
+  const b=(id,l)=>'<div class="tab '+(sub===id?'active':'')+'" style="flex:0 0 auto;padding:9px 12px;white-space:nowrap" onclick="setRepSub(\''+id+'\')">'+l+'</div>';
+  let h=sectionNav()+'<div class="tabs" style="margin-top:8px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;padding-bottom:4px">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+(ST.plan!=='basic'?b('menu','🍽️ '+lbl('sMenuEng','Menu Engineering')):'')+'</div>';
   if(sub==='price')h+=priceDbView();
   else if(sub==='purchased')h+=purchasedView();
   else if(sub==='profit')h+=profitView();
@@ -3608,7 +3608,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·101';
+const BUILD='v'+'2026.07.04·102';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
