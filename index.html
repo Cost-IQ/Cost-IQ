@@ -73,6 +73,8 @@
   @media(min-width:601px){
     .stat-tabs{flex-wrap:nowrap!important}
     .stat-tabs .tab{flex:1 1 0!important;min-width:0!important}
+    .lap-tabs{display:flex!important;gap:8px!important;flex-wrap:nowrap!important}
+    .lap-tabs>.tab{flex:1 1 0!important;min-width:0!important}
   }
 </style>
 </head>
@@ -1105,8 +1107,8 @@ function renderRecipes(){
   if(!ST.rkind)ST.rkind='cocktail';
   const home=!!ST.homeView;
   const q=(document.getElementById('rq')?document.getElementById('rq').value:'').toLowerCase().trim();
-  let h=sectionNav()+'<div class="tabs" style="display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px;justify-content:center">'+
-    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'active':'')+'" style="flex:1 1 auto;min-width:130px;white-space:nowrap;padding:9px 12px;text-align:center" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div>';
+  let h=sectionNav()+'<div class="tabs lap-tabs" style="display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px">'+
+    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'active':'')+'" style="white-space:nowrap" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div>';
   if(!ST.recipes||!ST.recipes.length){
     h+='<div class="card muted" style="text-align:center;margin-top:14px">'+L('Καμία συνταγή ακόμα — πάτα «+ Νέα Συνταγή» ή «+ Νέα Homemade».','No recipes yet — tap «+ New Recipe» or «+ New Homemade».')+'</div>';
     c.innerHTML=h;return;
@@ -1595,10 +1597,10 @@ function renderOrders(){
   if(q)items=items.filter(p=>(p.sku||'').toLowerCase().includes(q)||(p.category||'').toLowerCase().includes(q));
   const groups={};items.forEach(p=>{const k=p.category||'—';(groups[k]=groups[k]||[]).push(p);});
   let h=sectionNav()+
-    '<div class="tabs" style="flex-wrap:wrap;justify-content:center">'+
-      '<div class="tab '+(ST.okind==='beverage'?'active':'')+'" style="flex:1 1 auto;min-width:110px;text-align:center" onclick="setOKind(\'beverage\')">🍺 '+lbl('kindBeverage','Ποτά')+'</div>'+
-      '<div class="tab '+(ST.okind==='food'?'active':'')+'" style="flex:1 1 auto;min-width:110px;text-align:center" onclick="setOKind(\'food\')">🍽️ '+lbl('kindFood','Φαγητό')+'</div>'+
-      '<div class="tab '+(ST.okind==='supplies'?'active':'')+'" style="flex:1 1 auto;min-width:110px;text-align:center" onclick="setOKind(\'supplies\')">📦 '+lbl('kindSupplies','Αναλώσιμα')+'</div></div>'+
+    '<div class="tabs lap-tabs">'+
+      '<div class="tab '+(ST.okind==='beverage'?'active':'')+'" onclick="setOKind(\'beverage\')">🍺 '+lbl('kindBeverage','Ποτά')+'</div>'+
+      '<div class="tab '+(ST.okind==='food'?'active':'')+'" onclick="setOKind(\'food\')">🍽️ '+lbl('kindFood','Φαγητό')+'</div>'+
+      '<div class="tab '+(ST.okind==='supplies'?'active':'')+'" onclick="setOKind(\'supplies\')">📦 '+lbl('kindSupplies','Αναλώσιμα')+'</div></div>'+
     '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="orderSummary()">📋 '+lbl('oSummary','Σύνοψη & Αποστολή')+'</button>'+
     '<button class="btn" style="flex:1;background:var(--card);color:var(--accent);border:1px solid var(--accent)" onclick="renderOrderHistory()">🕘 '+lbl('oHistory','Ιστορικό')+'</button></div>'+
     '<input class="search" autocomplete="off" autocorrect="off" spellcheck="false" id="oq" placeholder="'+lbl('oSearch','🔍 Αναζήτηση…')+'" oninput="debSearch(renderOrders)" value="'+esc(q)+'" style="margin-top:10px">'+
@@ -2029,8 +2031,8 @@ function menuEngView(){
   const R=menuEngCalc();
   let h='<div style="margin-top:10px">';
   // επιλογέας κατηγορίας
-  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px">'+
-    MKINDS.map(([k,label])=>'<div class="tab '+(kind===k?'active':'')+'" style="flex:1 1 auto;min-width:110px;white-space:nowrap;padding:9px 14px;text-align:center" onclick="ST.meKind=\''+k+'\';ST.meSub=\'\';renderStats()">'+esc(label)+'</div>').join('')+'</div>';
+  h+='<div style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:8px">'+
+    MKINDS.map(([k,label])=>'<div class="tab '+(kind===k?'active':'')+'" style="flex:0 0 auto;white-space:nowrap;padding:9px 14px" onclick="ST.meKind=\''+k+'\';ST.meSub=\'\';renderStats()">'+esc(label)+'</div>').join('')+'</div>';
   // φίλτρο υποκατηγορίας (έτοιμες + όσες υπάρχουν στις συνταγές)
   const preset=RSUBS[kind]||[];
   const usedSubs=[...new Set((ST.recipes||[]).filter(r=>r.kind===kind&&!r.is_homemade&&r.sub_category).map(r=>r.sub_category))];
@@ -3385,8 +3387,8 @@ function setInvSub(s){ST.invsub=s;ST.inv=null;renderInvoices();}
 function renderInvoices(){
   const c=document.getElementById('content');
   const sub=ST.invsub||'db';
-  const b=(id,l)=>'<div class="tab '+(sub===id?'active':'')+'" style="flex:1 1 auto;min-width:110px;padding:9px 12px;white-space:nowrap;text-align:center" onclick="setInvSub(\''+id+'\')">'+l+'</div>';
-  let h=sectionNav()+'<div class="tabs" style="margin-top:8px;flex-wrap:wrap;justify-content:center">'+b('db','📋 '+lbl('iInvoices','Τιμολόγια'))+b('manual','📝 '+lbl('iManual','Χειροκίνητη Αγορά'))+b('ph','📈 '+lbl('iPriceHist','Ιστορικό Τιμών'))+'</div>';
+  const b=(id,l)=>'<div class="tab '+(sub===id?'active':'')+'" style="white-space:nowrap" onclick="setInvSub(\''+id+'\')">'+l+'</div>';
+  let h=sectionNav()+'<div class="tabs lap-tabs" style="margin-top:8px;flex-wrap:wrap">'+b('db','📋 '+lbl('iInvoices','Τιμολόγια'))+b('manual','📝 '+lbl('iManual','Χειροκίνητη Αγορά'))+b('ph','📈 '+lbl('iPriceHist','Ιστορικό Τιμών'))+'</div>';
   if(sub==='manual')h+=manualView();
   else if(sub==='ph')h+=priceHistoryView();
   else h+=invDbView();
@@ -3676,7 +3678,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·119';
+const BUILD='v'+'2026.07.04·120';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
