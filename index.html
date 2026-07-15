@@ -1944,7 +1944,7 @@ function menuEngCalc(){
   const sold=ST.meSold||(ST.meSold={});
   const off=ST.meOff||(ST.meOff={});
   const rows=[];
-  let totalSold=0,totalRev=0,totalCM=0,activeCount=0,sumCM=0;
+  let totalSold=0,totalRev=0,totalCM=0,totalCost=0,activeCount=0,sumCM=0;
   recs.forEach(r=>{
     if(off[r.id])return;                                // εξαιρέθηκε (on/off)
     const cc=recipeCalc(r);
@@ -1952,7 +1952,7 @@ function menuEngCalc(){
     const price=parseFloat(r.retail_price)||0;
     const cm=cc.netProfit;                              // συνεισφορά ανά τεμάχιο (καθαρό - κόστος)
     rows.push({id:r.id,name:r.name,n,price,cost:cc.realCost,cm,netRev:cc.retailNet});
-    totalSold+=n; totalRev+=cc.retailNet*n; totalCM+=cm*n; sumCM+=cm; activeCount++;
+    totalSold+=n; totalRev+=cc.retailNet*n; totalCM+=cm*n; totalCost=(totalCost||0)+cc.realCost*n; sumCM+=cm; activeCount++;
   });
   const avgCM=activeCount?sumCM/activeCount:0;          // μέση συνεισφορά (όριο High/Low κέρδους)
   // Όριο δημοτικότητας: 70% × μέσο μερίδιο (κλασικός κανόνας menu engineering)
@@ -1969,7 +1969,7 @@ function menuEngCalc(){
     r.score=Math.round((r.cm/maxCM)*50 + (r.n/maxN)*50);
   });
   rows.sort((a,b)=>b.score-a.score);
-  return {rows,totalSold,totalRev,totalCM,avgCM,activeCount};
+  return {rows,totalSold,totalRev,totalCM,totalCost,avgCM,activeCount};
 }
 function loadMenuEng(){
   if(!ST.meKind)ST.meKind='cocktail';
@@ -1991,10 +1991,11 @@ function menuEngView(){
   if(!recs.length){h+='<div class="card muted" style="text-align:center">'+L('Καμία συνταγή σε αυτή την κατηγορία. Φτιάξε συνταγές πρώτα (με τιμή πώλησης).','No recipes in this category. Create recipes first (with selling price).')+'</div><div style="margin-top:10px">'+menuEngHistoryBtn()+'</div></div>';return h;}
   // ── Κάρτες αποτελεσμάτων ──
   if(R.activeCount){
-    h+='<div class="card" style="text-align:center;background:var(--card)"><div style="display:flex;justify-content:space-around">'+
-      '<div><div style="font-size:20px;font-weight:800;color:var(--accent)">'+R.totalSold+'</div><div style="font-size:10px;color:var(--muted)">'+L('πωλήσεις','sold')+'</div></div>'+
-      '<div><div style="font-size:20px;font-weight:800;color:var(--ok)">'+money(R.totalCM)+'</div><div style="font-size:10px;color:var(--muted)">'+L('συνεισφορά','contribution')+'</div></div>'+
-      '<div><div style="font-size:20px;font-weight:800">'+R.activeCount+'</div><div style="font-size:10px;color:var(--muted)">'+L('πιάτα','items')+'</div></div>'+
+    h+='<div class="card" style="text-align:center;background:var(--card)"><div style="display:flex;justify-content:space-around;flex-wrap:wrap;gap:8px">'+
+      '<div style="min-width:70px"><div style="font-size:20px;font-weight:800;color:var(--accent)">'+R.totalSold+'</div><div style="font-size:10px;color:var(--muted)">'+L('Πωλήσεις','Sold')+'</div></div>'+
+      '<div style="min-width:70px"><div style="font-size:20px;font-weight:800;color:var(--bad)">'+money(R.totalCost)+'</div><div style="font-size:10px;color:var(--muted)">'+L('Συνολικό Κόστος','Total Cost')+'</div></div>'+
+      '<div style="min-width:70px"><div style="font-size:20px;font-weight:800;color:var(--ok)">'+money(R.totalRev)+'</div><div style="font-size:10px;color:var(--muted)">'+L('Τζίρος (χωρίς ΦΠΑ)','Revenue (excl. VAT)')+'</div></div>'+
+      '<div style="min-width:70px"><div style="font-size:20px;font-weight:800">'+R.activeCount+'</div><div style="font-size:10px;color:var(--muted)">'+L('Προϊόντα','Items')+'</div></div>'+
     '</div></div>';
   }
   // ── Λίστα πιάτων: input πωλήσεων + σκορ + χρώμα + σύσταση + on/off ──
@@ -2007,7 +2008,7 @@ function menuEngView(){
     h+='<div class="card" style="padding:12px;margin-top:8px;border-left:4px solid '+r.cls.col+'">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'+
         '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+r.cls.emo+' '+esc(r.name)+'</div>'+
-          '<div style="font-size:11px;color:var(--muted)">'+L('Πώληση','Sale')+' '+money(r.price)+' · '+L('κόστος','cost')+' '+money(r.cost)+' · '+L('κέρδος','margin')+' <b style="color:'+r.cls.col+'">'+money(r.cm)+'</b>'+(r.mix>0?(' · '+r.mix.toFixed(1)+'% '+L('των πωλήσεων','of sales')):'')+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+L('Πώληση','Sale')+' '+money(r.price)+' · '+L('κόστος','cost')+' '+money(r.cost)+' · '+L('συνεισφορά','contribution')+' <b style="color:'+r.cls.col+'">'+money(r.cm)+'</b>'+(r.mix>0?(' · '+r.mix.toFixed(1)+'% '+L('των πωλήσεων','of sales')):'')+'</div>'+
         '</div>'+
         '<div style="text-align:center;min-width:52px"><div style="font-size:24px;font-weight:800;color:'+r.cls.col+'">'+r.score+'</div><div style="font-size:9px;color:var(--muted)">score</div></div>'+
       '</div>'+
@@ -2076,7 +2077,7 @@ async function menuAnalysisHistory(){
   list.forEach(a=>{
     h+='<div class="row" onclick="openMenuAnalysis(\''+a.id+'\')" style="margin-top:8px">'+
       '<div style="flex:1;min-width:0"><div class="name">'+menuKindLabel(a.rkind)+'</div>'+
-      '<div style="font-size:12px;color:var(--muted)">📅 '+dGRs(a.analysis_date)+' · '+a.total_sold+' '+L('πωλήσεις','sold')+' · '+a.item_count+' '+L('πιάτα','items')+' · '+money(a.total_cm)+' CM</div></div>'+
+      '<div style="font-size:12px;color:var(--muted)">📅 '+dGRs(a.analysis_date)+' · '+a.total_sold+' '+L('πωλήσεις','sold')+' · '+a.item_count+' '+L('προϊόντα','items')+' · '+money(a.total_cm)+' CM</div></div>'+
       (canDelete?'<button class="del" onclick="event.stopPropagation();delMenuAnalysis(\''+a.id+'\',\''+esc(menuKindLabel(a.rkind))+' '+dGRs(a.analysis_date)+'\')">🗑</button>':'')+
       '<div style="color:var(--accent);font-size:18px;margin-left:6px">›</div></div>';
   });
@@ -2101,7 +2102,7 @@ async function openMenuAnalysis(id){
     h+='<div class="card" style="padding:10px;margin-top:6px;border-left:4px solid '+kl[1]+'">'+
       '<div style="display:flex;justify-content:space-between;align-items:center">'+
         '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+kl[0]+' '+esc(r.name)+'</div>'+
-          '<div style="font-size:11px;color:var(--muted)">'+r.number_sold+' '+L('πωλήσεις','sold')+' · '+r.sales_mix.toFixed(1)+'% · '+L('κέρδος','margin')+' '+money(r.contribution)+' · '+kl[2]+'</div></div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+r.number_sold+' '+L('πωλήσεις','sold')+' · '+r.sales_mix.toFixed(1)+'% · '+L('συνεισφορά','contribution')+' '+money(r.contribution)+' · '+kl[2]+'</div></div>'+
         '<div style="text-align:center;min-width:48px"><div style="font-size:22px;font-weight:800;color:'+kl[1]+'">'+r.score+'</div><div style="font-size:9px;color:var(--muted)">score</div></div>'+
       '</div></div>';
   });
@@ -3610,7 +3611,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·105';
+const BUILD='v'+'2026.07.04·106';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
