@@ -3307,7 +3307,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·97';
+const BUILD='v'+'2026.07.04·98';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -3602,9 +3602,9 @@ async function openMembers(){
     c.innerHTML=h; return;
   }
   h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">➕ '+L('Νέο μέλος','New member')+'</h3>'+
-    '<div class="field"><label>'+L('Ονοματεπώνυμο','Full name')+'</label><input id="nm-name" type="text" placeholder="'+L('πχ Μαρία Παπαδοπούλου','e.g. Maria Smith')+'"></div>'+
-    '<div class="field"><label>Email</label><input id="nm-email" type="email" placeholder="name@email.com"></div>'+
-    '<div class="field"><label>'+L('Κωδικός','Password')+' ('+L('τουλάχ. 6 χαρακτήρες','min 6 chars')+')</label><input id="nm-pass" type="text" placeholder="••••••"></div>'+
+    '<div class="field"><label>'+L('Ονοματεπώνυμο','Full name')+'</label><input id="nm-name" type="text" autocomplete="off" placeholder="'+L('πχ Μαρία Παπαδοπούλου','e.g. Maria Smith')+'"></div>'+
+    '<div class="field"><label>Email</label><input id="nm-email" type="email" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="name@email.com"></div>'+
+    '<div class="field"><label>'+L('Κωδικός','Password')+' ('+L('τουλάχ. 6 χαρακτήρες','min 6 chars')+')</label><input id="nm-pass" type="text" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute(\'readonly\')" placeholder="••••••"></div>'+
     '<div class="field"><label>'+L('Θέση (ορίζει αυτόματα δικαιώματα)','Job title (sets permissions)')+'</label><select id="nm-job" style="width:100%;padding:12px;border:1px solid var(--accent);border-radius:10px;font-size:16px;background:var(--accent-bg)">'+
       Object.keys(JOBS).map(function(k){return '<option value="'+k+'">'+esc(jobLabel(k))+'</option>';}).join('')+
     '</select></div>'+
