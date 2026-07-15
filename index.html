@@ -217,6 +217,8 @@ function rerenderCurrent(){
   if(ST.view==='ohist')return renderOrderHistory();
   if(ST.view==='stakes')return stockTakeHistory();
   if(ST.view==='stakeDetail')return renderSection();
+  if(ST.view==='menuArch')return menuAnalysisHistory();
+  if(ST.view==='menuArchDetail')return renderSection();
   if(ST.view==='summary')return orderSummary();
   if(ST.section==='products'&&ST.view==='detail'&&ST.prod){ST.prod=ST.products.find(p=>p.id===ST.prod.id)||ST.prod;return drawProd();}
   if(ST.section==='recipes'&&ST.view==='detail'&&ST.recipe){ST.recipe=ST.recipes.find(r=>r.id===ST.recipe.id)||ST.recipe;return drawRecipe();}
@@ -592,7 +594,7 @@ const LABEL_KEYS=[
   ['wordSuppliers','προμηθευτές'],['hNewSupplier','+ ΝΕΟΣ ΠΡΟΜΗΘΕΥΤΗΣ'],
   ['oSummary','Σύνοψη & Αποστολή'],['oHistory','Ιστορικό'],
   ['recipe_cocktail','Spirits & Cocktails'],['recipe_hotcold','Hot & Cold Beverages'],['recipe_food','Food'],
-  ['sOverview','Επισκόπηση'],['sPriceDB','Ιστορικό Τιμών'],['sPurchDB','Ιστορικό Αγορών'],['sProfit','Κερδοφορία'],['iInvoices','Τιμολόγια'],['iManual','Χειρ. Αγορά'],
+  ['sOverview','Επισκόπηση'],['sPriceDB','Ιστορικό Τιμών'],['sPurchDB','Ιστορικό Αγορών'],['sProfit','Κερδοφορία'],['sMenuEng','Menu Engineering'],['iInvoices','Τιμολόγια'],['iManual','Χειρ. Αγορά'],
   ['oShoot','Τράβα φωτό'],['oPick','Επίλεξε από αρχεία'],['oRead','Διάβασε τιμολόγιο'],['oApprove','Έγκριση'],['oLines','γραμμών → Βάση'],['oScanTitle','Τιμολόγιο'],['oGmail','Άνοιξε Gmail'],
   ['pWeek','Εβδομάδα'],['pMonth','Μήνας'],['p3m','3 Μήνες'],['p6m','6 Μήνες'],['pYear','Έτος'],['pAll','Όλα'],
   ['iSearch','🔍 Αναζήτηση (προμηθευτής/αριθμός)…'],['iAllSup','Όλοι οι Προμηθευτές'],['iAllCat','Όλες οι Κατηγορίες'],
@@ -1906,13 +1908,213 @@ function renderStats(){
   const c=document.getElementById('content');
   const sub=ST.repsub||'overview';
   const b=(id,l)=>'<div class="tab '+(sub===id?'active':'')+'" style="flex:0 0 auto;padding:9px 12px" onclick="setRepSub(\''+id+'\')">'+l+'</div>';
-  let h=sectionNav()+'<div class="tabs" style="margin-top:8px;flex-wrap:wrap">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+'</div>';
+  let h=sectionNav()+'<div class="tabs" style="margin-top:8px;flex-wrap:wrap">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+(ST.plan!=='basic'?b('menu','🍽️ '+lbl('sMenuEng','Menu Engineering')):'')+'</div>';
   if(sub==='price')h+=priceDbView();
   else if(sub==='purchased')h+=purchasedView();
   else if(sub==='profit')h+=profitView();
+  else if(sub==='menu')h+=menuEngView();
   else h+=overviewHtml();
   c.innerHTML=h;
   if(sub==='profit')loadProfit();
+  if(sub==='menu')loadMenuEng();
+}
+// ═══════════════ 🍽️ MENU ENGINEERING ═══════════════
+// Ελληνική ημερομηνία: δέχεται 15/07/2026 ή 2026-07-15 → επιστρέφει ISO
+function parseGRDate(s){
+  s=String(s||'').trim();
+  let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);   // 15/07/2026
+  if(m)return m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;           // ήδη ISO
+  return null;
+}
+const MKINDS=[['cocktail','🍸 '+'Cocktails'],['hotcold','☕ Beverages'],['food','🍽️ Food']];
+function menuKindLabel(k){const f=MKINDS.find(x=>x[0]===k);return f?f[1]:k;}
+// Κατηγορία & χρώμα από σκορ
+function scoreClass(score,cmHigh,sellHigh){
+  // 4 τετράγωνα: κέρδος(CM) × δημοτικότητα(πωλήσεις)
+  if(sellHigh&&cmHigh)return {k:'champion',emo:'🟢',col:'var(--ok)',el:'Πρωταθλητής',en:'Champion',tipEl:'Κράτα & πρόβαλέ το',tipEn:'Keep & promote'};
+  if(sellHigh&&!cmHigh)return {k:'fix',emo:'🟡',col:'#e0a800',el:'Θέλει διόρθωση',en:'Needs fixing',tipEl:'Ανέβασε τιμή ή ρίξε κόστος',tipEn:'Raise price or cut cost'};
+  if(!sellHigh&&cmHigh)return {k:'hidden',emo:'🔵',col:'var(--accent)',el:'Κρυμμένος θησαυρός',en:'Hidden gem',tipEl:'Διαφήμισέ το · καλύτερη θέση στο μενού',tipEn:'Promote it · better menu spot'};
+  return {k:'cut',emo:'🔴',col:'var(--bad)',el:'Υποψήφιο για κόψιμο',en:'Consider cutting',tipEl:'Σκέψου να το βγάλεις από το μενού',tipEn:'Consider removing from menu'};
+}
+// Υπολογίζει την ανάλυση από τα recipes της κατηγορίας + τις πωλήσεις (ST.meSold) + on/off (ST.meOff)
+function menuEngCalc(){
+  const kind=ST.meKind||'cocktail';
+  const recs=(ST.recipes||[]).filter(r=>r.kind===kind && !r.is_homemade);
+  const sold=ST.meSold||{};
+  const off=ST.meOff||{};
+  const rows=[];
+  let totalSold=0,totalRev=0,totalCM=0,activeCount=0,sumCM=0;
+  recs.forEach(r=>{
+    if(off[r.id])return;                                // εξαιρέθηκε (on/off)
+    const cc=recipeCalc(r);
+    const n=parseFloat(sold[r.id])||0;
+    const price=parseFloat(r.retail_price)||0;
+    const cm=cc.netProfit;                              // συνεισφορά ανά τεμάχιο (καθαρό - κόστος)
+    rows.push({id:r.id,name:r.name,n,price,cost:cc.realCost,cm,netRev:cc.retailNet});
+    totalSold+=n; totalRev+=cc.retailNet*n; totalCM+=cm*n; sumCM+=cm; activeCount++;
+  });
+  const avgCM=activeCount?sumCM/activeCount:0;          // μέση συνεισφορά (όριο High/Low κέρδους)
+  // Όριο δημοτικότητας: 70% × μέσο μερίδιο (κλασικός κανόνας menu engineering)
+  const fairShare=activeCount?(totalSold/activeCount):0;
+  const popThreshold=fairShare*0.70;
+  rows.forEach(r=>{
+    r.mix=totalSold>0?(r.n/totalSold*100):0;
+    const cmHigh=r.cm>=avgCM;
+    const sellHigh=r.n>=popThreshold;
+    r.cls=scoreClass(0,cmHigh,sellHigh);
+    // Σκορ 0-100: 50 από κέρδος (σχετικό με max CM) + 50 από πωλήσεις (σχετικό με max πωλήσεις)
+    const maxCM=Math.max.apply(null,rows.map(x=>x.cm).concat([0.0001]));
+    const maxN=Math.max.apply(null,rows.map(x=>x.n).concat([0.0001]));
+    r.score=Math.round((r.cm/maxCM)*50 + (r.n/maxN)*50);
+  });
+  rows.sort((a,b)=>b.score-a.score);
+  return {rows,totalSold,totalRev,totalCM,avgCM,activeCount};
+}
+function loadMenuEng(){
+  if(!ST.meKind)ST.meKind='cocktail';
+  ST.meSold=ST.meSold||{}; ST.meOff=ST.meOff||{};
+  // τίποτα από βάση εδώ — η ζωντανή οθόνη· το αρχείο φορτώνει ξεχωριστά
+}
+function menuEngView(){
+  if(ST.plan==='basic')return '<div class="card muted" style="text-align:center;margin-top:14px">🔒 '+L('Advanced feature','Advanced feature')+'</div>';
+  const kind=ST.meKind||'cocktail';
+  const R=menuEngCalc();
+  let h='<div style="margin-top:10px">';
+  // επιλογέας κατηγορίας
+  h+='<div style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:8px">'+
+    MKINDS.map(([k,label])=>'<div class="tab '+(kind===k?'active':'')+'" style="flex:0 0 auto;white-space:nowrap;padding:9px 14px" onclick="ST.meKind=\''+k+'\';renderStats()">'+esc(label)+'</div>').join('')+'</div>';
+  h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent);font-size:12px;color:var(--muted)">💡 '+L('Βάλε πόσα πούλησε το κάθε πιάτο. Το σκορ (0-100) συνδυάζει κέρδος × δημοτικότητα. Βγάλε από την ανάλυση όσα δεν θες (π.χ. signature) με το ✓/✗. Μετά αποθήκευσε με ημερομηνία για να συγκρίνεις μήνες.','Enter how many each item sold. Score (0-100) combines profit × popularity. Exclude items you do not want (e.g. signature). Then save with a date to compare months.')+'</div>';
+  const recs=(ST.recipes||[]).filter(r=>r.kind===kind && !r.is_homemade);
+  if(!recs.length){h+='<div class="card muted" style="text-align:center">'+L('Καμία συνταγή σε αυτή την κατηγορία. Φτιάξε συνταγές πρώτα (με τιμή πώλησης).','No recipes in this category. Create recipes first (with selling price).')+'</div><div style="margin-top:10px">'+menuEngHistoryBtn()+'</div></div>';return h;}
+  // ── Κάρτες αποτελεσμάτων ──
+  if(R.activeCount){
+    h+='<div class="card" style="text-align:center;background:var(--card)"><div style="display:flex;justify-content:space-around">'+
+      '<div><div style="font-size:20px;font-weight:800;color:var(--accent)">'+R.totalSold+'</div><div style="font-size:10px;color:var(--muted)">'+L('πωλήσεις','sold')+'</div></div>'+
+      '<div><div style="font-size:20px;font-weight:800;color:var(--ok)">'+money(R.totalCM)+'</div><div style="font-size:10px;color:var(--muted)">'+L('συνεισφορά','contribution')+'</div></div>'+
+      '<div><div style="font-size:20px;font-weight:800">'+R.activeCount+'</div><div style="font-size:10px;color:var(--muted)">'+L('πιάτα','items')+'</div></div>'+
+    '</div></div>';
+  }
+  // ── Λίστα πιάτων: input πωλήσεων + σκορ + χρώμα + σύσταση + on/off ──
+  h+='<div style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto">';
+  const off=ST.meOff||{};
+  // πρώτα τα ενεργά (με σειρά σκορ), μετά τα εξαιρεμένα
+  const activeIds=R.rows.map(r=>r.id);
+  R.rows.forEach(r=>{
+    const cls=ST.lang==='en'?{lab:r.cls.en,tip:r.cls.tipEn}:{lab:r.cls.el,tip:r.cls.tipEl};
+    h+='<div class="card" style="padding:12px;margin-top:8px;border-left:4px solid '+r.cls.col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+r.cls.emo+' '+esc(r.name)+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+L('Πώληση','Sale')+' '+money(r.price)+' · '+L('κόστος','cost')+' '+money(r.cost)+' · '+L('κέρδος','margin')+' <b style="color:'+r.cls.col+'">'+money(r.cm)+'</b>'+(r.mix>0?(' · '+r.mix.toFixed(1)+'% '+L('των πωλήσεων','of sales')):'')+'</div>'+
+        '</div>'+
+        '<div style="text-align:center;min-width:52px"><div style="font-size:24px;font-weight:800;color:'+r.cls.col+'">'+r.score+'</div><div style="font-size:9px;color:var(--muted)">score</div></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;align-items:center;margin-top:8px">'+
+        '<div style="flex:1"><label style="font-size:10px;color:var(--muted)">'+L('Πόσα πούλησε','Number sold')+'</label>'+
+          '<input type="number" min="0" value="'+(ST.meSold[r.id]!=null?ST.meSold[r.id]:'')+'" onchange="ST.meSold[\''+r.id+'\']=this.value;renderStats()" placeholder="0" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:15px"></div>'+
+        '<button class="pick" style="margin:0;padding:8px 10px;align-self:flex-end;background:var(--ok);color:#fff;border-color:var(--ok)" title="'+L('Στην ανάλυση — πάτα για εξαίρεση','In analysis — tap to exclude')+'" onclick="ST.meOff[\''+r.id+'\']=true;renderStats()">✓ '+L('μέσα','in')+'</button>'+
+      '</div>'+
+      '<div style="font-size:12px;color:'+r.cls.col+';margin-top:8px;font-weight:600">'+cls.lab+' — <span style="font-weight:400;color:var(--muted)">'+cls.tip+'</span></div>'+
+    '</div>';
+  });
+  // εξαιρεμένα πιάτα
+  const offRecs=recs.filter(r=>off[r.id]);
+  if(offRecs.length){
+    h+='<div style="font-size:12px;color:var(--muted);margin:12px 2px 6px;font-weight:600">🚫 '+L('Εκτός ανάλυσης','Excluded from analysis')+' ('+offRecs.length+')</div>';
+    offRecs.forEach(r=>{
+      h+='<div class="card" style="padding:10px;margin-top:6px;opacity:.6;display:flex;justify-content:space-between;align-items:center">'+
+        '<span style="font-size:14px">'+esc(r.name)+'</span>'+
+        '<button class="pick" style="margin:0;padding:6px 10px" onclick="delete ST.meOff[\''+r.id+'\'];renderStats()">✗ '+L('βάλ\' το πάλι','add back')+'</button>'+
+      '</div>';
+    });
+  }
+  h+='</div></div>';
+  // ── Αποθήκευση + Αρχείο ──
+  if(R.activeCount){
+    h+='<button class="btn" style="margin-top:12px" onclick="saveMenuAnalysis()">📸 '+L('Αποθήκευση ανάλυσης (με ημερομηνία)','Save analysis (with date)')+'</button>';
+  }
+  h+=menuEngHistoryBtn();
+  h+='</div>';
+  return h;
+}
+function menuEngHistoryBtn(){
+  return '<button class="btn ghost" style="margin-top:8px" onclick="menuAnalysisHistory()">📚 '+L('Αρχείο αναλύσεων','Analysis archive')+'</button>';
+}
+async function saveMenuAnalysis(){
+  if(ST.plan==='basic'){toast('🔒 Advanced');return;}
+  const R=menuEngCalc();
+  if(!R.activeCount){toast('❌ '+L('Καμία εγγραφή','Nothing to save'));return;}
+  if(R.totalSold<=0){toast('❌ '+L('Βάλε πωλήσεις πρώτα','Enter sales first'));return;}
+  const today=new Date().toISOString().slice(0,10);
+  const d=prompt(L('Ημερομηνία ανάλυσης (πχ 15/07/2026):','Analysis date (e.g. 15/07/2026):'),dGRs(today));
+  if(d===null)return;
+  const iso=parseGRDate(d);
+  if(!iso){toast('❌ '+L('Λάθος ημερομηνία (πχ 15/07/2026)','Bad date (e.g. 15/07/2026)'));return;}
+  if(!confirm(menuKindLabel(ST.meKind)+' · '+dGRs(iso)+' · '+R.totalSold+' '+L('πωλήσεις','sold')+'\n\n'+L('Αποθήκευση ανάλυσης;','Save analysis?')))return;
+  const tid=curTenant();
+  try{
+    const {data:head,error:hErr}=await sb.from('menu_analyses').insert({tenant_id:tid,rkind:ST.meKind,analysis_date:iso,total_sold:R.totalSold,total_revenue:Math.round(R.totalRev*100)/100,total_cm:Math.round(R.totalCM*100)/100,item_count:R.activeCount,created_by:ST.userEmail||null}).select().single();
+    if(hErr)throw hErr;
+    const rows=R.rows.map(r=>({analysis_id:head.id,tenant_id:tid,recipe_id:r.id,name:r.name,number_sold:Math.round(r.n),selling_price:Math.round(r.price*100)/100,item_cost:Math.round(r.cost*100)/100,contribution:Math.round(r.cm*100)/100,sales_mix:Math.round(r.mix*100)/100,score:r.score,klass:r.cls.k}));
+    const {error:lErr}=await sb.from('menu_analysis_lines').insert(rows);
+    if(lErr)throw lErr;
+    toast('✅ '+L('Αποθηκεύτηκε','Saved')+' · '+dGRs(iso));
+  }catch(e){toast('❌ '+(e.message||e)+' — '+L('έτρεξες το SQL menu engineering;','did you run the menu engineering SQL?'));}
+}
+async function menuAnalysisHistory(){
+  ST.view='menuArch';const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
+  document.getElementById('hTitle').textContent='📚 '+L('Αρχείο Αναλύσεων','Analysis Archive');
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  let list=[];
+  try{const {data}=await sb.from('menu_analyses').select('*').eq('tenant_id',curTenant()).order('analysis_date',{ascending:false}).order('created_at',{ascending:false});list=data||[];}catch(e){}
+  const canDelete=(ST.role==='admin'||ST.role==='owner');
+  let h='<div style="margin-top:10px"><div class="card" style="background:var(--accent-bg);border-color:var(--accent);font-size:12px;color:var(--muted)">📚 '+L('Αποθηκευμένες αναλύσεις μενού. Σύγκρινε μήνες — δες αν έπιασαν οι αλλαγές σου.','Saved menu analyses. Compare months — see if your changes worked.')+'</div>';
+  if(!list.length){h+='<div class="card muted" style="text-align:center;margin-top:12px">'+L('Καμία αποθηκευμένη ανάλυση ακόμα.','No saved analyses yet.')+'</div>';c.innerHTML=h+'</div>';return;}
+  list.forEach(a=>{
+    h+='<div class="row" onclick="openMenuAnalysis(\''+a.id+'\')" style="margin-top:8px">'+
+      '<div style="flex:1;min-width:0"><div class="name">'+menuKindLabel(a.rkind)+'</div>'+
+      '<div style="font-size:12px;color:var(--muted)">📅 '+dGRs(a.analysis_date)+' · '+a.total_sold+' '+L('πωλήσεις','sold')+' · '+a.item_count+' '+L('πιάτα','items')+' · '+money(a.total_cm)+' CM</div></div>'+
+      (canDelete?'<button class="del" onclick="event.stopPropagation();delMenuAnalysis(\''+a.id+'\',\''+esc(menuKindLabel(a.rkind))+' '+dGRs(a.analysis_date)+'\')">🗑</button>':'')+
+      '<div style="color:var(--accent);font-size:18px;margin-left:6px">›</div></div>';
+  });
+  h+='</div>';c.innerHTML=h;
+}
+async function openMenuAnalysis(id){
+  ST.view='menuArchDetail';const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','menuAnalysisHistory()');}
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  let head=null,lines=[];
+  try{const {data:h1}=await sb.from('menu_analyses').select('*').eq('id',id).single();head=h1;
+    const {data:l1}=await sb.from('menu_analysis_lines').select('*').eq('analysis_id',id);lines=l1||[];}catch(e){}
+  if(!head){c.innerHTML='<div class="err">'+L('Δεν βρέθηκε','Not found')+'</div>';return;}
+  document.getElementById('hTitle').textContent=menuKindLabel(head.rkind)+' · '+dGRs(head.analysis_date);
+  lines.sort((a,b)=>(b.score||0)-(a.score||0));
+  const KL={champion:['🟢','var(--ok)',L('Πρωταθλητής','Champion')],fix:['🟡','#e0a800',L('Θέλει διόρθωση','Needs fixing')],hidden:['🔵','var(--accent)',L('Κρυμμένος θησαυρός','Hidden gem')],cut:['🔴','var(--bad)',L('Υποψήφιο για κόψιμο','Consider cutting')]};
+  let h='<div style="margin-top:10px"><div class="card" style="background:var(--accent-bg);border-color:var(--accent);text-align:center">'+
+    '<div style="font-size:15px;font-weight:700;color:var(--accent)">'+menuKindLabel(head.rkind)+'</div>'+
+    '<div style="font-size:13px;color:var(--muted)">📅 '+dGRs(head.analysis_date)+' · '+head.total_sold+' '+L('πωλήσεις','sold')+' · '+money(head.total_cm)+' '+L('συνεισφορά','contribution')+'</div></div>';
+  lines.forEach(r=>{
+    const kl=KL[r.klass]||['⚪','var(--muted)',''];
+    h+='<div class="card" style="padding:10px;margin-top:6px;border-left:4px solid '+kl[1]+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+kl[0]+' '+esc(r.name)+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+r.number_sold+' '+L('πωλήσεις','sold')+' · '+r.sales_mix.toFixed(1)+'% · '+L('κέρδος','margin')+' '+money(r.contribution)+' · '+kl[2]+'</div></div>'+
+        '<div style="text-align:center;min-width:48px"><div style="font-size:22px;font-weight:800;color:'+kl[1]+'">'+r.score+'</div><div style="font-size:9px;color:var(--muted)">score</div></div>'+
+      '</div></div>';
+  });
+  if(ST.role==='admin'||ST.role==='owner')h+='<button class="btn ghost" style="border-color:var(--bad);color:var(--bad);margin-top:10px" onclick="delMenuAnalysis(\''+head.id+'\',\''+esc(menuKindLabel(head.rkind))+' '+dGRs(head.analysis_date)+'\',true)">🗑 '+L('Διαγραφή ανάλυσης','Delete analysis')+'</button>';
+  h+='</div>';c.innerHTML=h;
+}
+async function delMenuAnalysis(id,label,goBack){
+  if(ST.role!=='admin'&&ST.role!=='owner'){toast('❌ '+L('Μόνο owner/admin','Owner/admin only'));return;}
+  if(!confirm(L('Διαγραφή ανάλυσης','Delete analysis')+' «'+label+'»;'))return;
+  try{
+    await sb.from('menu_analysis_lines').delete().eq('analysis_id',id);
+    await sb.from('menu_analyses').delete().eq('id',id);
+    toast('🗑 '+L('Διαγράφηκε','Deleted'));
+    menuAnalysisHistory();
+  }catch(e){toast('❌ '+(e.message||e));}
 }
 // ═══════════ ⚠️ ΕΛΕΓΧΟΣ ΠΑΡΑΛΑΒΗΣ ═══════════
 async function checkDelivery(sid,invDate,lines){
@@ -3406,7 +3608,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·100';
+const BUILD='v'+'2026.07.04·101';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
