@@ -1972,6 +1972,8 @@ const MKINDS=[['cocktail','🍸 '+'Cocktails'],['hotcold','☕ Beverages'],['foo
 function menuKindLabel(k){const f=MKINDS.find(x=>x[0]===k);return f?f[1]:k;}
 // Κατηγορία + υποκατηγορία μαζί (π.χ. «🍸 Cocktails · Classics»)
 function menuFullLabel(rkind,sub){return menuKindLabel(rkind)+(sub?(' · '+subLabel(rkind,sub)):'');}
+// Περίοδος για εμφάνιση: «01/07 – 07/07/2026» ή σκέτο «15/07/2026»
+function menuPeriod(a){const f=dGRs(a.analysis_date);const t=a.date_to?dGRs(a.date_to):'';return (t&&t!==f)?(f+' – '+t):f;}
 // Κατηγορία & χρώμα από σκορ
 function scoreClass(score,cmHigh,sellHigh){
   // 4 τετράγωνα: κέρδος(CM) × δημοτικότητα(πωλήσεις)
@@ -2104,14 +2106,23 @@ async function saveMenuAnalysis(){
   if(!R.activeCount){toast('❌ '+L('Καμία εγγραφή','Nothing to save'));return;}
   if(R.totalSold<=0){toast('❌ '+L('Βάλε πωλήσεις πρώτα','Enter sales first'));return;}
   const today=new Date().toISOString().slice(0,10);
-  const d=prompt(L('Ημερομηνία ανάλυσης (πχ 15/07/2026):','Analysis date (e.g. 15/07/2026):'),dGRs(today));
+  const d=prompt(L('ΑΠΟ ημερομηνία (πχ 01/07/2026):','FROM date (e.g. 01/07/2026):'),dGRs(today));
   if(d===null)return;
   const iso=parseGRDate(d);
-  if(!iso){toast('❌ '+L('Λάθος ημερομηνία (πχ 15/07/2026)','Bad date (e.g. 15/07/2026)'));return;}
-  if(!confirm(menuFullLabel(ST.meKind,ST.meSub)+' · '+dGRs(iso)+' · '+R.totalSold+' '+L('Πωλήσεις','Sold')+'\n\n'+L('Αποθήκευση ανάλυσης;','Save analysis?')))return;
+  if(!iso){toast('❌ '+L('Λάθος ημερομηνία (πχ 01/07/2026)','Bad date (e.g. 01/07/2026)'));return;}
+  const d2=prompt(L('ΕΩΣ ημερομηνία (πχ 07/07/2026) — άφησε κενό για μία μέρα:','TO date (e.g. 07/07/2026) — leave empty for a single day:'),dGRs(iso));
+  if(d2===null)return;
+  let isoTo=null;
+  if(String(d2).trim()){
+    isoTo=parseGRDate(d2);
+    if(!isoTo){toast('❌ '+L('Λάθος ημερομηνία «έως»','Bad "to" date'));return;}
+    if(isoTo<iso){toast('❌ '+L('Το «έως» πρέπει να είναι μετά το «από»','"To" must be after "from"'));return;}
+  }
+  const periodTxt=(isoTo&&isoTo!==iso)?(dGRs(iso)+' – '+dGRs(isoTo)):dGRs(iso);
+  if(!confirm(menuFullLabel(ST.meKind,ST.meSub)+' · '+periodTxt+' · '+R.totalSold+' '+L('Πωλήσεις','Sold')+'\n\n'+L('Αποθήκευση ανάλυσης;','Save analysis?')))return;
   const tid=curTenant();
   try{
-    const {data:head,error:hErr}=await sb.from('menu_analyses').insert({tenant_id:tid,rkind:ST.meKind,sub_category:ST.meSub||null,analysis_date:iso,total_sold:R.totalSold,total_revenue:Math.round(R.totalRev*100)/100,total_cm:Math.round(R.totalCM*100)/100,item_count:R.activeCount,created_by:ST.userEmail||null}).select().single();
+    const {data:head,error:hErr}=await sb.from('menu_analyses').insert({tenant_id:tid,rkind:ST.meKind,sub_category:ST.meSub||null,analysis_date:iso,date_to:isoTo||null,total_sold:R.totalSold,total_revenue:Math.round(R.totalRev*100)/100,total_cm:Math.round(R.totalCM*100)/100,item_count:R.activeCount,created_by:ST.userEmail||null}).select().single();
     if(hErr)throw hErr;
     const rows=R.rows.map(r=>({analysis_id:head.id,tenant_id:tid,recipe_id:r.id,name:r.name,number_sold:Math.round(r.n),selling_price:Math.round(r.price*100)/100,item_cost:Math.round(r.cost*100)/100,contribution:Math.round(r.cm*100)/100,sales_mix:Math.round(r.mix*100)/100,score:r.score,klass:r.cls.k}));
     const {error:lErr}=await sb.from('menu_analysis_lines').insert(rows);
@@ -2132,7 +2143,7 @@ async function menuAnalysisHistory(){
   list.forEach(a=>{
     h+='<div class="row" onclick="openMenuAnalysis(\''+a.id+'\')" style="margin-top:8px">'+
       '<div style="flex:1;min-width:0"><div class="name">'+menuFullLabel(a.rkind,a.sub_category)+'</div>'+
-      '<div style="font-size:12px;color:var(--muted)">📅 '+dGRs(a.analysis_date)+' · '+a.total_sold+' '+L('Πωλήσεις','Sold')+' · '+a.item_count+' '+L('Προϊόντα','Items')+' · '+money(a.total_cm)+' CM</div></div>'+
+      '<div style="font-size:12px;color:var(--muted)">📅 '+menuPeriod(a)+' · '+a.total_sold+' '+L('Πωλήσεις','Sold')+' · '+a.item_count+' '+L('Προϊόντα','Items')+' · '+money(a.total_cm)+' CM</div></div>'+
       (canDelete?'<button class="del" onclick="event.stopPropagation();delMenuAnalysis(\''+a.id+'\',\''+esc(menuKindLabel(a.rkind))+' '+dGRs(a.analysis_date)+'\')">🗑</button>':'')+
       '<div style="color:var(--accent);font-size:18px;margin-left:6px">›</div></div>';
   });
@@ -2146,12 +2157,12 @@ async function openMenuAnalysis(id){
   try{const {data:h1}=await sb.from('menu_analyses').select('*').eq('id',id).single();head=h1;
     const {data:l1}=await sb.from('menu_analysis_lines').select('*').eq('analysis_id',id);lines=l1||[];}catch(e){}
   if(!head){c.innerHTML='<div class="err">'+L('Δεν βρέθηκε','Not found')+'</div>';return;}
-  document.getElementById('hTitle').textContent=menuFullLabel(head.rkind,head.sub_category)+' · '+dGRs(head.analysis_date);
+  document.getElementById('hTitle').textContent=menuFullLabel(head.rkind,head.sub_category)+' · '+menuPeriod(head);
   lines.sort((a,b)=>(b.score||0)-(a.score||0));
   const KL={champion:['🟢','var(--ok)',L('Πρωταθλητής','Champion')],fix:['🟡','#e0a800',L('Θέλει Διόρθωση','Needs Fixing')],hidden:['🔵','var(--accent)',L('Κρυμμένος Θησαυρός','Hidden Gem')],cut:['🔴','var(--bad)',L('Υποψήφιο για Κόψιμο','Consider Cutting')]};
   let h='<div style="margin-top:10px"><div class="card" style="background:var(--accent-bg);border-color:var(--accent);text-align:center">'+
     '<div style="font-size:15px;font-weight:700;color:var(--accent)">'+menuFullLabel(head.rkind,head.sub_category)+'</div>'+
-    '<div style="font-size:13px;color:var(--muted)">📅 '+dGRs(head.analysis_date)+' · '+head.total_sold+' '+L('Πωλήσεις','Sold')+' · '+money(head.total_cm)+' '+L('Συνεισφορά','Contribution')+'</div></div>';
+    '<div style="font-size:13px;color:var(--muted)">📅 '+menuPeriod(head)+' · '+head.total_sold+' '+L('Πωλήσεις','Sold')+' · '+money(head.total_cm)+' '+L('Συνεισφορά','Contribution')+'</div></div>';
   lines.forEach(r=>{
     const kl=KL[r.klass]||['⚪','var(--muted)',''];
     h+='<div class="card" style="padding:10px;margin-top:6px;border-left:4px solid '+kl[1]+'">'+
@@ -3666,7 +3677,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·116';
+const BUILD='v'+'2026.07.04·117';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
