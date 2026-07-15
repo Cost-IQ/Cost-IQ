@@ -2059,7 +2059,7 @@ async function saveMenuAnalysis(){
   if(d===null)return;
   const iso=parseGRDate(d);
   if(!iso){toast('❌ '+L('Λάθος ημερομηνία (πχ 15/07/2026)','Bad date (e.g. 15/07/2026)'));return;}
-  if(!confirm(menuKindLabel(ST.meKind)+' · '+dGRs(iso)+' · '+R.totalSold+' '+L('πωλήσεις','sold')+'\n\n'+L('Αποθήκευση ανάλυσης;','Save analysis?')))return;
+  if(!confirm(menuKindLabel(ST.meKind)+' · '+dGRs(iso)+' · '+R.totalSold+' '+L('Πωλήσεις','Sold')+'\n\n'+L('Αποθήκευση ανάλυσης;','Save analysis?')))return;
   const tid=curTenant();
   try{
     const {data:head,error:hErr}=await sb.from('menu_analyses').insert({tenant_id:tid,rkind:ST.meKind,analysis_date:iso,total_sold:R.totalSold,total_revenue:Math.round(R.totalRev*100)/100,total_cm:Math.round(R.totalCM*100)/100,item_count:R.activeCount,created_by:ST.userEmail||null}).select().single();
@@ -2083,7 +2083,7 @@ async function menuAnalysisHistory(){
   list.forEach(a=>{
     h+='<div class="row" onclick="openMenuAnalysis(\''+a.id+'\')" style="margin-top:8px">'+
       '<div style="flex:1;min-width:0"><div class="name">'+menuKindLabel(a.rkind)+'</div>'+
-      '<div style="font-size:12px;color:var(--muted)">📅 '+dGRs(a.analysis_date)+' · '+a.total_sold+' '+L('πωλήσεις','sold')+' · '+a.item_count+' '+L('προϊόντα','items')+' · '+money(a.total_cm)+' CM</div></div>'+
+      '<div style="font-size:12px;color:var(--muted)">📅 '+dGRs(a.analysis_date)+' · '+a.total_sold+' '+L('Πωλήσεις','Sold')+' · '+a.item_count+' '+L('Προϊόντα','Items')+' · '+money(a.total_cm)+' CM</div></div>'+
       (canDelete?'<button class="del" onclick="event.stopPropagation();delMenuAnalysis(\''+a.id+'\',\''+esc(menuKindLabel(a.rkind))+' '+dGRs(a.analysis_date)+'\')">🗑</button>':'')+
       '<div style="color:var(--accent);font-size:18px;margin-left:6px">›</div></div>';
   });
@@ -2102,13 +2102,13 @@ async function openMenuAnalysis(id){
   const KL={champion:['🟢','var(--ok)',L('Πρωταθλητής','Champion')],fix:['🟡','#e0a800',L('Θέλει Διόρθωση','Needs Fixing')],hidden:['🔵','var(--accent)',L('Κρυμμένος Θησαυρός','Hidden Gem')],cut:['🔴','var(--bad)',L('Υποψήφιο για Κόψιμο','Consider Cutting')]};
   let h='<div style="margin-top:10px"><div class="card" style="background:var(--accent-bg);border-color:var(--accent);text-align:center">'+
     '<div style="font-size:15px;font-weight:700;color:var(--accent)">'+menuKindLabel(head.rkind)+'</div>'+
-    '<div style="font-size:13px;color:var(--muted)">📅 '+dGRs(head.analysis_date)+' · '+head.total_sold+' '+L('πωλήσεις','sold')+' · '+money(head.total_cm)+' '+L('Συνεισφορά','Contribution')+'</div></div>';
+    '<div style="font-size:13px;color:var(--muted)">📅 '+dGRs(head.analysis_date)+' · '+head.total_sold+' '+L('Πωλήσεις','Sold')+' · '+money(head.total_cm)+' '+L('Συνεισφορά','Contribution')+'</div></div>';
   lines.forEach(r=>{
     const kl=KL[r.klass]||['⚪','var(--muted)',''];
     h+='<div class="card" style="padding:10px;margin-top:6px;border-left:4px solid '+kl[1]+'">'+
       '<div style="display:flex;justify-content:space-between;align-items:center">'+
         '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+kl[0]+' '+esc(r.name)+'</div>'+
-          '<div style="font-size:11px;color:var(--muted)">'+r.number_sold+' '+L('πωλήσεις','sold')+' · '+r.sales_mix.toFixed(1)+'% · '+L('Συνεισφορά','Contribution')+' '+money(r.contribution)+' · '+kl[2]+'</div></div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+r.number_sold+' '+L('Πωλήσεις','Sold')+' · '+r.sales_mix.toFixed(1)+'% · '+L('Συνεισφορά','Contribution')+' '+money(r.contribution)+' · '+kl[2]+'</div></div>'+
         '<div style="text-align:center;min-width:48px"><div style="font-size:22px;font-weight:800;color:'+kl[1]+'">'+r.score+'</div><div style="font-size:9px;color:var(--muted)">score</div></div>'+
       '</div></div>';
   });
@@ -3617,7 +3617,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·110';
+const BUILD='v'+'2026.07.04·111';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
