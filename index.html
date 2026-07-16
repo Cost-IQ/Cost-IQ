@@ -101,7 +101,8 @@
     <button class="back" id="backBtn" onclick="goList()">‹</button>
     <div style="flex:1"><h1 id="hTitle">Cost IQ</h1><div class="who" id="whoami">—</div></div>
     <button class="out" onclick="goHome()" style="margin-right:6px" title="Αρχική">🏠</button>
-    <button class="out" id="shopBtn" onclick="ST.role==='admin'?chooseShop():openMembers()" style="margin-right:6px;display:none" title="Μαγαζί & Μέλη">👥</button>
+    <button class="out" id="shopsBtn" onclick="chooseShop()" style="margin-right:6px;display:none" title="Τα μαγαζιά μου">🏪</button>
+    <button class="out" id="shopBtn" onclick="openMembers()" style="margin-right:6px;display:none" title="Μαγαζί & Μέλη">👥</button>
     <button class="out" onclick="openLabelEditor()" style="margin-right:6px" title="Ονόματα καρτελών">⚙️</button>
     <button class="out" id="fsBtn" onclick="toggleFullscreen()" style="margin-right:6px" title="Πλήρης οθόνη">⛶</button>
     <button class="out" id="langBtn" onclick="toggleLang()" style="margin-right:6px"><img src="https://flagcdn.com/28x21/gb.png" alt="EN" style="height:15px;vertical-align:middle;border-radius:2px"></button>
@@ -346,9 +347,16 @@ async function enterApp(){
   let role='',mt='';
   try{const {data:prof}=await sb.from('profiles').select('role,tenant_id').eq('id',user.id).single();if(prof){role=prof.role||'';mt=prof.tenant_id||'';}}catch(e){}
   ST.role=role; ST.myTenant=mt; ST.userEmail=(user&&user.email)||''; ST.myId=(user&&user.id)||'';
+  // Πόσα μαγαζιά έχει ο owner (κύριο + επιπλέον από owner_shops)
+  ST.multiShop=false;
+  if(ST.role==='owner'){
+    try{const {data:ids}=await sb.rpc('my_shop_ids');if(ids&&ids.length>1)ST.multiShop=true;}catch(e){}
+  }
   document.getElementById('whoami').textContent='';
   const shopB=document.getElementById('shopBtn');if(shopB)shopB.style.display=(ST.role==='admin'||ST.role==='owner')?'inline-block':'none';
+  const shopsB=document.getElementById('shopsBtn');if(shopsB)shopsB.style.display=(ST.role==='admin'||ST.multiShop)?'inline-block':'none';
   if(ST.role==='admin'){ if(!ST.tenant){ return chooseShop(); } }
+  else if(ST.multiShop&&!ST.tenant){ return chooseShop(); }
   else { ST.tenant=mt; }
   await enterShop();
 }
@@ -3684,7 +3692,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·132';
+const BUILD='v'+'2026.07.04·134';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -3847,7 +3855,8 @@ async function chooseShop(){
     h+='<div class="row" onclick="pickShop(\''+t.id+'\')"><div class="name">'+esc(t.name||'—')+'</div><div style="color:var(--accent);font-size:18px">›</div></div>';
   });
   if(!ST.tenants.length)h+='<div class="card muted" style="text-align:center">'+L('Κανένα μαγαζί ακόμα','No shops yet')+'</div>';
-  h+='<button class="btn" style="margin-top:14px" onclick="newShop()">➕ '+L('Νέο μαγαζί','New shop')+'</button></div>';
+  if(ST.role==='admin')h+='<button class="btn" style="margin-top:14px" onclick="newShop()">➕ '+L('Νέο μαγαζί','New shop')+'</button></div>';
+  else h+='</div>';
   c.innerHTML=h;
 }
 async function pickShop(id){
@@ -4136,3 +4145,4 @@ document.addEventListener('visibilitychange',()=>{
 </script>
 </body>
 </html>
+ 
