@@ -220,6 +220,7 @@ function rerenderCurrent(){
   if(ST.section==='events')return renderEvents();
   if(ST.view==='gmail')return gmailList();
   if(ST.view==='shops')return chooseShop();
+  if(ST.view==='shopAdmin'&&ST._adminShop)return openShopAdmin(ST._adminShop);
   if(ST.view==='members')return openMembers();
   if(ST.view==='labels')return openLabelEditor();
   if(ST.view==='ohist')return renderOrderHistory();
@@ -3696,7 +3697,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·140';
+const BUILD='v'+'2026.07.04·141';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -3876,10 +3877,11 @@ async function chooseShop(){
   (ST.tenants||[]).forEach(t=>{
     const s=shopStatus(t);
     const plan=(t.plan||'advanced').toUpperCase();
-    h+='<div class="row" onclick="pickShop(\''+t.id+'\')" style="border-left:4px solid '+s.col+'">'+
-      '<div style="flex:1;min-width:0"><div class="name">'+s.emo+' '+esc(t.name||'—')+'</div>'+
+    const isAdmin=ST.role==='admin';
+    h+='<div class="row" style="border-left:4px solid '+s.col+'">'+
+      '<div style="flex:1;min-width:0'+(isAdmin?';cursor:pointer':'')+'" '+(isAdmin?'onclick="openShopAdmin(\''+t.id+'\')"':'onclick="pickShop(\''+t.id+'\')"')+'><div class="name">'+s.emo+' '+esc(t.name||'—')+'</div>'+
       '<div style="font-size:12px;color:var(--muted)"><b>'+plan+'</b> · '+s.txt+'</div></div>'+
-      '<div style="color:var(--accent);font-size:18px">›</div></div>';
+      '<button class="pick" style="margin:0;white-space:nowrap" onclick="pickShop(\''+t.id+'\')">🚪 '+L('Μπες','Enter')+'</button></div>';
   });
   if(!ST.tenants.length)h+='<div class="card muted" style="text-align:center">'+L('Κανένα μαγαζί ακόμα','No shops yet')+'</div>';
   if(ST.role==='admin')h+='<button class="btn" style="margin-top:14px" onclick="newShop()">➕ '+L('Νέο μαγαζί','New shop')+'</button></div>';
@@ -3954,7 +3956,6 @@ async function openMembers(){
       '<div style="font-size:11px;color:var(--muted);margin-top:6px">'+freeUsers()+' '+L('χρήστες δωρεάν · κάθε επιπλέον +10€/μήνα','users free · each extra +10€/month')+' — '+L('Χρήστες τώρα','Users now')+': <b>'+members.length+'</b>'+(members.length>freeUsers()?(' <span style="color:var(--warn)">(+'+((members.length-freeUsers())*10)+'€)</span>'):'')+'</div>'+
     '</div>';
   }
-  if(ST.role==='admin'){ h+='<div id="finBox"></div>'; }
   h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent)"><div style="font-size:12px;color:var(--muted)">'+L('Μαγαζί','Shop')+'</div><div style="font-size:17px;font-weight:700;color:var(--accent)">'+esc(ST.shopName||'—')+'</div>'+
     '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+
     ((ST.role==='admin'||ST.role==='owner')?'<button class="pick" onclick="editShop()">✏️ '+L('Μετονομασία','Rename')+'</button>':'')+
@@ -4014,7 +4015,7 @@ async function openMembers(){
     h+='<div class="card" style="border:1.5px solid #e0a800;background:#FFF7E6"><h3 style="font-size:13px;margin-bottom:6px">➕ '+L('Νέο μέλος','New member')+'</h3>'+
       '<div style="font-size:13px;line-height:1.6">'+L('Το πακέτο σου περιλαμβάνει','Your plan includes')+' <b>'+freeUsers()+'</b> '+L('χρήστες — τους έχεις ήδη','users — you already have them')+' ('+members.length+').<br>'+
       L('Για επιπλέον χρήστη (+10€/μήνα) επικοινώνησε μαζί μας:','For an extra user (+10€/month) contact us:')+' <b>getcostiq@gmail.com</b></div></div></div>';
-    c.innerHTML=h; if(ST.role==='admin')loadShopFinance(); return;
+    c.innerHTML=h; return;
   }
   h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">➕ '+L('Νέο μέλος','New member')+'</h3>'+
     '<div class="field"><label>'+L('Ονοματεπώνυμο','Full name')+'</label><input id="nm-name" type="text" autocomplete="off" placeholder="'+L('πχ Μαρία Παπαδοπούλου','e.g. Maria Smith')+'"></div>'+
@@ -4032,19 +4033,39 @@ async function openMembers(){
     '<div class="muted" style="font-size:11px;margin-top:8px">'+L('Ο κωδικός δίνεται στο μέλος. Μπορεί να τον αλλάξει με «Ξέχασα τον κωδικό» αν έχει email.','Give the password to the member. They can change it via «Forgot password» if they have email.')+'</div>'+
   '</div></div>';
   c.innerHTML=h;
-  if(ST.role==='admin')loadShopFinance();
 }
 // ═══ ΟΙΚΟΝΟΜΙΚΑ ΜΑΓΑΖΙΟΥ (admin only) ═══
-async function loadShopFinance(){
-  const box=document.getElementById('finBox'); if(!box)return;
-  const tid=curTenant(); if(!tid)return;
+async function openShopAdmin(id){
+  if(ST.role!=='admin')return pickShop(id);
+  ST._adminShop=id;
+  const t=(ST.tenants||[]).find(x=>x.id===id)||{};
+  ST._adminShopName=t.name||'—';
+  ST._adminShopPlan=(t.plan||'advanced');
+  ST._adminShopPaid=t.paid_until||null;
+  ST.view='shopAdmin';persistNav();
+  const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','chooseShop()');}
+  document.getElementById('hTitle').textContent='🏪 '+esc(t.name||'—');
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  loadShopFinance(id);
+}
+async function loadShopFinance(forceTid){
+  const tid=forceTid||ST._adminShop||curTenant(); if(!tid)return;
+  const box=document.getElementById('content'); if(!box)return;
   let fin={},charges=[];
   try{const {data:f}=await sb.from('shop_finance').select('*').eq('tenant_id',tid).maybeSingle();if(f)fin=f;}catch(e){}
   try{const {data:ch}=await sb.from('shop_charges').select('*').eq('tenant_id',tid).order('charge_date',{ascending:false});charges=ch||[];}catch(e){}
   ST._fin=fin; ST._charges=charges;
   const total=charges.reduce((s,c)=>s+(Number(c.amount)||0),0);
   const T=(el,en)=>L(el,en);
-  let h='<div class="card" style="border:1.5px solid var(--accent)">'+
+  const plan=(ST._adminShopPlan||'advanced').toUpperCase();
+  let h='<div style="margin-top:12px">'+
+    '<div class="card" style="background:var(--accent-bg);border-color:var(--accent);display:flex;justify-content:space-between;align-items:center">'+
+      '<div><div style="font-size:17px;font-weight:700;color:var(--accent)">🏪 '+esc(ST._adminShopName||'—')+'</div>'+
+      '<div style="font-size:12px;color:var(--muted)"><b>'+plan+'</b>'+(ST._adminShopPaid?(' · '+L('λήγει','expires')+' '+dGRs(ST._adminShopPaid)):'')+'</div></div>'+
+      '<button class="btn" style="width:auto;margin:0" onclick="pickShop(\''+tid+'\')">🚪 '+T('Μπες','Enter')+'</button>'+
+    '</div>'+
+    '<div class="card" style="border:1.5px solid var(--accent)">'+
     '<h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">💰 '+T('Οικονομικά','Financials')+'</h3>'+
     '<div class="field"><label>📅 '+T('Ημ. Εγγραφής','Registered')+'</label><input id="fin-reg" type="date" value="'+esc(fin.registered_at||'')+'"></div>'+
     '<div style="display:flex;gap:8px;align-items:flex-end">'+
@@ -4066,7 +4087,7 @@ async function loadShopFinance(){
   box.innerHTML=h;
 }
 async function saveShopFinance(){
-  const tid=curTenant(); if(!tid)return;
+  const tid=ST._adminShop||curTenant(); if(!tid)return;
   const reg=document.getElementById('fin-reg').value||null;
   const fee=parseFloat(document.getElementById('fin-setup').value)||0;
   const paid=document.getElementById('fin-paid').checked;
@@ -4076,7 +4097,7 @@ async function saveShopFinance(){
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function addShopCharge(){
-  const tid=curTenant(); if(!tid)return;
+  const tid=ST._adminShop||curTenant(); if(!tid)return;
   const today=new Date().toISOString().slice(0,10);
   const d=prompt(L('Ημερομηνία χρέωσης (πχ 15/07/2026):','Charge date (e.g. 15/07/2026):'),dGRs(today));
   if(d===null)return; const iso=parseGRDate(d); if(!iso){toast('❌ '+L('Λάθος ημερομηνία','Bad date'));return;}
