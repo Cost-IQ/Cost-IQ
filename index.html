@@ -215,7 +215,7 @@ const EN_DEF={
   pdSumQty:'Total Quantity',pdSumSpend:'Total Spend',pdAvgPrice:'Avg Price',pdLast:'Last',pdChgE:'Change €',pdChgP:'Change %',pdHistH:'HISTORY',pdNoRec:'No records in this period',
   p9m:'9 Months',pCustom:'Custom',wUnitWord:'unit',rcSetYield:'set yield',wAll:'All',wAllM:'All',rcSaveAll:'Save all'
 };
-function persistNav(){try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,repsub:ST.repsub,homeView:ST.homeView,lang:ST.lang}));}catch(e){}}
+function persistNav(){try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,repsub:ST.repsub,adminShop:ST._adminShop,homeView:ST.homeView,lang:ST.lang}));}catch(e){}}
 function rerenderCurrent(){
   if(ST.section==='events')return renderEvents();
   if(ST.view==='gmail')return gmailList();
@@ -347,7 +347,7 @@ async function enterApp(){
   document.getElementById('appView').style.display='block';
   const {data:{user}}=await sb.auth.getUser();
   let role='',mt='';
-  try{const {data:prof}=await sb.from('profiles').select('role,tenant_id,lang').eq('id',user.id).single();if(prof){role=prof.role||'';mt=prof.tenant_id||'';if(prof.lang){ST.lang=prof.lang;const lb=document.getElementById('langBtn');if(lb)lb.innerHTML=langFlag();}}}catch(e){}
+  try{const {data:prof}=await sb.from('profiles').select('role,tenant_id,lang').eq('id',user.id).maybeSingle();if(prof){role=prof.role||'';mt=prof.tenant_id||'';ST.lang=(prof.lang==='en'||prof.lang==='el')?prof.lang:'el';const lb=document.getElementById('langBtn');if(lb)lb.innerHTML=langFlag();}}catch(e){}
   ST.role=role; ST.myTenant=mt; ST.userEmail=(user&&user.email)||''; ST.myId=(user&&user.id)||'';
   // Πόσα μαγαζιά έχει ο owner (κύριο + επιπλέον από owner_shops)
   ST.multiShop=false;
@@ -357,12 +357,18 @@ async function enterApp(){
   document.getElementById('whoami').textContent='';
   const shopB=document.getElementById('shopBtn');if(shopB)shopB.style.display=(ST.role==='admin'||ST.role==='owner')?'inline-block':'none';
   const shopsB=document.getElementById('shopsBtn');if(shopsB)shopsB.style.display=(ST.role==='admin'||ST.multiShop)?'inline-block':'none';
-  // Αν στο refresh ήμασταν στη λίστα μαγαζιών, γύρνα εκεί
+  // Πλοήγηση στο refresh:
   let savedView='';try{const nv=JSON.parse(localStorage.getItem('ciq_nav')||'{}');savedView=nv.view||'';}catch(e){}
+  // 1) Αν ήμασταν στη λίστα μαγαζιών → εκεί
   if(savedView==='shops'&&(ST.role==='admin'||ST.multiShop)){ return chooseShop(); }
-  if(ST.role==='admin'){ if(!ST.tenant){ return chooseShop(); } }
-  else if(ST.multiShop&&!ST.tenant){ return chooseShop(); }
-  else { ST.tenant=mt; }
+  // 2) Αν ήμασταν στα οικονομικά μαγαζιού (admin) → εκεί
+  if(savedView==='shopAdmin'&&ST.role==='admin'){ try{const nv=JSON.parse(localStorage.getItem('ciq_nav')||'{}');if(nv.adminShop){await chooseShop();return openShopAdmin(nv.adminShop);}}catch(e){} return chooseShop(); }
+  // 3) Admin χωρίς επιλεγμένο μαγαζί → λίστα
+  if(ST.role==='admin'&&!ST.tenant){ return chooseShop(); }
+  // 4) Owner με πολλά μαγαζιά χωρίς επιλογή → λίστα
+  if(ST.multiShop&&!ST.tenant){ return chooseShop(); }
+  // 5) Αλλιώς μπες στο μαγαζί (το restore του view γίνεται μέσα στο loadAll)
+  if(!ST.tenant)ST.tenant=mt;
   await enterShop();
 }
 async function enterShop(){
@@ -3697,7 +3703,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·145';
+const BUILD='v'+'2026.07.04·146';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -4257,7 +4263,7 @@ async function editShop(){
     toast('✅ '+L('Αποθηκεύτηκε','Saved'));
   }catch(e){toast('❌ '+(e.message||e));}
 }
-(async()=>{try{const nav=JSON.parse(localStorage.getItem('ciq_nav')||'{}');if(nav.lang)ST.lang=nav.lang;}catch(e){}
+(async()=>{try{}catch(e){}
   try{const st=id=>document.getElementById(id);
     if(st('loginSubtitle'))st('loginSubtitle').textContent=L('Σύνδεση στο cloud','Sign in to the cloud');
     if(st('loginBtn'))st('loginBtn').textContent=L('Σύνδεση','Sign In');
