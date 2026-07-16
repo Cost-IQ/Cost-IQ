@@ -3697,7 +3697,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·143';
+const BUILD='v'+'2026.07.04·144';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -4090,6 +4090,7 @@ async function loadShopFinance(forceTid){
       '<div class="field" style="flex:1"><label>💰 '+T('Setup Fee','Setup Fee')+' (€)</label><input id="fin-setup" type="number" step="0.01" value="'+(fin.setup_fee!=null?fin.setup_fee:'')+'" placeholder="0"></div>'+
       '<label style="display:flex;align-items:center;gap:6px;font-size:13px;padding-bottom:14px;cursor:pointer"><input type="checkbox" id="fin-paid" '+(fin.setup_paid?'checked':'')+'> '+T('Πληρώθηκε','Paid')+'</label>'+
     '</div>'+
+    '<div class="field"><label>🏷️ '+T('Έκπτωση','Discount')+' (%)</label><input id="fin-disc" type="number" step="0.1" value="'+(fin.owner_discount_pct!=null?fin.owner_discount_pct:'')+'" placeholder="'+T('κενό = καμία','empty = none')+'"></div>'+
     '<button class="btn" onclick="saveShopFinance()">💾 '+T('Αποθήκευση','Save')+'</button>'+
     '<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h4 style="font-size:13px;color:var(--muted);margin:0">🔄 '+T('Ιστορικό Χρεώσεων','Charge History')+'</h4><b style="color:var(--accent)">'+T('Σύνολο','Total')+': '+money(total)+'</b></div>';
@@ -4109,8 +4110,10 @@ async function saveShopFinance(){
   const reg=document.getElementById('fin-reg').value||null;
   const fee=parseFloat(document.getElementById('fin-setup').value)||0;
   const paid=document.getElementById('fin-paid').checked;
+  const discEl=document.getElementById('fin-disc');
+  const disc=(discEl&&discEl.value!=='')?parseFloat(discEl.value):null;
   try{
-    await sb.from('shop_finance').upsert({tenant_id:tid,registered_at:reg,setup_fee:fee,setup_paid:paid,updated_at:new Date().toISOString()},{onConflict:'tenant_id'});
+    await sb.from('shop_finance').upsert({tenant_id:tid,registered_at:reg,setup_fee:fee,setup_paid:paid,owner_discount_pct:disc,updated_at:new Date().toISOString()},{onConflict:'tenant_id'});
     toast('✅ '+L('Αποθηκεύτηκε','Saved'));
   }catch(e){toast('❌ '+(e.message||e));}
 }
