@@ -101,7 +101,7 @@
     <button class="back" id="backBtn" onclick="goList()">‹</button>
     <div style="flex:1"><h1 id="hTitle">Cost IQ</h1><div class="who" id="whoami">—</div></div>
     <button class="out" onclick="goHome()" style="margin-right:6px" title="Αρχική">🏠</button>
-    <button class="out" id="shopBtn" onclick="openMembers()" style="margin-right:6px;display:none" title="Μαγαζί & Μέλη">👥</button>
+    <button class="out" id="shopBtn" onclick="ST.role==='admin'?chooseShop():openMembers()" style="margin-right:6px;display:none" title="Μαγαζί & Μέλη">👥</button>
     <button class="out" onclick="openLabelEditor()" style="margin-right:6px" title="Ονόματα καρτελών">⚙️</button>
     <button class="out" id="fsBtn" onclick="toggleFullscreen()" style="margin-right:6px" title="Πλήρης οθόνη">⛶</button>
     <button class="out" id="langBtn" onclick="toggleLang()" style="margin-right:6px"><img src="https://flagcdn.com/28x21/gb.png" alt="EN" style="height:15px;vertical-align:middle;border-radius:2px"></button>
@@ -503,7 +503,7 @@ function subBanner(){
   const d=subDaysLeft();
   if(d<=7&&d<999){
     const c=document.getElementById('content');
-    if(c)c.insertAdjacentHTML('afterbegin','<div class="card" style="background:#FFF7E6;border:1.5px solid #e0a800;font-size:13px;text-align:center">⚠️ '+L('Η συνδρομή λήγει σε','Subscription expires in')+' <b>'+d+'</b> '+L('μέρες','days')+' ('+esc(ST.paidUntil||'')+')</div>');
+    if(c)c.insertAdjacentHTML('afterbegin','<div class="card" style="background:#FFF7E6;border:1.5px solid #e0a800;font-size:13px;text-align:center">⚠️ '+L('Η συνδρομή λήγει σε','Subscription expires in')+' <b>'+d+'</b> '+L('μέρες','days')+' ('+esc(dGRs(ST.paidUntil||''))+')</div>');
   }
 }
 function applyRoleUI(){
@@ -565,7 +565,7 @@ async function loadAll(){
     if(nav.prod&&nav.view==='detail'){const p=ST.products.find(x=>x.id===nav.prod);if(p){ST.prod=p;ST.view='detail';}}
     else if(nav.recipe&&nav.view==='detail'){const r=ST.recipes.find(x=>x.id===nav.recipe);if(r){ST.recipe=r;ST.view='detail';}}
     else if(nav.inv){const i=ST.invoices.find(x=>x.id===nav.inv);if(i)ST.inv=i;}
-    else if(nav.view==='labels'||nav.view==='ohist'||nav.view==='summary'){ST.view=nav.view;}
+    else if(nav.view&&nav.view!=='detail'){ST.view=nav.view;}
   }catch(e){}
   rerenderCurrent();
 }
@@ -3684,7 +3684,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·131';
+const BUILD='v'+'2026.07.04·132';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -4012,7 +4012,7 @@ async function addMonth(n){
   try{
     await sb.from('tenants').update({paid_until:until}).eq('id',curTenant());
     try{await sb.from('payments').insert({tenant_id:curTenant(),amount:fee,months:n||1,method:'χειροκίνητα'});}catch(e){}
-    ST.paidUntil=until;toast('✅ '+L('Πληρώθηκε — μέχρι','Paid — until')+' '+until);openMembers();
+    ST.paidUntil=until;toast('✅ '+L('Πληρώθηκε — μέχρι','Paid — until')+' '+dGRs(until));openMembers();
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function toggleTab(uid,tab){
