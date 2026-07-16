@@ -3696,7 +3696,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·138';
+const BUILD='v'+'2026.07.04·139';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -3953,6 +3953,7 @@ async function openMembers(){
       '<div style="font-size:11px;color:var(--muted);margin-top:6px">'+freeUsers()+' '+L('χρήστες δωρεάν · κάθε επιπλέον +10€/μήνα','users free · each extra +10€/month')+' — '+L('Χρήστες τώρα','Users now')+': <b>'+members.length+'</b>'+(members.length>freeUsers()?(' <span style="color:var(--warn)">(+'+((members.length-freeUsers())*10)+'€)</span>'):'')+'</div>'+
     '</div>';
   }
+  if(ST.role==='admin'){ h+='<div id="finBox"></div>'; }
   h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent)"><div style="font-size:12px;color:var(--muted)">'+L('Μαγαζί','Shop')+'</div><div style="font-size:17px;font-weight:700;color:var(--accent)">'+esc(ST.shopName||'—')+'</div>'+
     '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+
     ((ST.role==='admin'||ST.role==='owner')?'<button class="pick" onclick="editShop()">✏️ '+L('Μετονομασία','Rename')+'</button>':'')+
@@ -4012,7 +4013,7 @@ async function openMembers(){
     h+='<div class="card" style="border:1.5px solid #e0a800;background:#FFF7E6"><h3 style="font-size:13px;margin-bottom:6px">➕ '+L('Νέο μέλος','New member')+'</h3>'+
       '<div style="font-size:13px;line-height:1.6">'+L('Το πακέτο σου περιλαμβάνει','Your plan includes')+' <b>'+freeUsers()+'</b> '+L('χρήστες — τους έχεις ήδη','users — you already have them')+' ('+members.length+').<br>'+
       L('Για επιπλέον χρήστη (+10€/μήνα) επικοινώνησε μαζί μας:','For an extra user (+10€/month) contact us:')+' <b>getcostiq@gmail.com</b></div></div></div>';
-    c.innerHTML=h; return;
+    c.innerHTML=h; if(ST.role==='admin')loadShopFinance(); return;
   }
   h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">➕ '+L('Νέο μέλος','New member')+'</h3>'+
     '<div class="field"><label>'+L('Ονοματεπώνυμο','Full name')+'</label><input id="nm-name" type="text" autocomplete="off" placeholder="'+L('πχ Μαρία Παπαδοπούλου','e.g. Maria Smith')+'"></div>'+
@@ -4030,6 +4031,67 @@ async function openMembers(){
     '<div class="muted" style="font-size:11px;margin-top:8px">'+L('Ο κωδικός δίνεται στο μέλος. Μπορεί να τον αλλάξει με «Ξέχασα τον κωδικό» αν έχει email.','Give the password to the member. They can change it via «Forgot password» if they have email.')+'</div>'+
   '</div></div>';
   c.innerHTML=h;
+  if(ST.role==='admin')loadShopFinance();
+}
+// ═══ ΟΙΚΟΝΟΜΙΚΑ ΜΑΓΑΖΙΟΥ (admin only) ═══
+async function loadShopFinance(){
+  const box=document.getElementById('finBox'); if(!box)return;
+  const tid=curTenant(); if(!tid)return;
+  let fin={},charges=[];
+  try{const {data:f}=await sb.from('shop_finance').select('*').eq('tenant_id',tid).maybeSingle();if(f)fin=f;}catch(e){}
+  try{const {data:ch}=await sb.from('shop_charges').select('*').eq('tenant_id',tid).order('charge_date',{ascending:false});charges=ch||[];}catch(e){}
+  ST._fin=fin; ST._charges=charges;
+  const total=charges.reduce((s,c)=>s+(Number(c.amount)||0),0);
+  const T=(el,en)=>L(el,en);
+  let h='<div class="card" style="border:1.5px solid var(--accent)">'+
+    '<h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">💰 '+T('Οικονομικά','Financials')+'</h3>'+
+    '<div class="field"><label>📅 '+T('Ημ. Εγγραφής','Registered')+'</label><input id="fin-reg" type="date" value="'+esc(fin.registered_at||'')+'"></div>'+
+    '<div style="display:flex;gap:8px;align-items:flex-end">'+
+      '<div class="field" style="flex:1"><label>💰 '+T('Setup Fee','Setup Fee')+' (€)</label><input id="fin-setup" type="number" step="0.01" value="'+(fin.setup_fee!=null?fin.setup_fee:'')+'" placeholder="0"></div>'+
+      '<label style="display:flex;align-items:center;gap:6px;font-size:13px;padding-bottom:14px;cursor:pointer"><input type="checkbox" id="fin-paid" '+(fin.setup_paid?'checked':'')+'> '+T('Πληρώθηκε','Paid')+'</label>'+
+    '</div>'+
+    '<button class="btn" onclick="saveShopFinance()">💾 '+T('Αποθήκευση','Save')+'</button>'+
+    '<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h4 style="font-size:13px;color:var(--muted);margin:0">🔄 '+T('Ιστορικό Χρεώσεων','Charge History')+'</h4><b style="color:var(--accent)">'+T('Σύνολο','Total')+': '+money(total)+'</b></div>';
+  if(!charges.length)h+='<div class="muted" style="font-size:12px">'+T('Καμία χρέωση ακόμα','No charges yet')+'</div>';
+  charges.forEach(c=>{
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">'+
+      '<div><span style="color:var(--muted)">'+dGRs(c.charge_date)+'</span> · '+esc(c.label||c.kind||'—')+'</div>'+
+      '<div style="display:flex;align-items:center;gap:8px"><b>'+money(Number(c.amount)||0)+'</b>'+
+      '<span onclick="delShopCharge(\''+c.id+'\')" style="cursor:pointer;color:var(--bad)">🗑</span></div></div>';
+  });
+  h+='<button class="pick" style="margin-top:10px" onclick="addShopCharge()">➕ '+T('Νέα Χρέωση','New Charge')+'</button>'+
+    '</div></div>';
+  box.innerHTML=h;
+}
+async function saveShopFinance(){
+  const tid=curTenant(); if(!tid)return;
+  const reg=document.getElementById('fin-reg').value||null;
+  const fee=parseFloat(document.getElementById('fin-setup').value)||0;
+  const paid=document.getElementById('fin-paid').checked;
+  try{
+    await sb.from('shop_finance').upsert({tenant_id:tid,registered_at:reg,setup_fee:fee,setup_paid:paid,updated_at:new Date().toISOString()},{onConflict:'tenant_id'});
+    toast('✅ '+L('Αποθηκεύτηκε','Saved'));
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function addShopCharge(){
+  const tid=curTenant(); if(!tid)return;
+  const today=new Date().toISOString().slice(0,10);
+  const d=prompt(L('Ημερομηνία χρέωσης (πχ 15/07/2026):','Charge date (e.g. 15/07/2026):'),dGRs(today));
+  if(d===null)return; const iso=parseGRDate(d); if(!iso){toast('❌ '+L('Λάθος ημερομηνία','Bad date'));return;}
+  const label=prompt(L('Περιγραφή (πχ Ανανέωση Μενού):','Description (e.g. Menu Update):'),'');
+  if(label===null)return;
+  const amtS=prompt(L('Ποσό (€):','Amount (€):'),'');
+  if(amtS===null)return; const amt=parseFloat(amtS)||0;
+  try{
+    await sb.from('shop_charges').insert({tenant_id:tid,charge_date:iso,label:label||null,amount:amt,created_by:ST.userEmail||null});
+    toast('✅ '+L('Προστέθηκε','Added')); loadShopFinance();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function delShopCharge(id){
+  if(!confirm(L('Διαγραφή χρέωσης;','Delete charge?')))return;
+  try{await sb.from('shop_charges').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));loadShopFinance();}
+  catch(e){toast('❌ '+(e.message||e));}
 }
 async function savePlan(){
   if(ST.role!=='admin')return;
