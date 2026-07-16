@@ -3697,7 +3697,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·141';
+const BUILD='v'+'2026.07.04·142';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -4059,7 +4059,7 @@ async function loadShopFinance(forceTid){
   const total=charges.reduce((s,c)=>s+(Number(c.amount)||0),0);
   const T=(el,en)=>L(el,en);
   const plan=(ST._adminShopPlan||'advanced').toUpperCase();
-  let h='<div style="margin-top:12px">'+
+  let h='<div style="margin-top:12px;width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1000px;margin:0 auto">'+
     '<div class="card" style="background:var(--accent-bg);border-color:var(--accent);display:flex;justify-content:space-between;align-items:center">'+
       '<div><div style="font-size:17px;font-weight:700;color:var(--accent)">🏪 '+esc(ST._adminShopName||'—')+'</div>'+
       '<div style="font-size:12px;color:var(--muted)"><b>'+plan+'</b>'+(ST._adminShopPaid?(' · '+L('λήγει','expires')+' '+dGRs(ST._adminShopPaid)):'')+'</div></div>'+
@@ -4083,7 +4083,7 @@ async function loadShopFinance(forceTid){
       '<span onclick="delShopCharge(\''+c.id+'\')" style="cursor:pointer;color:var(--bad)">🗑</span></div></div>';
   });
   h+='<button class="pick" style="margin-top:10px" onclick="addShopCharge()">➕ '+T('Νέα Χρέωση','New Charge')+'</button>'+
-    '</div></div>';
+    '</div></div></div></div>';
   box.innerHTML=h;
 }
 async function saveShopFinance(){
