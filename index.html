@@ -3692,7 +3692,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·134';
+const BUILD='v'+'2026.07.04·135';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -3849,10 +3849,36 @@ async function chooseShop(){
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
   const {data}=await sb.from('tenants').select('*').order('name');
   ST.tenants=data||[];
+  // Κατάσταση συνδρομής ανά μαγαζί
+  const today=new Date(); today.setHours(0,0,0,0);
+  const shopStatus=t=>{
+    if(!t.paid_until)return {emo:'⚪',col:'var(--muted)',days:null,expired:false,txt:L('χωρίς ημερομηνία','no date')};
+    const pu=new Date(t.paid_until); pu.setHours(0,0,0,0);
+    const days=Math.round((pu-today)/86400000);
+    if(days<0)return {emo:'🔴',col:'var(--bad)',days,expired:true,txt:L('έληξε','expired')+' '+dGRs(t.paid_until)};
+    if(days<=7)return {emo:'🟡',col:'#e0a800',days,expired:false,txt:L('λήγει','expires')+' '+dGRs(t.paid_until)+' ('+days+' '+L('μέρες','days')+')'};
+    return {emo:'🟢',col:'var(--ok)',days,expired:false,txt:L('λήγει','expires')+' '+dGRs(t.paid_until)+' ('+days+' '+L('μέρες','days')+')'};
+  };
   let h='<div style="margin-top:14px"><h2 style="font-size:18px;margin:0 0 4px">🏪 '+L('Τα Μαγαζιά μου','My Shops')+'</h2>'+
     '<p class="muted" style="font-size:13px;margin:0 0 12px">'+L('Διάλεξε μαγαζί για να μπεις','Pick a shop to enter')+'</p>';
+  // Σύνολο (μόνο admin)
+  if(ST.role==='admin'&&ST.tenants.length){
+    let active=0,soon=0,exp=0;
+    ST.tenants.forEach(t=>{const s=shopStatus(t);if(s.expired)exp++;else if(s.days!==null&&s.days<=7)soon++;else active++;});
+    h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent);display:flex;justify-content:space-around;text-align:center;font-size:13px;padding:12px">'+
+      '<div><div style="font-size:20px;font-weight:800">'+ST.tenants.length+'</div><div style="color:var(--muted);font-size:11px">'+L('μαγαζιά','shops')+'</div></div>'+
+      '<div><div style="font-size:20px;font-weight:800;color:var(--ok)">🟢 '+active+'</div><div style="color:var(--muted);font-size:11px">'+L('ενεργά','active')+'</div></div>'+
+      '<div><div style="font-size:20px;font-weight:800;color:#e0a800">🟡 '+soon+'</div><div style="color:var(--muted);font-size:11px">'+L('λήγουν','expiring')+'</div></div>'+
+      '<div><div style="font-size:20px;font-weight:800;color:var(--bad)">🔴 '+exp+'</div><div style="color:var(--muted);font-size:11px">'+L('έληξαν','expired')+'</div></div>'+
+    '</div>';
+  }
   (ST.tenants||[]).forEach(t=>{
-    h+='<div class="row" onclick="pickShop(\''+t.id+'\')"><div class="name">'+esc(t.name||'—')+'</div><div style="color:var(--accent);font-size:18px">›</div></div>';
+    const s=shopStatus(t);
+    const plan=(t.plan||'advanced').toUpperCase();
+    h+='<div class="row" onclick="pickShop(\''+t.id+'\')" style="border-left:4px solid '+s.col+'">'+
+      '<div style="flex:1;min-width:0"><div class="name">'+s.emo+' '+esc(t.name||'—')+'</div>'+
+      '<div style="font-size:12px;color:var(--muted)"><b>'+plan+'</b> · '+s.txt+'</div></div>'+
+      '<div style="color:var(--accent);font-size:18px">›</div></div>';
   });
   if(!ST.tenants.length)h+='<div class="card muted" style="text-align:center">'+L('Κανένα μαγαζί ακόμα','No shops yet')+'</div>';
   if(ST.role==='admin')h+='<button class="btn" style="margin-top:14px" onclick="newShop()">➕ '+L('Νέο μαγαζί','New shop')+'</button></div>';
@@ -4145,4 +4171,3 @@ document.addEventListener('visibilitychange',()=>{
 </script>
 </body>
 </html>
- 
