@@ -654,7 +654,7 @@ async function saveLabels(){
     btn.disabled=false;toast('✅ Αποθηκεύτηκε');goHome();
   }catch(e){btn.disabled=false;btn.textContent='Αποθήκευση';toast('❌ '+(e.message||e));}
 }
-const BASIC_TABS=['products','suppliers','orders','recipes'];
+const BASIC_TABS=['suppliers','products','recipes','orders','ocr','invoices'];
 function allowedTabs(){
   let items=['products','suppliers','orders','ocr','invoices','recipes','events','agree','history'];
   // 1) Πακέτο μαγαζιού
@@ -3684,13 +3684,13 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·129';
+const BUILD='v'+'2026.07.04·130';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
 // Ο admin (εσύ) εξαιρείται. Θέλει το SQL: COST_IQ_device_limit.sql
 const DEVICE_LIMIT=2;
-const FREE_USERS=3;   // χρήστες που περιλαμβάνονται στο πακέτο — πάνω από αυτούς, μόνο ο admin προσθέτει (χρέωση +10€/μήνα)
+function freeUsers(){return (ST.plan==='basic')?2:3;}   // Basic: 2 δωρεάν χρήστες · Advanced: 3. Πάνω από αυτό, μόνο ο admin (χρέωση +10€/μήνα)
 let _hbTimer=null;
 function deviceId(){
   let d='';try{d=localStorage.getItem('ciq_dev')||'';}catch(e){}
@@ -3970,11 +3970,11 @@ async function openMembers(){
     h+='</div>';
   });
   h+='</div>';
-  // ── Όριο χρηστών: ο owner προσθέτει έως FREE_USERS μέλη. Πάνω από αυτό, μόνο ο admin (χρέωση) ──
-  const canAddMore=(ST.role==='admin')||(members.length<FREE_USERS);
+  // ── Όριο χρηστών: ο owner προσθέτει έως freeUsers() μέλη (Basic 2 / Advanced 3). Πάνω από αυτό, μόνο ο admin (χρέωση) ──
+  const canAddMore=(ST.role==='admin')||(members.length<freeUsers());
   if(!canAddMore){
     h+='<div class="card" style="border:1.5px solid #e0a800;background:#FFF7E6"><h3 style="font-size:13px;margin-bottom:6px">➕ '+L('Νέο μέλος','New member')+'</h3>'+
-      '<div style="font-size:13px;line-height:1.6">'+L('Το πακέτο σου περιλαμβάνει','Your plan includes')+' <b>'+FREE_USERS+'</b> '+L('χρήστες — τους έχεις ήδη','users — you already have them')+' ('+members.length+').<br>'+
+      '<div style="font-size:13px;line-height:1.6">'+L('Το πακέτο σου περιλαμβάνει','Your plan includes')+' <b>'+freeUsers()+'</b> '+L('χρήστες — τους έχεις ήδη','users — you already have them')+' ('+members.length+').<br>'+
       L('Για επιπλέον χρήστη (+10€/μήνα) επικοινώνησε μαζί μας:','For an extra user (+10€/month) contact us:')+' <b>getcostiq@gmail.com</b></div></div></div>';
     c.innerHTML=h; return;
   }
@@ -4087,7 +4087,7 @@ async function changeRole(uid,role){
   }catch(e){toast('❌ '+(e.message||e));openMembers();}
 }
 async function addMember(){
-  if(ST.role!=='admin'&&((ST._members||[]).length>=FREE_USERS)){toast('❌ '+L('Όριο χρηστών του πακέτου — επικοινώνησε για επιπλέον (+10€/μήνα)','Plan user limit — contact us for extra users (+10€/month)'));return;}
+  if(ST.role!=='admin'&&((ST._members||[]).length>=freeUsers())){toast('❌ '+L('Όριο χρηστών του πακέτου — επικοινώνησε για επιπλέον (+10€/μήνα)','Plan user limit — contact us for extra users (+10€/month)'));return;}
   const email=(document.getElementById('nm-email').value||'').trim();
   const password=document.getElementById('nm-pass').value||'';
   const role=document.getElementById('nm-role').value||'staff';
