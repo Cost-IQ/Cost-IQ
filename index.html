@@ -3697,7 +3697,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·142';
+const BUILD='v'+'2026.07.04·143';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -3846,6 +3846,23 @@ async function markGmailDone(){
   try{await sb.from('gmail_done').upsert({tenant_id:curTenant(),gmail_id:m.id,subject:m.subject||null,processed_by:ST.userEmail||null},{onConflict:'tenant_id,gmail_id'});}catch(e){}
   window._gmailCurrentMsg=null;
 }
+async function openDiscountSettings(){
+  if(ST.role!=='admin')return;
+  let s={pct_2:10,pct_3:15,pct_4plus:20};
+  try{const {data}=await sb.from('discount_settings').select('*').eq('id','global').maybeSingle();if(data)s=data;}catch(e){}
+  const T=(el,en)=>L(el,en);
+  const msg=T('Εκπτώσεις όγκου για owner με πολλά μαγαζιά.','Volume discounts for multi-shop owners.');
+  const v2=prompt(T('Έκπτωση για 2 μαγαζιά (%):','Discount for 2 shops (%):'),s.pct_2);
+  if(v2===null)return;
+  const v3=prompt(T('Έκπτωση για 3 μαγαζιά (%):','Discount for 3 shops (%):'),s.pct_3);
+  if(v3===null)return;
+  const v4=prompt(T('Έκπτωση για 4+ μαγαζιά (%):','Discount for 4+ shops (%):'),s.pct_4plus);
+  if(v4===null)return;
+  try{
+    await sb.from('discount_settings').upsert({id:'global',pct_2:parseFloat(v2)||0,pct_3:parseFloat(v3)||0,pct_4plus:parseFloat(v4)||0,updated_at:new Date().toISOString()},{onConflict:'id'});
+    toast('✅ '+T('Αποθηκεύτηκε','Saved'));
+  }catch(e){toast('❌ '+(e.message||e));}
+}
 async function chooseShop(){
   ST.view='shops';persistNav();
   const c=document.getElementById('content');
@@ -3864,7 +3881,7 @@ async function chooseShop(){
     if(days<=7)return {emo:'🟡',col:'#e0a800',days,expired:false,txt:L('λήγει','expires')+' '+dGRs(t.paid_until)+' ('+days+' '+L('μέρες','days')+')'};
     return {emo:'🟢',col:'var(--ok)',days,expired:false,txt:L('λήγει','expires')+' '+dGRs(t.paid_until)+' ('+days+' '+L('μέρες','days')+')'};
   };
-  let h='<div style="margin-top:14px"><h2 style="font-size:18px;margin:0 0 4px">🏪 '+L('Τα Μαγαζιά μου','My Shops')+'</h2>'+
+  let h='<div style="margin-top:14px;width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1000px;margin:0 auto"><h2 style="font-size:18px;margin:0 0 4px">🏪 '+L('Τα Μαγαζιά μου','My Shops')+'</h2>'+
     '<p class="muted" style="font-size:13px;margin:0 0 12px">'+L('Διάλεξε μαγαζί για να μπεις','Pick a shop to enter')+'</p>';
   // Σύνολο (μόνο admin)
   if(ST.role==='admin'&&ST.tenants.length){
@@ -3884,8 +3901,9 @@ async function chooseShop(){
       '<button class="pick" style="margin:0;white-space:nowrap" onclick="pickShop(\''+t.id+'\')">🚪 '+L('Μπες','Enter')+'</button></div>';
   });
   if(!ST.tenants.length)h+='<div class="card muted" style="text-align:center">'+L('Κανένα μαγαζί ακόμα','No shops yet')+'</div>';
-  if(ST.role==='admin')h+='<button class="btn" style="margin-top:14px" onclick="newShop()">➕ '+L('Νέο μαγαζί','New shop')+'</button></div>';
-  else h+='</div>';
+  if(ST.role==='admin')h+='<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn" style="flex:1" onclick="newShop()">➕ '+L('Νέο μαγαζί','New shop')+'</button>'+
+    '<button class="pick" style="flex:1;margin:0" onclick="openDiscountSettings()">⚙️ '+L('Εκπτώσεις','Discounts')+'</button></div></div></div>';
+  else h+='</div></div>';
   c.innerHTML=h;
 }
 async function pickShop(id){
