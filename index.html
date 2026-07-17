@@ -693,7 +693,7 @@ function sectionNav(){
   let items=[['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['products','📦',lbl('products','Προϊόντα')],['recipes','🍸',lbl('recipes','Συνταγές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['daily','📅',lbl('daily','Ημέρα')],['agree','🤝',lbl('agree','Συμφωνίες')],['events','🎉',lbl('events','Εκδηλώσεις')],['history','📊',lbl('history','Στατιστικά')]];
   items=items.filter(i=>allow.indexOf(i[0])>=0);
   // ── Desktop: οριζόντια tabs ──
-  const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:10px 6px;box-sizing:border-box;font-size:13px;text-align:center">'+emo+' '+txt+'</div>';
+  const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:0;white-space:nowrap;padding:10px 8px;box-sizing:border-box;font-size:13px;text-align:center">'+emo+' '+txt+'</div>';
   let desk='<div class="nav-desktop" style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px);margin-top:12px"><div class="tabs" style="flex-wrap:nowrap;justify-content:stretch;gap:6px;margin:0;padding:0 12px 4px 12px">'+
     items.map(i=>tab(i[0],i[1],i[2])).join('')+
     '<div class="tab" onclick="loadAll()" style="flex:0 0 auto;min-width:40px;padding:10px 6px;box-sizing:border-box" title="Ανανέωση">🔄</div></div></div>';
