@@ -3434,7 +3434,7 @@ async function ocrApprove(){
   }
   try{
     const payMethod=(document.getElementById('ocr-paymethod')||{}).value||null;
-    const {data:invRow}=await sb.from('invoices').insert({tenant_id:tid,supplier_id:sid,supplier_name:supN,date:date,invoice_number:o.invoiceNo||null,category:anyBev?'Beverage':'Food',total_net:(o.netTotal!=null?o.netTotal:grossR),vat_pct:(o.vatTotal!=null?o.vatTotal:null),total_gross:(o.grandTotal!=null?o.grandTotal:grossR),new_balance:(o.newBalance!=null?o.newBalance:null),payment_method:payMethod,file_url:fileUrl,status:'approved'}).select().single();
+    const {data:invRow}=await sb.from('invoices').insert({tenant_id:tid,supplier_id:sid,supplier_name:supN,date:date,invoice_number:o.invoiceNo||null,category:anyBev?'Beverage':'Food',total_net:(o.netTotal!=null?o.netTotal:grossR),vat_pct:(o.vatTotal!=null?o.vatTotal:null),total_gross:(o.grandTotal!=null?o.grandTotal:grossR),payment_method:payMethod,file_url:fileUrl,status:'approved'}).select().single();
     if(invRow)invId=invRow.id;
   }catch(e){console.error(e);}
   let ok=0;
@@ -3597,7 +3597,7 @@ function invDbView(){
   if(!invs.length){h+='<div class="card muted" style="text-align:center">'+lbl('iNone','Κανένα τιμολόγιο σε αυτά τα φίλτρα.')+'</div>';return h;}
   h+='<div class="card" style="padding:10px;width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;min-width:640px;border-collapse:collapse;font-size:12px;white-space:nowrap">'+
     '<thead><tr style="border-bottom:2px solid var(--line);color:var(--muted);font-size:11px">'+
-    [lbl('thDate','Ημερομηνία'),lbl('thSup','Προμηθευτής'),lbl('thInvNo','Αριθμός Τιμολογίου'),lbl('thCat','Κατηγορία'),lbl('thNet','Καθαρή Αξία'),lbl('thVat','ΦΠΑ'),lbl('thTotal','Σύνολο'),lbl('thBalance','Νέο Υπόλοιπο'),lbl('thStatus','Κατάσταση'),lbl('thNotes','Σημειώσεις'),'📎','🗑'].map(c=>'<th style="padding:6px 8px;text-align:center;font-weight:600">'+c+'</th>').join('')+
+    [lbl('thDate','Ημερομηνία'),lbl('thSup','Προμηθευτής'),lbl('thInvNo','Αριθμός Τιμολογίου'),lbl('thCat','Κατηγορία'),lbl('thNet','Καθαρή Αξία'),lbl('thVat','ΦΠΑ'),lbl('thTotal','Σύνολο'),lbl('thStatus','Κατάσταση'),lbl('thNotes','Σημειώσεις'),'📎','🗑'].map(c=>'<th style="padding:6px 8px;text-align:center;font-weight:600">'+c+'</th>').join('')+
     '</tr></thead><tbody>';
   invs.forEach(v=>{
     const cat=(v.category||'').toLowerCase().indexOf('bever')>=0?'🍺':(v.category?'🍽️':'');
@@ -3609,7 +3609,6 @@ function invDbView(){
       '<td style="padding:6px 8px;text-align:center">'+(v.total_net!=null?money(v.total_net):'—')+'</td>'+
       '<td style="padding:6px 8px;text-align:center">'+(v.vat_pct!=null&&v.vat_pct!==''?money(v.vat_pct):'—')+'</td>'+
       '<td style="padding:6px 8px;text-align:center;font-weight:700">'+money(v.total_gross)+'</td>'+
-      '<td style="padding:6px 8px;text-align:center">'+(v.new_balance!=null?money(v.new_balance):'—')+'</td>'+
       '<td style="padding:6px 8px;text-align:center">'+esc(v.status||'—')+'</td>'+
       '<td style="padding:6px 8px;text-align:left">'+esc(v.notes||'—')+'</td>'+
       '<td style="padding:6px 8px;text-align:center">'+(v.file_url?'<a href="'+esc(v.file_url)+'" target="_blank" onclick="event.stopPropagation()">📎</a>':'')+'</td>'+
@@ -3700,7 +3699,6 @@ function openInvoice(id){
     '<div class="kv"><span class="k">'+lbl('thNet','Καθαρή Αξία')+'</span><span class="v">'+money(v.total_net)+'</span></div>'+
     '<div class="kv"><span class="k">'+lbl('thVat','ΦΠΑ')+'</span><span class="v">'+money(v.vat_pct)+'</span></div>'+
     '<div class="kv"><span class="k">'+lbl('invGross','Μικτή Αξία')+'</span><span class="v" style="font-weight:700">'+money(v.total_gross)+'</span></div>'+
-    (v.new_balance!=null?'<div class="kv"><span class="k">'+lbl('invBalance','Υπόλοιπο')+'</span><span class="v">'+money(v.new_balance)+'</span></div>':'')+
     (v.notes?'<div class="kv"><span class="k">'+lbl('thNotes','Σημειώσεις')+'</span><span class="v">'+esc(v.notes)+'</span></div>':'')+
     (v.file_url?'<a class="btn ghost" href="'+esc(v.file_url)+'" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;margin-top:10px">📎 '+lbl('invViewScan','Δες το σκαναρισμένο')+'</a>':'')+
   '</div>';
@@ -3764,7 +3762,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·159';
+const BUILD='v'+'2026.07.04·160';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
