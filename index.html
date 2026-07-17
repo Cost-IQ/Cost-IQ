@@ -179,7 +179,7 @@ function lbl(key,def){
 let _searchT=null;
 function debSearch(fn){clearTimeout(_searchT);_searchT=setTimeout(fn,220);}
 const EN_DEF={
-  products:'Products',suppliers:'Suppliers',orders:'Orders',ocr:'Scan Invoice',invoices:'Invoices',recipes:'Recipes',agree:'Agreements',events:'Events',history:'Stats',
+  products:'Products',suppliers:'Suppliers',orders:'Orders',ocr:'Scan Invoice',invoices:'Invoices',recipes:'Recipes',agree:'Agreements',events:'Events',history:'Stats',daily:'Day',
   kindBeverage:'Drinks',kindFood:'Food',kindSupplies:'Supplies',sale:'Sale',
   searchPh:'🔍 Search…',sortLabel:'Sort:',sortCat:'Category',sortSub:'Sub-Category',sortName:'Name (A→Z)',sortPrice:'Price (low→high)',
   wordProducts:'products',addBtn:'Add',noProducts:'No products',
@@ -613,7 +613,7 @@ function toggleFullscreen(){
 }
 const LABEL_KEYS=[
   ['products','Προϊόντα'],['suppliers','Προμηθευτές'],['orders','Παραγγελίες'],
-  ['ocr','Πρόσθεσε Τιμολόγιο'],['invoices','Τιμολόγια'],['recipes','Συνταγές'],
+  ['ocr','Πρόσθεσε Τιμολόγιο'],['invoices','Τιμολόγια'],['recipes','Συνταγές'],['daily','Ημέρα'],
   ['agree','Συμφωνίες'],['events','Εκδηλώσεις'],['history','Στατιστικά'],
   ['kindBeverage','Ποτά'],['kindFood','Τρόφιμα'],['kindSupplies','Αναλώσιμα'],
   ['sale','Πώληση'],['searchPh','🔍 Αναζήτηση…'],['sortLabel','Ταξινόμηση:'],
@@ -679,6 +679,8 @@ async function saveLabels(){
 const BASIC_TABS=['suppliers','products','recipes','orders','ocr','invoices'];
 function allowedTabs(){
   let items=['products','suppliers','orders','ocr','invoices','recipes','events','agree','history'];
+  // Pro tier: προσθήκη Daily Routine
+  if(isPro())items.push('daily');
   // 1) Πακέτο μαγαζιού
   if(ST.plan==='basic')items=items.filter(t=>BASIC_TABS.indexOf(t)>=0);
   // 2) Δικαιώματα ανά χρήστη (αν έχουν οριστεί on/off)
@@ -688,7 +690,7 @@ function allowedTabs(){
 }
 function sectionNav(){
   const allow=allowedTabs();
-  let items=[['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['products','📦',lbl('products','Προϊόντα')],['recipes','🍸',lbl('recipes','Συνταγές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['agree','🤝',lbl('agree','Συμφωνίες')],['events','🎉',lbl('events','Εκδηλώσεις')],['history','📊',lbl('history','Στατιστικά')]];
+  let items=[['daily','📅',lbl('daily','Ημέρα')],['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['products','📦',lbl('products','Προϊόντα')],['recipes','🍸',lbl('recipes','Συνταγές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['agree','🤝',lbl('agree','Συμφωνίες')],['events','🎉',lbl('events','Εκδηλώσεις')],['history','📊',lbl('history','Στατιστικά')]];
   items=items.filter(i=>allow.indexOf(i[0])>=0);
   // ── Desktop: οριζόντια tabs ──
   const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:104px;white-space:nowrap;padding:10px 12px">'+emo+' '+txt+'</div>';
@@ -708,7 +710,7 @@ function sectionNav(){
   return desk+mob+setupBanner();
 }
 function toggleNav(){ST.navOpen=!ST.navOpen;rerenderCurrent();}
-function renderSection(){ persistNav(); if(ST.section==='suppliers') renderSuppliers(); else if(ST.section==='orders') renderOrders(); else if(ST.section==='history') renderStats(); else if(ST.section==='ocr') renderOcr(); else if(ST.section==='invoices') renderInvoices(); else if(ST.section==='recipes') renderRecipes(); else if(ST.section==='agree') renderAgreements(); else if(ST.section==='events') renderEvents(); else renderList(); var _w=document.getElementById('whoami'); if(_w) _w.style.display=(ST.section==='products'&&ST.view==='list')?'block':'none'; }
+function renderSection(){ persistNav(); if(ST.section==='suppliers') renderSuppliers(); else if(ST.section==='orders') renderOrders(); else if(ST.section==='history') renderStats(); else if(ST.section==='ocr') renderOcr(); else if(ST.section==='invoices') renderInvoices(); else if(ST.section==='recipes') renderRecipes(); else if(ST.section==='agree') renderAgreements(); else if(ST.section==='events') renderEvents(); else if(ST.section==='daily') renderDaily(); else renderList(); var _w=document.getElementById('whoami'); if(_w) _w.style.display=(ST.section==='products'&&ST.view==='list')?'block':'none'; }
 function setKind(k){ST.kind=k;persistNav();renderList();}
 function renderList(){
   const c=document.getElementById('content');
@@ -3719,6 +3721,112 @@ function openInvoice(id){
   c.innerHTML=h;
 }
 function renderInvoicesBack(){ST.inv=null;renderSection();}
+
+// ═══════════ 📅 DAILY ROUTINE (Pro) ═══════════
+function dailyDate(){ return ST.dailyDate || (new Date()).toISOString().slice(0,10); }
+function dailyDateLocal(d){ const x=d?new Date(d+'T12:00:00'):new Date(); const y=x.getFullYear(),m=String(x.getMonth()+1).padStart(2,'0'),dd=String(x.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+async function renderDaily(){
+  persistNav();
+  const c=document.getElementById('content');
+  if(!isPro()){ c.innerHTML='<div class="card muted" style="text-align:center;margin-top:14px">🔒 '+L('Το Daily Routine είναι στο πακέτο PRO','Daily Routine is a PRO feature')+'</div>'; return; }
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  const date=dailyDate();
+  // Φόρτωση κλεισίματος + εξόδων ημέρας
+  let close=null, exps=[];
+  try{const {data}=await sb.from('daily_close').select('*').eq('tenant_id',curTenant()).eq('close_date',date).maybeSingle();close=data;}catch(e){}
+  try{const {data}=await sb.from('daily_expenses').select('*').eq('tenant_id',curTenant()).eq('exp_date',date).order('created_at',{ascending:true});exps=data||[];}catch(e){}
+  ST.dailyClose=close||{}; ST.dailyExps=exps;
+  drawDaily();
+}
+function drawDaily(){
+  const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
+  const cl=ST.dailyClose||{}; const exps=ST.dailyExps||[];
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const income = n(cl.cash_income)+n(cl.card_income)+n(cl.pos1)+n(cl.pos2)+n(cl.envelope)-n(cl.errors)-n(cl.credit_notes);
+  const expTotal = exps.reduce((s,e)=>s+n(e.amount),0);
+  const net = income - expTotal;
+  const money2=x=>money(Math.round(x*100)/100);
+  const payLabel=m=>({cash:T('Μετρητά','Cash'),credit:T('Πίστωση','Credit'),transfer:T('Τραπεζικό Έμβασμα','Bank Transfer')}[m]||'—');
+  const catLabel=ct=>({staff:T('Προσωπικό','Staff'),utilities:T('Πάγια','Utilities'),suppliers:T('Προμηθευτές','Suppliers'),rent:T('Ενοίκιο','Rent'),other:T('Διάφορα','Other')}[ct]||'—');
+
+  let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:1400px;margin:0 auto">';
+  // Κεφαλίδα: ημερομηνία
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:0 2px 12px">'+
+    '<div style="font-size:16px;font-weight:700">📅 '+T('Ημέρα','Day')+'</div>'+
+    '<input type="date" id="daily-date" value="'+esc(date)+'" onchange="ST.dailyDate=this.value;renderDaily()" style="padding:8px;border:1px solid var(--line);border-radius:8px">'+
+  '</div>';
+
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;align-items:start">';
+
+  // ── ΚΛΕΙΣΙΜΟ ΤΑΜΕΙΟΥ ──
+  const f=(id,lb,val)=>'<div><label style="font-size:12px;color:var(--muted)">'+lb+'</label><input id="'+id+'" type="number" step="0.01" value="'+(val!=null&&val!==''?val:'')+'" placeholder="0" oninput="dailyLive()" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px"></div>';
+  h+='<div class="card"><h3 style="font-size:14px;margin:0 0 12px">💰 '+T('Κλείσιμο Ταμείου','Cash Close')+'</h3>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+      f('dc-cash',T('Μετρητά','Cash'),cl.cash_income)+
+      f('dc-card',T('Κάρτες / POS','Cards / POS'),cl.card_income)+
+      f('dc-pos1','POS 1',cl.pos1)+
+      f('dc-pos2','POS 2',cl.pos2)+
+      f('dc-env',T('Φάκελος','Envelope'),cl.envelope)+
+      f('dc-err',T('Λάθη','Errors'),cl.errors)+
+      f('dc-cn',T('Πιστωτικά','Credit Notes'),cl.credit_notes)+
+      f('dc-tipc',T('Tip Credit','Tip Credit'),cl.tip_credit)+
+      f('dc-tipx',T('Tip Cash','Tip Cash'),cl.tip_cash)+
+    '</div>'+
+    '<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;font-size:14px"><span class="muted">'+T('Σύνολο Εσόδων','Total Income')+'</span><span id="daily-income" style="font-weight:700;color:var(--ok)">'+money2(income)+'</span></div>'+
+    '<button class="btn" style="margin-top:10px" onclick="saveDailyClose()">💾 '+T('Αποθήκευση Ταμείου','Save Cash Close')+'</button>'+
+  '</div>';
+
+  // ── ΕΞΟΔΑ ΗΜΕΡΑΣ ──
+  h+='<div class="card"><h3 style="font-size:14px;margin:0 0 12px">🔄 '+T('Έξοδα Ημέρας','Daily Expenses')+'</h3>';
+  if(!exps.length)h+='<div class="muted" style="font-size:13px;text-align:center;padding:8px">'+T('Κανένα έξοδο ακόμα','No expenses yet')+'</div>';
+  exps.forEach(e=>{
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px">'+
+      '<div style="min-width:0"><div style="font-weight:600">'+esc(e.label||'—')+'</div><div class="muted" style="font-size:11px">'+catLabel(e.category)+' · '+payLabel(e.payment_method)+'</div></div>'+
+      '<div style="display:flex;align-items:center;gap:10px"><span style="font-weight:600">'+money2(n(e.amount))+'</span><span onclick="delDailyExp(\''+e.id+'\')" style="cursor:pointer;color:var(--bad)">🗑</span></div>'+
+    '</div>';
+  });
+  h+='<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:10px;display:flex;justify-content:space-between;font-size:14px"><span class="muted">'+T('Σύνολο Εξόδων','Total Expenses')+'</span><span style="font-weight:700;color:var(--bad)">'+money2(expTotal)+'</span></div>'+
+    '<button class="btn" style="margin-top:10px" onclick="addDailyExp()">➕ '+T('Νέο Έξοδο','New Expense')+'</button>'+
+  '</div>';
+
+  h+='</div>'; // κλείσιμο grid
+
+  // ── ΚΑΘΑΡΟ ΗΜΕΡΑΣ ──
+  h+='<div style="background:var(--accent-bg);border:1px solid var(--accent);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;margin-top:14px"><span style="font-size:15px;color:var(--accent)">'+T('Καθαρό Ημέρας','Net of Day')+'</span><span style="font-size:22px;font-weight:800;color:var(--accent)">'+money2(net)+'</span></div>';
+
+  h+='</div></div>';
+  c.innerHTML=h;
+}
+function dailyLive(){
+  const g=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?(+el.value):0;};
+  const income=g('dc-cash')+g('dc-card')+g('dc-pos1')+g('dc-pos2')+g('dc-env')-g('dc-err')-g('dc-cn');
+  const el=document.getElementById('daily-income'); if(el)el.textContent=money(Math.round(income*100)/100);
+}
+async function saveDailyClose(){
+  const g=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?(+el.value):0;};
+  const row={tenant_id:curTenant(),close_date:dailyDate(),
+    cash_income:g('dc-cash'),card_income:g('dc-card'),pos1:g('dc-pos1'),pos2:g('dc-pos2'),
+    envelope:g('dc-env'),errors:g('dc-err'),credit_notes:g('dc-cn'),tip_credit:g('dc-tipc'),tip_cash:g('dc-tipx'),
+    created_by:ST.userEmail||''};
+  try{const {error}=await sb.from('daily_close').upsert(row,{onConflict:'tenant_id,close_date'});
+    if(error)throw error; toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderDaily();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function addDailyExp(){
+  const label=prompt(L('Περιγραφή εξόδου (π.χ. ΔΕΗ, ΝΟΥΝΟΥ):','Expense label (e.g. Electricity, Supplier):'));
+  if(!label)return;
+  const amtS=prompt(L('Ποσό (€):','Amount (€):')); const amount=parseFloat(amtS); if(isNaN(amount))return;
+  const cat=prompt(L('Κατηγορία: staff/utilities/suppliers/rent/other','Category: staff/utilities/suppliers/rent/other'),'other')||'other';
+  const pm=prompt(L('Τρόπος: cash/credit/transfer','Method: cash/credit/transfer'),'cash')||'cash';
+  try{const {error}=await sb.from('daily_expenses').insert({tenant_id:curTenant(),exp_date:dailyDate(),label:label,category:cat,payment_method:pm,amount:amount,created_by:ST.userEmail||''});
+    if(error)throw error; toast('✅ '+L('Προστέθηκε','Added')); renderDaily();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function delDailyExp(id){
+  if(!confirm(L('Διαγραφή εξόδου;','Delete expense?')))return;
+  try{await sb.from('daily_expenses').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));renderDaily();}
+  catch(e){toast('❌ '+(e.message||e));}
+}
 async function delInvoice(id){
   if(!confirm('Διαγραφή τιμολογίου; (θα φύγουν και οι γραμμές τιμών του από το Price History)'))return;
   try{
@@ -3769,7 +3877,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·167';
+const BUILD='v'+'2026.07.04·168';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
