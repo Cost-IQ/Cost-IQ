@@ -707,7 +707,7 @@ const BASIC_TABS=['suppliers','products','recipes','orders','ocr','invoices'];
 function allowedTabs(){
   let items=['products','suppliers','orders','ocr','invoices','recipes','events','agree','history'];
   // Pro tier: προσθήκη Daily Routine
-  if(isPro()){items.push('daily');items.push('expenses');}
+  if(isPro()){items.push('daily');}
   // 1) Πακέτο μαγαζιού
   if(ST.plan==='basic')items=items.filter(t=>BASIC_TABS.indexOf(t)>=0);
   // 2) Δικαιώματα ανά χρήστη (αν έχουν οριστεί on/off)
@@ -717,7 +717,7 @@ function allowedTabs(){
 }
 function sectionNav(){
   const allow=allowedTabs();
-  let items=[['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['products','📦',lbl('products','Προϊόντα')],['recipes','🍸',lbl('recipes','Συνταγές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['daily','📅',lbl('daily','Ημέρα')],['expenses','📉',lbl('expenses','Έξοδα')],['agree','🤝',lbl('agree','Συμφωνίες')],['events','🎉',lbl('events','Εκδηλώσεις')],['history','📊',lbl('history','Στατιστικά')]];
+  let items=[['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['products','📦',lbl('products','Προϊόντα')],['recipes','🍸',lbl('recipes','Συνταγές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['daily','📅',lbl('daily','Ημέρα')],['agree','🤝',lbl('agree','Συμφωνίες')],['events','🎉',lbl('events','Εκδηλώσεις')],['history','📊',lbl('history','Στατιστικά')]];
   items=items.filter(i=>allow.indexOf(i[0])>=0);
   // ── Desktop: οριζόντια tabs ──
   const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:0;white-space:nowrap;padding:10px 8px;box-sizing:border-box;font-size:13px;text-align:center">'+emo+' '+txt+'</div>';
@@ -2003,13 +2003,15 @@ function renderStats(){
   const c=document.getElementById('content');
   const sub=ST.repsub||'overview';
   const b=(id,l)=>'<div class="tab '+(sub===id?'active':'')+'" style="flex:1 1 auto;min-width:100px;padding:9px 10px;white-space:nowrap;text-align:center" onclick="setRepSub(\''+id+'\')">'+l+'</div>';
-  let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div class="tabs stat-tabs" style="margin-top:8px;flex-wrap:wrap;justify-content:center;gap:6px;padding-bottom:4px">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+(ST.plan!=='basic'?b('menu','🍽️ '+lbl('sMenuEng','Menu Engineering')):'')+'</div></div></div>';
+  let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div class="tabs stat-tabs" style="margin-top:8px;flex-wrap:wrap;justify-content:center;gap:6px;padding-bottom:4px">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+(isPro()?b('expenses','📉 '+lbl('expenses','Έξοδα')):'')+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+(ST.plan!=='basic'?b('menu','🍽️ '+lbl('sMenuEng','Menu Engineering')):'')+'</div></div></div>';
   if(sub==='price')h+=priceDbView();
   else if(sub==='purchased')h+=purchasedView();
+  else if(sub==='expenses')h+='<div id="exp-mount"></div>';
   else if(sub==='profit')h+=profitView();
   else if(sub==='menu')h+=menuEngView();
   else h+=overviewHtml();
   c.innerHTML=h;
+  if(sub==='expenses')renderExpenses();
   if(sub==='profit')loadProfit();
   if(sub==='menu')loadMenuEng();
 }
@@ -3781,9 +3783,11 @@ async function renderDaily(){
 }
 async function renderExpenses(){
   persistNav();
-  const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
+  const mount=document.getElementById('exp-mount');
+  const c=mount||document.getElementById('content'); const T=(el,en)=>L(el,en);
   if(!isPro()){ c.innerHTML='<div class="card muted" style="text-align:center;margin-top:14px">🔒 '+T('Η Ανάλυση Εξόδων είναι στο πακέτο PRO','Expense Analysis is a PRO feature')+'</div>'; return; }
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  ST._expMount=!!mount;
   // Φόρτωση όλων των εξόδων
   let exps=[],pays=[],closes=[];
   try{const {data}=await sb.from('daily_expenses').select('*').eq('tenant_id',curTenant());exps=data||[];}catch(e){}
@@ -3807,7 +3811,7 @@ function expPeriodRange(period){
   return {from:fmt(from),to:fmt(to)};
 }
 function drawExpenses(){
-  const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
+  const c=(ST._expMount&&document.getElementById('exp-mount'))||document.getElementById('content'); const T=(el,en)=>L(el,en);
   const n=v=>(v!=null&&v!==''?(+v):0); const money2=x=>money(Math.round(x*100)/100);
   const D=ST.expData||{exps:[],pays:[],closes:[],invoices:[]};
   const period=ST.expPeriod||'month';
@@ -3945,7 +3949,8 @@ function drawDaily(){
   }
   const zf=(id,lb,val,ph)=>'<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+lb+'</label><input id="'+id+'" type="number" step="0.01" value="'+(val!=null&&val!==''?val:'')+'" placeholder="'+(ph||'0')+'" oninput="zLive()" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>';
   h+='<div class="card"><h3 style="font-size:14px;margin:0 0 2px">🧾 '+T('Κλείσιμο Z','Z Closing')+'</h3>'+
-    '<div class="muted" style="font-size:11px;margin-bottom:12px">'+T('Επίσημο σύνολο ημέρας (ταμειακό Ζ)','Official day total (Z report)')+'</div>'+
+    '<div class="muted" style="font-size:11px;margin-bottom:10px">'+T('Επίσημο σύνολο ημέρας (ταμειακό Ζ)','Official day total (Z report)')+'</div>'+
+    '<label class="btn ghost" style="display:block;text-align:center;margin-bottom:12px;cursor:pointer">📷 '+T('Σκάναρε Ζ','Scan Z')+'<input type="file" accept="image/*" style="display:none" onchange="scanZ(this)"></label>'+
     '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:12px">'+
       '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Αρ. Ζ','Z No.')+'</label><input id="z-number" type="text" value="'+esc(z.z_number||'')+'" placeholder="00452" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
       '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Αποδείξεις','Receipts')+'</label><input id="z-receipts" type="number" value="'+(z.receipts_count||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
@@ -4172,6 +4177,27 @@ async function saveZClosing(){
   try{const {error}=await sb.from('z_closing').upsert(row,{onConflict:'tenant_id,z_date'});
     if(error)throw error; toast('✅ '+L('Αποθηκεύτηκε το Z','Z Saved')); renderDaily();
   }catch(e){toast('❌ '+(e.message||e));}
+}
+async function scanZ(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  toast('📷 '+L('Διαβάζω το Ζ…','Reading Z…'));
+  try{
+    const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch(OCR_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({imageBase64:b64,mediaType:file.type,mode:'zreport'})});
+    const data=await r.json();
+    if(data.error){toast('❌ '+data.error);return;}
+    // Γέμισμα πεδίων Ζ από το αποτέλεσμα
+    ST.dailyZ=ST.dailyZ||{};
+    if(data.z_number!=null)ST.dailyZ.z_number=data.z_number;
+    if(data.receipts_count!=null)ST.dailyZ.receipts_count=data.receipts_count;
+    if(data.pay_cash!=null)ST.dailyZ.pay_cash=data.pay_cash;
+    if(data.pay_card!=null)ST.dailyZ.pay_card=data.pay_card;
+    if(data.voids!=null)ST.dailyZ.voids=data.voids;
+    if(data.vat_lines&&data.vat_lines.length)ST.dailyZ.vat_lines=data.vat_lines;
+    toast('✅ '+L('Το Ζ διαβάστηκε — έλεγξε τα πεδία','Z read — check the fields'));
+    drawDaily();
+  }catch(e){toast('❌ '+(e.message||e)+' — '+L('έλεγξε το smart-worker','check smart-worker'));}
 }
 function delLive(){
   const money2=x=>money(Math.round(x*100)/100);
@@ -4571,7 +4597,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·185';
+const BUILD='v'+'2026.07.04·186';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
