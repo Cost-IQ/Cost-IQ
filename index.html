@@ -3780,8 +3780,8 @@ async function renderDaily(){
     ST.dailyPaymentsToday=(pays||[]).filter(p=>p.pay_date===date);
   }catch(e){ST.dailyPayments=[];ST.dailyPaymentsToday=[];}
   try{const {data:crd}=await sb.from('supplier_credits').select('*').eq('tenant_id',curTenant());ST.supplierCredits=crd||[];}catch(e){ST.supplierCredits=[];}
-  // Τιμολόγια της ημέρας (όλα — καταχωρημένα και μη)
-  try{const {data:dInv}=await sb.from('invoices').select('*').eq('tenant_id',curTenant()).eq('date',date).order('created_at',{ascending:false});ST.dailyInvoices=dInv||[];}catch(e){ST.dailyInvoices=[];}
+  // Τιμολόγια της ημέρας — μόνο τα εκκρεμή (φεύγουν μόλις καταχωρηθούν)
+  try{const {data:dInv}=await sb.from('invoices').select('*').eq('tenant_id',curTenant()).eq('date',date).order('created_at',{ascending:false});ST.dailyInvoices=(dInv||[]).filter(x=>!x.ledger_posted);}catch(e){ST.dailyInvoices=[];}
   // Όλα τα τιμολόγια (για σωστό υπολογισμό υπολοίπων)
   try{const {data:allInv}=await sb.from('invoices').select('*').eq('tenant_id',curTenant());ST.invoices=allInv||ST.invoices||[];}catch(e){}
   computeSupplierBalances();
@@ -4890,7 +4890,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·207';
+const BUILD='v'+'2026.07.04·208';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
