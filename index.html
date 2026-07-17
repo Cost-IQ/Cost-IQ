@@ -632,7 +632,7 @@ function pricesFor(pid){return ST.prices.filter(p=>p.product_id===pid);}
 
 function brandTitle(){return 'Cost IQ'+(ST.shopName?' · '+ST.shopName:'');}
 function goList(){ST.view='list';ST.prod=null;document.getElementById('backBtn').style.display='none';document.getElementById('hTitle').textContent=brandTitle();renderSection();}
-function goSection(s){ST.section=s;ST.navOpen=false;if(s==='recipes')ST.homeView=false;renderSection();window.scrollTo(0,0);}
+function goSection(s){ST.section=s;ST.navOpen=false;if(s==='recipes')ST.homeView=false;if(s==='daily'){ST.dailyDate=null;ST.view='list';}renderSection();window.scrollTo(0,0);}
 function goHome(){ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';document.getElementById('hTitle').textContent=brandTitle();renderSection();window.scrollTo(0,0);}
 function toggleFullscreen(){
   const d=document.documentElement;
@@ -4063,7 +4063,7 @@ function drawDaily(){
     '<div id="rec-result" style="border-radius:8px;padding:6px 12px;display:flex;align-items:center;gap:8px"><span id="rec-label" style="font-size:12px">—</span><span id="rec-diff" style="font-size:14px;font-weight:700">—</span></div></div>'+
     '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)">'+
       '<span>'+T('Ταμείο','Till')+': <b id="rec-till" style="color:var(--fg)">—</b></span>'+
-      '<span>'+T('Εκτός Φακ.','Off-env')+': <b id="rec-off" style="color:var(--fg)">—</b></span>'+
+      '<span>'+T('Έξοδα cash','Cash exp')+': <b id="rec-off" style="color:var(--fg)">—</b></span>'+
       '<span>'+T('Επίσημα','Official')+': <b id="rec-official" style="color:var(--fg)">—</b></span>'+
       '<span>'+T('Ζ','Z')+': <b id="rec-z" style="color:var(--fg)">—</b></span>'+
     '</div>'+
@@ -4218,9 +4218,6 @@ function drawDaily(){
     h+='</div>';
   }
 
-  // ── ΚΑΘΑΡΟ ΗΜΕΡΑΣ ──
-  h+='<div style="background:var(--accent-bg);border:1px solid var(--accent);border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;margin-top:14px"><span style="font-size:15px;color:var(--accent)">'+T('Καθαρό Ημέρας','Net of Day')+'</span><span style="font-size:22px;font-weight:800;color:var(--accent)">'+money2(net)+'</span></div>';
-
   h+='</div></div>';
   c.innerHTML=h;
   dailyLive();
@@ -4239,8 +4236,12 @@ function dailyLive(){
   const cashExp=(ST.dailyExps||[]).filter(e=>e.payment_method==='cash'&&e.category!=='suppliers').reduce((s,e)=>s+nn(e.amount),0);
   const cashPaySup=(ST.dailyPaymentsToday||[]).filter(p=>p.payment_method==='cash').reduce((s,p)=>s+nn(p.amount),0);
   const cashPay=cashExp+cashPaySup;
-  const income = cash + off + card - cn;
+  // Ζ (επίσημα) = Μετρητά + Κάρτες − Έξοδα cash
+  const zOfficial = cash + card - cashPay;
+  // Φάκελος = μετρητά που μένουν (πάνε τράπεζα)
   const envelope = cash - cashPay;
+  // Πραγματικός Τζίρος = Φάκελος + Εκτός Φακέλου + Κάρτες
+  const income = envelope + off + card - cn;
   const incEl=document.getElementById('daily-income'); if(incEl)incEl.textContent=money(Math.round(income*100)/100);
   const envEl=document.getElementById('dc-envelope'); if(envEl)envEl.textContent=money(Math.round(envelope*100)/100);
   recLive();
@@ -4251,6 +4252,9 @@ function recLive(){
   document.querySelectorAll('[id^="pt-"][id$="-cash"]').forEach(el=>{if(el.value!=='')cash+=(+el.value);});
   document.querySelectorAll('[id^="pt-"][id$="-card"]').forEach(el=>{if(el.value!=='')card+=(+el.value);});
   const offEl=document.getElementById('dc-off'); const off=(offEl&&offEl.value!=='')?(+offEl.value):0;
+  const nn=v=>(v!=null&&v!==''?(+v):0);
+  const cashPay=(ST.dailyExps||[]).filter(e=>e.payment_method==='cash'&&e.category!=='suppliers').reduce((s,e)=>s+nn(e.amount),0)
+    + (ST.dailyPaymentsToday||[]).filter(p=>p.payment_method==='cash').reduce((s,p)=>s+nn(p.amount),0);
   let delGross=0;
   if(ST.daySetup&&ST.daySetup.delInZ){
     document.querySelectorAll('[data-delname]').forEach((el,idx)=>{
@@ -4258,7 +4262,8 @@ function recLive(){
       const vat=(vatEl&&vatEl.value!=='')?(+vatEl.value):0; delGross+=net+vat;
     });
   }
-  const till=cash+card+delGross; const official=till-off;
+  // Επίσημα (τι πρέπει να δείχνει το Ζ) = Μετρητά + Κάρτες − Έξοδα cash
+  const official=cash+card+delGross-cashPay;
   // Σύνολο Ζ (από τα z-net lines)
   let zTotal=0;
   document.querySelectorAll('[data-zrow]').forEach(r=>{const i=r.getAttribute('data-zrow');
@@ -4267,7 +4272,7 @@ function recLive(){
     zTotal+=net+net*rate/100;
   });
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-  set('rec-till',money2(till)); set('rec-off','− '+money2(off));
+  set('rec-till',money2(cash+card)); set('rec-off','− '+money2(cashPay));
   set('rec-official',money2(official)); set('rec-z',money2(zTotal));
   const diff=official-zTotal;
   const box=document.getElementById('rec-result'), lab=document.getElementById('rec-label'), df=document.getElementById('rec-diff');
@@ -4723,7 +4728,6 @@ function drawDailyArchive(){
           '<div style="display:flex;gap:10px;font-size:12px;flex-wrap:wrap;justify-content:flex-end">'+
             '<span class="muted">'+T('Τζίρος','Turn')+' <b style="color:var(--fg)">'+money2(dd.income)+'</b></span>'+
             '<span class="muted">📥 <b style="color:var(--fg)">'+money2(dd.envelope)+'</b></span>'+
-            '<span class="muted">'+T('Καθαρό','Net')+' <b style="color:'+(dd.net>=0?'var(--ok)':'var(--bad)')+'">'+money2(dd.net)+'</b></span>'+
           '</div>'+
         '</div>';
       });
@@ -4890,7 +4894,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·208';
+const BUILD='v'+'2026.07.04·211';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
