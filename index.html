@@ -3795,6 +3795,9 @@ async function renderExpenses(){
   try{const {data}=await sb.from('daily_expenses').select('*').eq('tenant_id',curTenant());exps=data||[];}catch(e){}
   try{const {data}=await sb.from('supplier_payments').select('*').eq('tenant_id',curTenant());pays=data||[];}catch(e){}
   try{const {data}=await sb.from('daily_close').select('close_date,delivery_data').eq('tenant_id',curTenant());closes=data||[];}catch(e){}
+  try{const {data:crd}=await sb.from('supplier_credits').select('*').eq('tenant_id',curTenant());ST.supplierCredits=crd||[];}catch(e){ST.supplierCredits=[];}
+  ST.dailyPayments=pays;
+  computeSupplierBalances();
   ST.expData={exps,pays,closes,invoices:ST.invoices||[]};
   if(!ST.expPeriod)ST.expPeriod='month';
   drawExpenses();
@@ -3842,6 +3845,12 @@ function drawExpenses(){
   const periods=[['day',T('Ημέρα','Day')],['week',T('Εβδομάδα','Week')],['month',T('Μήνας','Month')],['quarter',T('Τρίμηνο','Quarter')],['half',T('Εξάμηνο','Half')],['year',T('Χρόνος','Year')]];
   let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:900px;margin:0 auto">';
   h+='<div style="font-size:16px;font-weight:700;margin:0 2px 12px">📉 '+T('Ανάλυση Εξόδων','Expense Analysis')+'</div>';
+  // Sub-view pills: Ανάλυση / Προμηθευτές / Delivery
+  const sv=ST.expView||'analysis';
+  const svPill=(id,label)=>'<div onclick="ST.expView=\''+id+'\';drawExpenses()" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:13px;'+(sv===id?'background:var(--accent);color:#fff;font-weight:600':'border:1px solid var(--line);color:var(--muted)')+'">'+label+'</div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:14px">'+svPill('analysis',T('Ανάλυση','Analysis'))+svPill('suppliers','🏢 '+T('Προμηθευτές','Suppliers'))+svPill('delivery','🛵 Delivery')+'</div>';
+  if(sv==='suppliers'){ drawExpSuppliers(c,h); return; }
+  if(sv==='delivery'){ drawExpDelivery(c,h); return; }
   // Φίλτρο περιόδου
   h+='<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:4px">';
   periods.forEach(p=>{const on=period===p[0];
@@ -3899,6 +3908,49 @@ function expDetail(encName){
   });
   h+='</div></div></div>';
   c.innerHTML=h;
+}
+function drawExpSuppliers(c,hHead){
+  const T=(el,en)=>L(el,en); const money2=x=>money(Math.round(x*100)/100);
+  const bals=ST.supplierBalances||[];
+  let h=hHead;
+  h+='<div class="card" style="padding:0;overflow:hidden">';
+  if(!bals.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Κανένα υπόλοιπο','No balances')+'</div>';
+  bals.forEach(b=>{
+    const owes=b.owed>0.005, credit=b.owed<-0.005;
+    const col=owes?'var(--bad)':(credit?'var(--ok)':'var(--muted)');
+    const lab=owes?T('Χρωστάς','You owe'):(credit?T('Πιστωτικό','Credit'):T('Εξοφλημένο','Settled'));
+    h+='<div onclick="ST._ledgerFrom=\'stats\';supplierLedger(\''+b.id+'\')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer">'+
+      '<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600;word-break:break-word;color:var(--accent)">🏢 '+esc(b.name||'—')+' ›</div><div class="muted" style="font-size:11px">'+lab+'</div></div>'+
+      '<span style="font-size:16px;font-weight:700;color:'+col+';white-space:nowrap">'+money2(Math.abs(b.owed))+'</span>'+
+    '</div>';
+  });
+  h+='</div></div></div>';
+  c.innerHTML=h;
+}
+function drawExpDelivery(c,hHead){
+  const T=(el,en)=>L(el,en); const money2=x=>money(Math.round(x*100)/100);
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const platforms=(ST.daySetup&&ST.daySetup.delivery)||[];
+  const closes=(ST.expData&&ST.expData.closes)||[];
+  let h=hHead;
+  h+='<div class="card" style="padding:0;overflow:hidden">';
+  if(!platforms.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Καμία πλατφόρμα','No platforms')+'</div>';
+  platforms.forEach(pl=>{
+    let totalGross=0,totalComm=0;
+    closes.forEach(cl=>{let dd=[];try{dd=(typeof cl.delivery_data==='string')?JSON.parse(cl.delivery_data):(cl.delivery_data||[]);}catch(e){}
+      const d=dd.find(x=>x.name===pl.name); if(d){totalGross+=n(d.gross);totalComm+=n(d.gross)*n(d.commission)/100;}
+    });
+    h+='<div onclick="deliveryLedger(\''+encodeURIComponent(pl.name)+'\')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer">'+
+      '<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600;color:var(--accent)">🛵 '+esc(pl.name)+' ›</div><div class="muted" style="font-size:11px">'+T('Τζίρος','Turnover')+' '+money2(totalGross)+' · '+T('προμήθεια','commission')+' '+(pl.commission||0)+'%</div></div>'+
+      '<span style="font-size:15px;font-weight:700;color:var(--bad);white-space:nowrap">− '+money2(totalComm)+'</span>'+
+    '</div>';
+  });
+  h+='</div></div></div>';
+  c.innerHTML=h;
+}
+function backFromLedger(){
+  if(ST._ledgerFrom==='stats'){ST.section='history';ST.repsub='expenses';ST.expView='suppliers';ST.view='list';renderStats();}
+  else{ST.view='list';renderDaily();}
 }
 function computeSupplierBalances(){
   const sups=ST.suppliers||[]; const invs=ST.invoices||[]; const pays=ST.dailyPayments||[]; const credits=ST.supplierCredits||[];
@@ -4086,8 +4138,8 @@ function drawDaily(){
     const col=owes?'var(--bad)':(credit?'var(--ok)':'var(--muted)');
     const lab=owes?T('Χρωστάς','You owe'):(credit?T('Πιστωτικό','Credit'):T('Εξοφλημένο','Settled'));
     h+='<div style="padding:10px 0;border-bottom:1px solid var(--line)">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer" onclick="supplierLedger(\''+b.id+'\')">'+
-        '<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600;word-break:break-word;color:var(--accent)">'+esc(b.name||'—')+' ›</div><div class="muted" style="font-size:11px">'+lab+'</div></div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer" onclick="ST._ledgerFrom=\'day\';supplierLedger(\''+b.id+'\')">'+
+        '<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600;word-break:break-word;color:var(--accent)">🏢 '+esc(b.name||'—')+' ›</div><div class="muted" style="font-size:11px">'+lab+'</div></div>'+
         '<span style="font-size:16px;font-weight:700;color:'+col+';white-space:nowrap">'+money2(Math.abs(b.owed))+'</span>'+
       '</div>'+
       '<div style="display:flex;gap:8px;margin-top:8px">'+
@@ -4384,10 +4436,10 @@ async function supplierLedger(sid){
   persistNav(); ST.view='supLedger'; ST._ledgerSid=sid;
   const T=(el,en)=>L(el,en);
   const c=document.getElementById('content');
-  const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','ST.view=\'list\';renderDaily()');}
+  const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','backFromLedger()');}
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
   const s=(ST.suppliers||[]).find(x=>x.id===sid); if(!s){c.innerHTML='<div class="card muted">—</div>';return;}
-  document.getElementById('hTitle').textContent='📒 '+s.name;
+  document.getElementById('hTitle').textContent='🏢 '+s.name;
   // Φόρτωση κινήσεων
   let pays=[],credits=[];
   try{const {data}=await sb.from('supplier_payments').select('*').eq('tenant_id',curTenant()).eq('supplier_id',sid);pays=data||[];}catch(e){}
@@ -4400,7 +4452,7 @@ async function supplierLedger(sid){
   if(opening!==0)moves.push({date:'',type:'opening',label:T('Αρχικό Υπόλοιπο','Opening Balance'),amt:opening,sign:1});
   invs.forEach(i=>moves.push({date:i.date,type:'invoice',label:'📄 '+T('Τιμολόγιο','Invoice')+(i.invoice_number?' '+i.invoice_number:''),amt:n(i.total_gross),sign:1}));
   credits.forEach(cr=>moves.push({date:cr.credit_date,type:'credit',label:'🧾 '+T('Πιστωτικό','Credit')+(cr.reason?' · '+cr.reason:''),amt:n(cr.amount)+n(cr.vat),sign:-1,id:cr.id}));
-  pays.forEach(p=>{const pm={cash:'💵',transfer:'🏦',credit:'🧾'}[p.payment_method]||'💸';moves.push({date:p.pay_date,type:'payment',label:'💸 '+T('Πληρωμή','Payment')+' · '+pm+(p.notes?' '+p.notes:''),amt:n(p.amount),sign:-1,id:p.id});});
+  pays.forEach(p=>{const pm={cash:'💵 '+T('Μετρητά','Cash'),transfer:'🏦 '+T('Τραπεζικό','Bank'),card:'💳 '+T('Κάρτα','Card'),credit:'💵 '+T('Μετρητά','Cash')}[p.payment_method]||('💵 '+T('Μετρητά','Cash'));moves.push({date:p.pay_date,type:'payment',label:T('Πληρωμή','Payment')+' · '+pm+(p.notes?' · '+p.notes:''),amt:n(p.amount),sign:-1,id:p.id});});
   moves.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const charges=invs.reduce((t,i)=>t+n(i.total_gross),0)+opening;
   const totCredits=credits.reduce((t,cr)=>t+n(cr.amount)+n(cr.vat),0);
@@ -4410,7 +4462,7 @@ async function supplierLedger(sid){
   let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:800px;margin:0 auto">';
   // Κεφαλίδα + υπόλοιπο
   h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin:0 2px 12px">'+
-    '<div><div style="font-size:18px;font-weight:700">'+esc(s.name)+'</div><div class="muted" style="font-size:12px">'+T('Καρτέλα Κίνησης','Ledger Card')+'</div></div>'+
+    '<div><div style="font-size:18px;font-weight:700">🏢 '+esc(s.name)+'</div><div class="muted" style="font-size:12px">'+T('Καρτέλα Κίνησης','Ledger Card')+'</div></div>'+
     '<div style="text-align:right"><div class="muted" style="font-size:11px">'+T('Τρέχον Υπόλοιπο','Balance')+'</div><div style="font-size:20px;font-weight:800;color:'+(balance>0.005?'var(--bad)':'var(--ok)')+'">'+money2(Math.abs(balance))+'</div></div>'+
   '</div>';
   // Κουμπιά
@@ -4427,7 +4479,7 @@ async function supplierLedger(sid){
     h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)">'+
       '<div style="min-width:0;flex:1"><div style="font-size:13px;word-break:break-word">'+esc(m.label)+'</div>'+(m.date?'<div class="muted" style="font-size:11px">'+fmtDate(m.date)+'</div>':'')+'</div>'+
       '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:600;color:'+col+';white-space:nowrap">'+sgn+money2(m.amt)+'</span>'+
-      (canDel?'<span onclick="delLedgerMove(\''+m.type+'\',\''+m.id+'\',\''+sid+'\')" style="cursor:pointer;color:var(--bad);font-size:13px">🗑</span>':'')+'</div>'+
+      (canDel?'<span onclick="delLedgerMove(\''+m.type+'\',\''+m.id+'\',\''+sid+'\')" style="cursor:pointer;color:var(--bad);font-size:16px;padding:4px 8px;border:1px solid var(--line);border-radius:6px">🗑</span>':'')+'</div>'+
     '</div>';
   });
   h+='</div>';
@@ -4762,7 +4814,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·197';
+const BUILD='v'+'2026.07.04·198';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
