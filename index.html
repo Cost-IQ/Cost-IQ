@@ -252,7 +252,8 @@ async function toggleLang(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function dGRs(d){if(!d)return '';var q=String(d).split('-');return q.length===3?(q[2]+'/'+q[1]+'/'+q[0]):d;}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-function money(n){return (n==null||isNaN(n))?'—':'€'+Number(n).toFixed(2);}
+function curSym(){return (ST.daySetup&&ST.daySetup.currency)||'€';}
+function money(n){return (n==null||isNaN(n))?'—':curSym()+Number(n).toFixed(2);}
 function fmtDate(ds){if(!ds)return '—';const p=String(ds).split('T')[0].split('-');return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):String(ds);}
 function fmtQty(q){const n=parseFloat(q);if(isNaN(n))return '';return (Math.round(n*100)/100).toString();}
 function normUnit(u){
@@ -384,8 +385,8 @@ async function enterShop(){
   if(!ST.termsOk){ return termsGate(); }
   // Πακέτο + συνδρομή του μαγαζιού
   try{
-    const {data:t}=await sb.from('tenants').select('name,plan,paid_until').eq('id',curTenant()).single();
-    if(t){ST.plan=t.plan||'advanced';ST.paidUntil=t.paid_until||null;ST.shopName=t.name||ST.shopName;}
+    const {data:t}=await sb.from('tenants').select('name,plan,paid_until,day_setup').eq('id',curTenant()).single();
+    if(t){ST.plan=t.plan||'advanced';ST.paidUntil=t.paid_until||null;ST.shopName=t.name||ST.shopName;ST.daySetup=t.day_setup||null;}
   }catch(e){}
   if(!subActive()&&ST.role!=='admin'){ return lockScreen(); }
   await loadAll();
@@ -3840,7 +3841,10 @@ function drawDaily(){
   const z=ST.dailyZ||{};
   let zLines=[];
   try{zLines=(typeof z.vat_lines==='string')?JSON.parse(z.vat_lines):(z.vat_lines||[]);}catch(e){zLines=[];}
-  if(!zLines.length)zLines=[{rate:13,net:''},{rate:24,net:''}];
+  if(!zLines.length){
+    const rates=(ST.daySetup&&ST.daySetup.vatRates&&ST.daySetup.vatRates.length)?ST.daySetup.vatRates:[13,24];
+    zLines=rates.map(r=>({rate:r,net:''}));
+  }
   const zf=(id,lb,val,ph)=>'<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+lb+'</label><input id="'+id+'" type="number" step="0.01" value="'+(val!=null&&val!==''?val:'')+'" placeholder="'+(ph||'0')+'" oninput="zLive()" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>';
   h+='<div class="card"><h3 style="font-size:14px;margin:0 0 2px">🧾 '+T('Κλείσιμο Z','Z Closing')+'</h3>'+
     '<div class="muted" style="font-size:11px;margin-bottom:12px">'+T('Επίσημο σύνολο ημέρας (ταμειακό Ζ)','Official day total (Z report)')+'</div>'+
@@ -4129,7 +4133,7 @@ function openArchDay(date){
   ST.dailyDate=date; ST.view='list'; renderDaily();
 }
 function defaultDaySetup(){
-  return {shifts:false, points:[{name:'Ταμείο',emoji:'💰'}]};
+  return {shifts:false, points:[{name:'Ταμείο',emoji:'💰'}], currency:'€', vatRates:[13,24]};
 }
 function daySetupScreen(){
   persistNav(); ST.view='daySetup';
@@ -4146,8 +4150,27 @@ function daySetupScreen(){
     // Βάρδιες
     '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)">'+
       '<div><div style="font-size:14px;font-weight:600">'+T('Βάρδιες','Shifts')+'</div><div class="muted" style="font-size:11px">'+T('Ξεχωριστό κλείσιμο Πρωί / Βράδυ','Separate Morning / Night close')+'</div></div>'+
-      '<label style="position:relative;display:inline-block;width:50px;height:28px"><input type="checkbox" id="ds-shifts" '+(s.shifts?'checked':'')+' style="opacity:0;width:0;height:0"><span onclick="this.previousElementSibling.click()" style="position:absolute;cursor:pointer;inset:0;background:'+(s.shifts?'var(--accent)':'var(--line)')+';border-radius:28px;transition:.2s"><span style="position:absolute;height:22px;width:22px;left:'+(s.shifts?'25px':'3px')+';bottom:3px;background:#fff;border-radius:50%;transition:.2s"></span></span></label>'+
+      '<div onclick="dsToggleShifts()" style="position:relative;width:52px;height:30px;background:'+(s.shifts?'var(--accent)':'var(--line)')+';border-radius:30px;cursor:pointer;transition:.2s;flex:0 0 auto"><div style="position:absolute;height:24px;width:24px;left:'+(s.shifts?'25px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>'+
+      '<input type="checkbox" id="ds-shifts" '+(s.shifts?'checked':'')+' style="display:none">'+
     '</div>'+
+    // Νόμισμα
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)">'+
+      '<div><div style="font-size:14px;font-weight:600">'+T('Νόμισμα','Currency')+'</div></div>'+
+      '<select id="ds-currency" style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:var(--card)">'+
+        ['€','£','$','₺','лв','zł','Kč','Fr'].map(cu=>'<option value="'+cu+'"'+((s.currency||'€')===cu?' selected':'')+'>'+cu+'</option>').join('')+
+      '</select>'+
+    '</div>'+
+    // Συντελεστές ΦΠΑ
+    '<div style="font-size:12px;color:var(--muted);margin:14px 0 8px">'+T('Συντελεστές ΦΠΑ','VAT Rates')+'</div>'+
+    '<div id="ds-vat" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px">';
+  (s.vatRates||[13,24]).forEach((r,i)=>{
+    h+='<div style="display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:4px 8px" data-vat="'+i+'">'+
+      '<input type="number" id="ds-vat-'+i+'" value="'+r+'" style="width:52px;padding:5px;border:none;font-size:14px;text-align:center">%'+
+      '<span onclick="dsRemoveVat('+i+')" style="cursor:pointer;color:var(--bad);font-size:14px;padding-left:4px">✕</span>'+
+    '</div>';
+  });
+  h+='</div>'+
+    '<button class="btn ghost" style="padding:6px 12px;font-size:12px;width:auto" onclick="dsAddVat()">➕ '+T('Συντελεστής','Rate')+'</button>'+
     // Σημεία ταμείου
     '<div style="font-size:12px;color:var(--muted);margin:14px 0 8px">'+T('Σημεία Ταμείου','Cash Points')+'</div>'+
     '<div id="ds-points">';
@@ -4167,13 +4190,18 @@ function daySetupScreen(){
 }
 function dsCollect(){
   const shifts=document.getElementById('ds-shifts')?document.getElementById('ds-shifts').checked:false;
+  const curEl=document.getElementById('ds-currency'); const currency=curEl?curEl.value:'€';
+  const vatRates=[]; document.querySelectorAll('[data-vat]').forEach(v=>{const i=v.getAttribute('data-vat');const el=document.getElementById('ds-vat-'+i);if(el&&el.value!=='')vatRates.push(+el.value);});
   const rows=document.querySelectorAll('[data-pt]'); const points=[];
   rows.forEach(r=>{const i=r.getAttribute('data-pt');
     const em=document.getElementById('ds-emoji-'+i), nm=document.getElementById('ds-name-'+i);
     points.push({emoji:em?em.value:'💰', name:nm?nm.value:''});
   });
-  return {shifts,points};
+  return {shifts,currency,vatRates,points};
 }
+function dsToggleShifts(){ const s=dsCollect(); s.shifts=!s.shifts; ST.daySetup=s; daySetupScreen(); }
+function dsAddVat(){ const s=dsCollect(); s.vatRates.push(0); ST.daySetup=s; daySetupScreen(); }
+function dsRemoveVat(i){ const s=dsCollect(); s.vatRates.splice(i,1); ST.daySetup=s; daySetupScreen(); }
 function dsAddPoint(){ const s=dsCollect(); s.points.push({name:'',emoji:'🍽️'}); ST.daySetup=s; daySetupScreen(); }
 function dsRemovePoint(i){ const s=dsCollect(); s.points.splice(i,1); ST.daySetup=s; daySetupScreen(); }
 async function saveDaySetup(){
@@ -4234,7 +4262,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·178';
+const BUILD='v'+'2026.07.04·181';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -4461,7 +4489,39 @@ async function pickShop(id){
   const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';
   await enterShop();
 }
-async function newShop(){
+function newShop(){
+  const T=(el,en)=>L(el,en);
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα Μαγαζιού','Shop Name')+'</label><input id="ns-name" type="text" placeholder="'+T('π.χ. Bocamar','e.g. Bocamar')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Νόμισμα','Currency')+'</label><select id="ns-currency" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)">'+
+      ['€','£','$','₺','лв','zł','Kč','Fr'].map(cu=>'<option value="'+cu+'"'+(cu==='€'?' selected':'')+'>'+cu+'</option>').join('')+
+    '</select></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Συντελεστές ΦΠΑ (χωρισμένοι με κόμμα)','VAT Rates (comma separated)')+'</label><input id="ns-vat" type="text" value="13, 24" placeholder="13, 24" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"><div style="font-size:11px;color:var(--muted);margin-top:4px">'+T('π.χ. Ελλάδα: 13, 24 · Κύπρος: 9, 19','e.g. Greece: 13, 24 · Cyprus: 9, 19')+'</div></div>'+
+  '</div>';
+  showModal('➕ '+T('Νέο Μαγαζί','New Shop'),html,T('Δημιουργία','Create'),doCreateShop);
+}
+async function doCreateShop(){
+  const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  const name=g('ns-name').trim(); if(!name){toast('❌ '+L('Βάλε όνομα','Enter a name'));return;}
+  const currency=g('ns-currency')||'€';
+  const vatRates=g('ns-vat').split(',').map(x=>parseFloat(x.trim())).filter(x=>!isNaN(x));
+  const daySetup={shifts:false,points:[{name:'Ταμείο',emoji:'💰'}],currency:currency,vatRates:vatRates.length?vatRates:[13,24]};
+  try{const {data,error}=await sb.from('tenants').insert({name:name,day_setup:daySetup}).select().single();
+    if(error)throw error;
+    closeModal();
+    ST.tenants.push(data); ST.tenant=data.id; ST.shopName=data.name; ST.daySetup=daySetup; ST.view='list';
+    try{await sb.from('settings').upsert({tenant_id:data.id,key:'shop_name',value:data.name},{onConflict:'tenant_id,key'});}catch(e){}
+    try{
+      const tt=(ST.tenants||[]).find(x=>/test/i.test(x.name||''));
+      if(tt&&tt.id!==data.id){
+        const {data:lab}=await sb.from('settings').select('value').eq('tenant_id',tt.id).eq('key','labels').maybeSingle();
+        if(lab&&lab.value){await sb.from('settings').upsert({tenant_id:data.id,key:'labels',value:lab.value},{onConflict:'tenant_id,key'});}
+      }
+    }catch(e){console.error('template copy',e);}
+    toast('✅ '+L('Δημιουργήθηκε','Created')); enterShop();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function newShopOld(){
   const name=prompt(L('Όνομα νέου μαγαζιού:','New shop name:')); if(!name||!name.trim())return;
   try{const {data,error}=await sb.from('tenants').insert({name:name.trim()}).select().single();
     if(error)throw error;
