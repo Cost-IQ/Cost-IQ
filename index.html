@@ -3830,7 +3830,7 @@ function drawExpenses(){
     const em=catEmoji[e.category]||'📦';add(nm,em,n(e.amount));
   }});
   // Πληρωμές προμηθευτών (τα λεφτά που όντως έδωσες)
-  (D.pays||[]).forEach(p=>{if(inRange(p.pay_date)){add(T('Πληρωμές Προμηθευτών','Supplier Payments'),'💸',n(p.amount));}});
+  (D.pays||[]).forEach(p=>{if(inRange(p.pay_date)){add('💸 '+(p.supplier_name||T('Προμηθευτής','Supplier')),'💸',n(p.amount));}});
   // Delivery προμήθειες
   (D.closes||[]).forEach(cl=>{if(inRange(cl.close_date)){let dd=[];try{dd=(typeof cl.delivery_data==='string')?JSON.parse(cl.delivery_data):(cl.delivery_data||[]);}catch(e){}
     dd.forEach(d=>{const commission=n(d.gross)*n(d.commission)/100;if(commission>0)add(d.name+' ('+T('προμήθεια','commission')+')','🛵',commission);});
@@ -3879,7 +3879,7 @@ function expDetail(encName){
     const nm=(e.label&&e.label.trim())?e.label.trim():(catNames[e.category]||T('Διάφορα','Other'));
     if(nm===name)items.push({date:e.exp_date,amt:n(e.amount),via:e.payment_method});
   }});
-  (D.pays||[]).forEach(p=>{if(inRange(p.pay_date)&&name===T('Πληρωμές Προμηθευτών','Supplier Payments')){items.push({date:p.pay_date,amt:n(p.amount),via:p.payment_method});}});
+  (D.pays||[]).forEach(p=>{if(inRange(p.pay_date)&&name===('💸 '+(p.supplier_name||T('Προμηθευτής','Supplier')))){items.push({date:p.pay_date,amt:n(p.amount),via:p.payment_method});}});
   (D.closes||[]).forEach(cl=>{if(inRange(cl.close_date)){let dd=[];try{dd=(typeof cl.delivery_data==='string')?JSON.parse(cl.delivery_data):(cl.delivery_data||[]);}catch(e){}
     dd.forEach(d=>{const commission=n(d.gross)*n(d.commission)/100;if(commission>0&&name===(d.name+' ('+T('προμήθεια','commission')+')'))items.push({date:cl.close_date,amt:commission,via:'commission'});});
   }});
@@ -3932,8 +3932,8 @@ function drawDaily(){
   h+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:0 2px 12px">'+
     '<div style="font-size:16px;font-weight:700">📅 '+T('Ημέρα','Day')+'</div>'+
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
-      '<button class="btn ghost" style="padding:8px 14px;font-size:13px;min-width:110px;text-align:center" onclick="daySetupScreen()">⚙️ '+T('Ρύθμιση','Setup')+'</button>'+
-      '<button class="btn ghost" style="padding:8px 14px;font-size:13px;min-width:110px;text-align:center" onclick="dailyArchive()">📁 '+T('Αρχείο','Archive')+'</button>'+
+      '<button class="btn ghost" style="padding:8px 16px;font-size:13px;flex:1;min-width:100px" onclick="daySetupScreen()">⚙️ '+T('Ρύθμιση','Setup')+'</button>'+
+      '<button class="btn ghost" style="padding:8px 16px;font-size:13px;flex:1;min-width:100px" onclick="dailyArchive()">📁 '+T('Αρχείο','Archive')+'</button>'+
       '<input type="date" id="daily-date" value="'+esc(date)+'" onchange="ST.dailyDate=this.value;renderDaily()" style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px">'+
     '</div>'+
   '</div>';
@@ -4085,11 +4085,15 @@ function drawDaily(){
     const owes=b.owed>0.005, credit=b.owed<-0.005;
     const col=owes?'var(--bad)':(credit?'var(--ok)':'var(--muted)');
     const lab=owes?T('Χρωστάς','You owe'):(credit?T('Πιστωτικό','Credit'):T('Εξοφλημένο','Settled'));
-    h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)">'+
-      '<div style="min-width:0;flex:1;cursor:pointer" onclick="supplierLedger(\''+b.id+'\')"><div style="font-size:14px;font-weight:600;word-break:break-word;color:var(--accent)">'+esc(b.name||'—')+' ›</div><div class="muted" style="font-size:11px">'+lab+'</div></div>'+
-      '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px;font-weight:700;color:'+col+';white-space:nowrap">'+money2(Math.abs(b.owed))+'</span>'+
-      '<button class="btn ghost" style="padding:6px 10px;font-size:12px;white-space:nowrap" onclick="paySupplier(\''+b.id+'\')">💸 '+T('Πληρωμή','Payment')+'</button>'+
-      '<button class="btn ghost" style="padding:6px 10px;font-size:12px;white-space:nowrap" onclick="creditSupplier(\''+b.id+'\')">🧾 '+T('Πιστωτικό','Credit')+'</button></div>'+
+    h+='<div style="padding:10px 0;border-bottom:1px solid var(--line)">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer" onclick="supplierLedger(\''+b.id+'\')">'+
+        '<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600;word-break:break-word;color:var(--accent)">'+esc(b.name||'—')+' ›</div><div class="muted" style="font-size:11px">'+lab+'</div></div>'+
+        '<span style="font-size:16px;font-weight:700;color:'+col+';white-space:nowrap">'+money2(Math.abs(b.owed))+'</span>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;margin-top:8px">'+
+        '<button class="btn ghost" style="flex:1;padding:6px 10px;font-size:12px" onclick="paySupplier(\''+b.id+'\')">💸 '+T('Πληρωμή','Payment')+'</button>'+
+        '<button class="btn ghost" style="flex:1;padding:6px 10px;font-size:12px" onclick="creditSupplier(\''+b.id+'\')">🧾 '+T('Πιστωτικό','Credit')+'</button>'+
+      '</div>'+
     '</div>';
   });
   h+='</div>';
@@ -4759,7 +4763,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·193';
+const BUILD='v'+'2026.07.04·196';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
