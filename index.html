@@ -165,8 +165,8 @@ function matchSupplier(name){
 let ST={products:[],suppliers:[],prices:[],best:{},orders:{},history:[],invoices:[],ocr:null,lang:'el',kind:'beverage',okind:'beverage',mkind:'beverage',invsub:'db',invF:null,pd:null,sortby:'cat',view:'list',prod:null,inv:null,section:'products',role:'',tenant:'',myTenant:'',tenants:[],plan:'advanced',paidUntil:null,tabs:null};
 function curTenant(){return ST.tenant||ST.myTenant||(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id)||null;}
 const T={
-  el:{tProducts:'📦 Προϊόντα',tSuppliers:'🏢 Προμηθευτές',tOrders:'🛒 Παραγγελίες',tHistory:'📊 Στατιστικά',tOcr:'📷 Σκάναρε',tInvoices:'📋 Τιμολόγια',tRecipes:'🍸 Συνταγές',tAgree:'🤝 Συμφωνίες',logout:'Έξοδος'},
-  en:{tProducts:'📦 Products',tSuppliers:'🏢 Suppliers',tOrders:'🛒 Orders',tHistory:'📊 Stats',tOcr:'📷 Scan',tInvoices:'📋 Invoices',tRecipes:'🍸 Recipes',tAgree:'🤝 Agreements',logout:'Logout'}
+  el:{tProducts:'📦 Προϊόντα',tSuppliers:'🏢 Προμηθευτές',tOrders:'🛒 Παραγγελίες',tHistory:'📊 Στατιστικά',tOcr:'📷 Πρόσθεσε Τιμολόγιο',tInvoices:'📋 Τιμολόγια',tRecipes:'🍸 Συνταγές',tAgree:'🤝 Συμφωνίες',logout:'Έξοδος'},
+  en:{tProducts:'📦 Products',tSuppliers:'🏢 Suppliers',tOrders:'🛒 Orders',tHistory:'📊 Stats',tOcr:'📷 Add Invoice',tInvoices:'📋 Invoices',tRecipes:'🍸 Recipes',tAgree:'🤝 Agreements',logout:'Logout'}
 };
 function t(k){return (T[ST.lang]&&T[ST.lang][k])||k;}
 function L(el,en){return ST.lang==='en'?en:el;}
@@ -611,7 +611,7 @@ function toggleFullscreen(){
 }
 const LABEL_KEYS=[
   ['products','Προϊόντα'],['suppliers','Προμηθευτές'],['orders','Παραγγελίες'],
-  ['ocr','Σκάναρε'],['invoices','Τιμολόγια'],['recipes','Συνταγές'],
+  ['ocr','Πρόσθεσε Τιμολόγιο'],['invoices','Τιμολόγια'],['recipes','Συνταγές'],
   ['agree','Συμφωνίες'],['events','Εκδηλώσεις'],['history','Στατιστικά'],
   ['kindBeverage','Ποτά'],['kindFood','Τρόφιμα'],['kindSupplies','Αναλώσιμα'],
   ['sale','Πώληση'],['searchPh','🔍 Αναζήτηση…'],['sortLabel','Ταξινόμηση:'],
@@ -686,7 +686,7 @@ function allowedTabs(){
 }
 function sectionNav(){
   const allow=allowedTabs();
-  let items=[['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['products','📦',lbl('products','Προϊόντα')],['recipes','🍸',lbl('recipes','Συνταγές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Σκάναρε')],['invoices','📋',lbl('invoices','Τιμολόγια')],['agree','🤝',lbl('agree','Συμφωνίες')],['events','🎉',lbl('events','Εκδηλώσεις')],['history','📊',lbl('history','Στατιστικά')]];
+  let items=[['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['products','📦',lbl('products','Προϊόντα')],['recipes','🍸',lbl('recipes','Συνταγές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['agree','🤝',lbl('agree','Συμφωνίες')],['events','🎉',lbl('events','Εκδηλώσεις')],['history','📊',lbl('history','Στατιστικά')]];
   items=items.filter(i=>allow.indexOf(i[0])>=0);
   // ── Desktop: οριζόντια tabs ──
   const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:104px;white-space:nowrap;padding:10px 12px">'+emo+' '+txt+'</div>';
@@ -3470,6 +3470,11 @@ function periodFrom(p){
   return d.toISOString().slice(0,10);
 }
 function setInvSub(s){ST.invsub=s;ST.inv=null;persistNav();renderInvoices();}
+function invStatusLabel(s){
+  if(s==='approved')return L('Εγκεκριμένο','Approved');
+  if(s==='draft')return L('Πρόχειρο','Draft');
+  return esc(s||'—');
+}
 function renderInvoices(){
   const c=document.getElementById('content');
   const sub=ST.invsub||'db';
@@ -3609,7 +3614,7 @@ function invDbView(){
       '<td style="padding:6px 8px;text-align:center">'+(v.total_net!=null?money(v.total_net):'—')+'</td>'+
       '<td style="padding:6px 8px;text-align:center">'+(v.vat_pct!=null&&v.vat_pct!==''?money(v.vat_pct):'—')+'</td>'+
       '<td style="padding:6px 8px;text-align:center;font-weight:700">'+money(v.total_gross)+'</td>'+
-      '<td style="padding:6px 8px;text-align:center">'+esc(v.status||'—')+'</td>'+
+      '<td style="padding:6px 8px;text-align:center">'+invStatusLabel(v.status)+'</td>'+
       '<td style="padding:6px 8px;text-align:left">'+esc(v.notes||'—')+'</td>'+
       '<td style="padding:6px 8px;text-align:center">'+(v.file_url?'<a href="'+esc(v.file_url)+'" target="_blank" onclick="event.stopPropagation()">📎</a>':'')+'</td>'+
       '<td style="padding:6px 8px;text-align:center"><button class="del" onclick="event.stopPropagation();delInvoice(\''+v.id+'\')">🗑</button></td>'+
@@ -3762,7 +3767,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·160';
+const BUILD='v'+'2026.07.04·162';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -4050,7 +4055,7 @@ async function openMembers(){
     h+='<div class="card" style="border:1.5px solid '+(act?'var(--ok)':'var(--bad)')+';background:'+(act?'#e7f6ec':'#FFF0F0')+'">'+
       '<h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">💳 '+L('Πακέτο & Συνδρομή','Plan & Subscription')+'</h3>'+
       '<div class="field"><label>'+L('Πακέτο','Plan')+'</label><select id="pl-plan" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:var(--card)">'+
-        '<option value="basic"'+(ST.plan==='basic'?' selected':'')+'>BASIC — '+L('Προμηθευτές/Προϊόντα/Συνταγές/Παραγγελίες/Σκάναρε/Τιμολόγια','Suppliers/Products/Recipes/Orders/Scan/Invoices')+'</option>'+
+        '<option value="basic"'+(ST.plan==='basic'?' selected':'')+'>BASIC — '+L('Προμηθευτές/Προϊόντα/Συνταγές/Παραγγελίες/Πρόσθεσε Τιμολόγιο/Τιμολόγια','Suppliers/Products/Recipes/Orders/Add Invoice/Invoices')+'</option>'+
         '<option value="advanced"'+(ST.plan==='advanced'?' selected':'')+'>ADVANCED — '+L('Όλα (+Στατιστικά, Συμφωνίες, Εκδηλώσεις)','All (+Stats, Agreements, Events)')+'</option>'+
         '<option value="pro"'+(ST.plan==='pro'?' selected':'')+'>PRO — '+L('Όλα + Daily Routine (Κλείσιμο Ταμείου, Έξοδα Ημέρας)','All + Daily Routine (Cash Close, Daily Expenses)')+'</option>'+
       '</select></div>'+
@@ -4073,7 +4078,7 @@ async function openMembers(){
   if(!members.length)h+='<div class="muted" style="font-size:13px">'+L('Κανένα μέλος ακόμα','No members yet')+'</div>';
   members.forEach(m=>{
     const canEdit=(ST.role==='admin')||(ST.role==='owner'&&m.role!=='admin'&&m.role!=='owner');
-    const tabsAll=[['products','📦',lbl('products','Προϊόντα')],['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Σκάναρε')],['invoices','📋',lbl('invoices','Τιμολόγια')],['recipes','🍸',lbl('recipes','Συνταγές')],['events','🎉',lbl('events','Εκδηλώσεις')],['agree','🤝',lbl('agree','Συμφωνίες')],['history','📊',lbl('history','Στατιστικά')]];
+    const tabsAll=[['products','📦',lbl('products','Προϊόντα')],['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['recipes','🍸',lbl('recipes','Συνταγές')],['events','🎉',lbl('events','Εκδηλώσεις')],['agree','🤝',lbl('agree','Συμφωνίες')],['history','📊',lbl('history','Στατιστικά')]];
     const planAllow=(ST.plan==='basic')?BASIC_TABS:tabsAll.map(t=>t[0]);
     const cur=(m.tabs&&m.tabs.length)?m.tabs:(m.role==='staff'?['ocr','orders']:planAllow);
     h+='<div style="padding:10px 0;border-bottom:1px solid var(--line)">'+
@@ -4147,7 +4152,7 @@ async function openMembers(){
     '<div class="field"><label>'+L('Ρόλος ασφαλείας','Security role')+'</label><select id="nm-role" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
       (ST.role==='admin'?'<option value="owner">Owner ('+L('πλήρης','full')+')</option>':'')+
       '<option value="manager">Manager ('+L('πλήρης, χωρίς μέλη','full, no members')+')</option>'+
-      '<option value="staff" selected>Staff ('+L('μόνο Σκάναρε + Παραγγελίες','only Scan + Orders')+')</option>'+
+      '<option value="staff" selected>Staff ('+L('μόνο Πρόσθεσε Τιμολόγιο + Παραγγελίες','only Add Invoice + Orders')+')</option>'+
     '</select></div>'+
     '<button class="btn" id="nm-save" onclick="addMember()">➕ '+L('Δημιουργία μέλους','Create member')+'</button>'+
     '<div class="muted" style="font-size:11px;margin-top:8px">'+L('Ο κωδικός δίνεται στο μέλος. Μπορεί να τον αλλάξει με «Ξέχασα τον κωδικό» αν έχει email.','Give the password to the member. They can change it via «Forgot password» if they have email.')+'</div>'+
