@@ -3830,7 +3830,7 @@ function drawExpenses(){
     const em=catEmoji[e.category]||'📦';add(nm,em,n(e.amount));
   }});
   // Πληρωμές προμηθευτών (τα λεφτά που όντως έδωσες)
-  (D.pays||[]).forEach(p=>{if(inRange(p.pay_date)){add('💸 '+(p.supplier_name||T('Προμηθευτής','Supplier')),'💸',n(p.amount));}});
+  (D.pays||[]).forEach(p=>{if(inRange(p.pay_date)){add((p.supplier_name||T('Προμηθευτής','Supplier')),'💸',n(p.amount));}});
   // Delivery προμήθειες
   (D.closes||[]).forEach(cl=>{if(inRange(cl.close_date)){let dd=[];try{dd=(typeof cl.delivery_data==='string')?JSON.parse(cl.delivery_data):(cl.delivery_data||[]);}catch(e){}
     dd.forEach(d=>{const commission=n(d.gross)*n(d.commission)/100;if(commission>0)add(d.name+' ('+T('προμήθεια','commission')+')','🛵',commission);});
@@ -3879,7 +3879,7 @@ function expDetail(encName){
     const nm=(e.label&&e.label.trim())?e.label.trim():(catNames[e.category]||T('Διάφορα','Other'));
     if(nm===name)items.push({date:e.exp_date,amt:n(e.amount),via:e.payment_method});
   }});
-  (D.pays||[]).forEach(p=>{if(inRange(p.pay_date)&&name===('💸 '+(p.supplier_name||T('Προμηθευτής','Supplier')))){items.push({date:p.pay_date,amt:n(p.amount),via:p.payment_method});}});
+  (D.pays||[]).forEach(p=>{if(inRange(p.pay_date)&&name===(p.supplier_name||T('Προμηθευτής','Supplier'))){items.push({date:p.pay_date,amt:n(p.amount),via:p.payment_method});}});
   (D.closes||[]).forEach(cl=>{if(inRange(cl.close_date)){let dd=[];try{dd=(typeof cl.delivery_data==='string')?JSON.parse(cl.delivery_data):(cl.delivery_data||[]);}catch(e){}
     dd.forEach(d=>{const commission=n(d.gross)*n(d.commission)/100;if(commission>0&&name===(d.name+' ('+T('προμήθεια','commission')+')'))items.push({date:cl.close_date,amt:commission,via:'commission'});});
   }});
@@ -4323,8 +4323,7 @@ async function saveDailyExp(){
     const sup=(ST.suppliers||[]).find(x=>x.id===sid); const sname=sup?sup.name:'';
     try{
       await sb.from('supplier_payments').insert({tenant_id:curTenant(),supplier_id:sid,supplier_name:sname,pay_date:dailyDate(),amount:amount,payment_method:g('ne-pay'),notes:L('Πληρωμή από Έξοδα Ημέρας','Payment from Daily Expenses'),created_by:ST.userEmail||''});
-      await sb.from('daily_expenses').insert({tenant_id:curTenant(),exp_date:dailyDate(),label:sname,category:'suppliers',payment_method:g('ne-pay'),amount:amount,supplier_id:sid,created_by:ST.userEmail||''});
-      closeModal(); toast('✅ '+L('Πληρωμή '+sname+' — πέρασε στην καρτέλα','Payment recorded to ledger')); renderDaily();
+      closeModal(); toast('✅ '+L('Πληρωμή '+sname+' — μειώθηκε το υπόλοιπο','Payment recorded')); renderDaily();
     }catch(e){toast('❌ '+(e.message||e));}
     return;
   }
@@ -4345,7 +4344,7 @@ function paySupplier(sid){
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Ποσό Πληρωμής','Payment Amount')+'</label><input id="sp-amount" type="number" step="0.01" placeholder="0.00" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημερομηνία','Date')+'</label><input id="sp-date" type="date" value="'+dailyDate()+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Τρόπος Πληρωμής','Payment Method')+'</label><select id="sp-pay" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)">'+
-      payOpt('cash','💵','Μετρητά','Cash')+payOpt('transfer','🏦','Τραπεζικό Έμβασμα','Bank Transfer')+payOpt('credit','🧾','Πίστωση','Credit')+
+      payOpt('cash','💵','Μετρητά','Cash')+payOpt('transfer','🏦','Τραπεζικό Έμβασμα','Bank Transfer')+
     '</select></div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Αιτιολογία (προαιρετικό)','Note (optional)')+'</label><input id="sp-note" type="text" placeholder="'+T('π.χ. εξόφληση Ιουλίου','e.g. July settlement')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
   '</div>';
@@ -4763,7 +4762,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·196';
+const BUILD='v'+'2026.07.04·197';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
