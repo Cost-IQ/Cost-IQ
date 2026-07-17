@@ -3703,7 +3703,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·150';
+const BUILD='v'+'2026.07.04·151';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -4069,8 +4069,9 @@ async function openMembers(){
   // ── Όριο χρηστών: μετράει μέλη + owners με πρόσβαση. Basic 2 / Advanced 3. Πάνω από αυτό, μόνο ο admin ──
   const canAddMore=(ST.role==='admin')||(totalUsers<freeUsers());
   if(!canAddMore){
+    const brk=(ST._accessOwners&&ST._accessOwners.length)?(' ('+members.length+' '+L('μέλη','members')+' + '+ST._accessOwners.length+' owner)'):'';
     h+='<div class="card" style="border:1.5px solid #e0a800;background:#FFF7E6"><h3 style="font-size:13px;margin-bottom:6px">➕ '+L('Νέο μέλος','New member')+'</h3>'+
-      '<div style="font-size:13px;line-height:1.6">'+L('Το πακέτο σου περιλαμβάνει','Your plan includes')+' <b>'+freeUsers()+'</b> '+L('χρήστες — τους έχεις ήδη','users — you already have them')+' ('+members.length+').<br>'+
+      '<div style="font-size:13px;line-height:1.6">'+L('Το πακέτο σου περιλαμβάνει','Your plan includes')+' <b>'+freeUsers()+'</b> '+L('χρήστες — έχεις ήδη','users — you already have')+' <b>'+totalUsers+'</b>'+brk+'.<br>'+
       L('Για επιπλέον χρήστη (+10€/μήνα) επικοινώνησε μαζί μας:','For an extra user (+10€/month) contact us:')+' <b>getcostiq@gmail.com</b></div></div></div>';
     c.innerHTML=h; return;
   }
