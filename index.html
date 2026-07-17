@@ -3780,6 +3780,10 @@ async function renderDaily(){
     ST.dailyPaymentsToday=(pays||[]).filter(p=>p.pay_date===date);
   }catch(e){ST.dailyPayments=[];ST.dailyPaymentsToday=[];}
   try{const {data:crd}=await sb.from('supplier_credits').select('*').eq('tenant_id',curTenant());ST.supplierCredits=crd||[];}catch(e){ST.supplierCredits=[];}
+  // Τιμολόγια της ημέρας (για καταχώρηση πίστωσης στην καρτέλα)
+  try{const {data:dInv}=await sb.from('invoices').select('*').eq('tenant_id',curTenant()).eq('date',date).order('created_at',{ascending:true});ST.dailyInvoices=dInv||[];}catch(e){ST.dailyInvoices=[];}
+  // Όλα τα τιμολόγια (για σωστό υπολογισμό υπολοίπων)
+  try{const {data:allInv}=await sb.from('invoices').select('*').eq('tenant_id',curTenant());ST.invoices=allInv||ST.invoices||[];}catch(e){}
   computeSupplierBalances();
   drawDaily();
 }
@@ -3951,6 +3955,14 @@ function drawExpDelivery(c,hHead){
 function backFromLedger(){
   if(ST._ledgerFrom==='stats'){ST.section='history';ST.repsub='expenses';ST.expView='suppliers';ST.view='list';renderStats();}
   else{ST.view='list';renderDaily();}
+}
+async function postInvoiceCredit(invId){
+  const inv=(ST.dailyInvoices||[]).find(x=>x.id===invId); if(!inv)return;
+  // Το τιμολόγιο ήδη μετράει στο υπόλοιπο (invoiced). Το μαρκάρουμε ως καταχωρημένο στην καρτέλα.
+  try{
+    await sb.from('invoices').update({ledger_posted:true}).eq('id',invId);
+    toast('✅ '+L('Καταχωρήθηκε στην καρτέλα','Posted to ledger')); renderDaily();
+  }catch(e){toast('❌ '+(e.message||e));}
 }
 function computeSupplierBalances(){
   const sups=ST.suppliers||[]; const invs=ST.invoices||[]; const pays=ST.dailyPayments||[]; const credits=ST.supplierCredits||[];
@@ -4128,6 +4140,27 @@ function drawDaily(){
 
   h+='</div>'; // κλείσιμο grid
 
+  // ── ΤΙΜΟΛΟΓΙΑ ΗΜΕΡΑΣ (καταχώρηση στην καρτέλα) ──
+  const dInv=(ST.dailyInvoices||[]);
+  if(dInv.length){
+    h+='<div class="card" style="margin-top:14px"><h3 style="font-size:14px;margin:0 0 2px">🧾 '+T('Τιμολόγια Ημέρας','Today\'s Invoices')+'</h3>'+
+      '<div class="muted" style="font-size:11px;margin-bottom:10px">'+T('Πάτα Πίστωση για να μπει στην καρτέλα του προμηθευτή','Tap Credit to post it to the supplier ledger')+'</div>';
+    dInv.forEach(inv=>{
+      const posted=!!inv.ledger_posted;
+      const gross=n(inv.total_gross);
+      h+='<div style="padding:10px 0;border-bottom:1px solid var(--line)">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'+
+          '<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600;word-break:break-word">📄 '+esc(inv.supplier_name||'—')+(inv.invoice_number?' · '+esc(inv.invoice_number):'')+'</div><div class="muted" style="font-size:11px">'+money2(gross)+'</div></div>'+
+          (posted?'<span style="font-size:12px;color:var(--ok);white-space:nowrap">✓ '+T('Καταχωρήθηκε','Posted')+'</span>':'')+
+        '</div>'+
+        (posted?'':'<div style="display:flex;gap:8px;margin-top:8px">'+
+          '<button class="btn ghost" style="flex:1;padding:6px 8px;font-size:12px" onclick="postInvoiceCredit(\''+inv.id+'\')">🧾 '+T('Πίστωση','Credit')+'</button>'+
+        '</div>')+
+      '</div>';
+    });
+    h+='</div>';
+  }
+
   // ── ΥΠΟΛΟΙΠΑ ΠΡΟΜΗΘΕΥΤΩΝ ──
   const bals=ST.supplierBalances||[];
   h+='<div class="card" style="margin-top:14px"><h3 style="font-size:14px;margin:0 0 2px">🏢 '+T('Υπόλοιπα Προμηθευτών','Supplier Balances')+'</h3>'+
@@ -4166,8 +4199,10 @@ function dailyLive(){
   document.querySelectorAll('[id^="pt-"][id$="-cash"]').forEach(el=>{if(el.value!=='')cash+=(+el.value);});
   document.querySelectorAll('[id^="pt-"][id$="-card"]').forEach(el=>{if(el.value!=='')card+=(+el.value);});
   const off=g('dc-off'), cn=g('dc-cn');
-  let cashPay=0; const cpEl=document.getElementById('dc-cashpay');
-  if(cpEl){const m=cpEl.textContent.replace(/[^\d.,-]/g,'').replace(/\./g,'').replace(',','.');cashPay=Math.abs(parseFloat(m)||0);}
+  // Πληρωμές μετρητά από τα ΠΡΑΓΜΑΤΙΚΑ δεδομένα (όχι από κείμενο)
+  const nn=v=>(v!=null&&v!==''?(+v):0);
+  const cashPay=(ST.dailyExps||[]).filter(e=>e.payment_method==='cash').reduce((s,e)=>s+nn(e.amount),0)
+    + (ST.dailyPaymentsToday||[]).filter(p=>p.payment_method==='cash').reduce((s,p)=>s+nn(p.amount),0);
   const income = cash + off + card - cn;
   const envelope = cash - cashPay;
   const incEl=document.getElementById('daily-income'); if(incEl)incEl.textContent=money(Math.round(income*100)/100);
@@ -4814,7 +4849,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·198';
+const BUILD='v'+'2026.07.04·199';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
