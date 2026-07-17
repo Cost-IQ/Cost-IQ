@@ -3831,13 +3831,13 @@ function drawExpenses(){
   const add=(key,emoji,amt)=>{if(!cats[key])cats[key]={emoji,total:0};cats[key].total+=amt;};
   const catNames={staff:T('Προσωπικό','Staff'),utilities:T('Πάγια','Utilities'),suppliers:T('Προμηθευτές','Suppliers'),rent:T('Ενοίκιο','Rent'),other:T('Διάφορα','Other')};
   const catEmoji={staff:'👥',utilities:'⚡',suppliers:'🏢',rent:'🏠',other:'📦'};
-  // Έξοδα ημέρας — ομαδοποίηση ανά ΟΝΟΜΑ (π.χ. ΔΕΗ) αν υπάρχει, αλλιώς κατηγορία
-  (D.exps||[]).forEach(e=>{if(inRange(e.exp_date)){
+  // Έξοδα ημέρας — ομαδοποίηση ανά ΟΝΟΜΑ (π.χ. ΔΕΗ). ΕΞΑΙΡΟΥΜΕ category='suppliers' (μετρῶνται από pays)
+  (D.exps||[]).forEach(e=>{if(inRange(e.exp_date)&&e.category!=='suppliers'){
     const nm=(e.label&&e.label.trim())?e.label.trim():(catNames[e.category]||T('Διάφορα','Other'));
     const em=catEmoji[e.category]||'📦';add(nm,em,n(e.amount));
   }});
   // Πληρωμές προμηθευτών (τα λεφτά που όντως έδωσες)
-  (D.pays||[]).forEach(p=>{if(inRange(p.pay_date)){add((p.supplier_name||T('Προμηθευτής','Supplier')),'💸',n(p.amount));}});
+  (D.pays||[]).forEach(p=>{if(inRange(p.pay_date)){add((p.supplier_name||T('Προμηθευτής','Supplier')),'🏢',n(p.amount));}});
   // Delivery προμήθειες
   (D.closes||[]).forEach(cl=>{if(inRange(cl.close_date)){let dd=[];try{dd=(typeof cl.delivery_data==='string')?JSON.parse(cl.delivery_data):(cl.delivery_data||[]);}catch(e){}
     dd.forEach(d=>{const commission=n(d.gross)*n(d.commission)/100;if(commission>0)add(d.name+' ('+T('προμήθεια','commission')+')','🛵',commission);});
@@ -3888,7 +3888,7 @@ function expDetail(encName){
   const catNames={staff:T('Προσωπικό','Staff'),utilities:T('Πάγια','Utilities'),suppliers:T('Προμηθευτές','Suppliers'),rent:T('Ενοίκιο','Rent'),other:T('Διάφορα','Other')};
   // Μάζεμα όλων των κινήσεων που ταιριάζουν στο όνομα
   const items=[];
-  (D.exps||[]).forEach(e=>{if(inRange(e.exp_date)){
+  (D.exps||[]).forEach(e=>{if(inRange(e.exp_date)&&e.category!=='suppliers'){
     const nm=(e.label&&e.label.trim())?e.label.trim():(catNames[e.category]||T('Διάφορα','Other'));
     if(nm===name)items.push({date:e.exp_date,amt:n(e.amount),via:e.payment_method});
   }});
@@ -3985,10 +3985,6 @@ async function saveInvoicePayment(invId){
   if(isNaN(amount)||amount<=0){toast('❌ '+L('Βάλε ποσό','Enter an amount'));return;}
   try{
     await sb.from('supplier_payments').insert({tenant_id:curTenant(),supplier_id:inv.supplier_id,supplier_name:inv.supplier_name,pay_date:dailyDate(),amount:amount,payment_method:method,invoice_id:invId,notes:L('Πληρωμή τιμολογίου','Invoice payment')+(inv.invoice_number?' '+inv.invoice_number:''),created_by:ST.userEmail||''});
-    // Αν μετρητά → μπαίνει και στα έξοδα ημέρας (φεύγει από ταμείο)
-    if(method==='cash'){
-      await sb.from('daily_expenses').insert({tenant_id:curTenant(),exp_date:dailyDate(),label:inv.supplier_name,category:'suppliers',payment_method:'cash',amount:amount,supplier_id:inv.supplier_id,created_by:ST.userEmail||''});
-    }
     await sb.from('invoices').update({ledger_posted:true}).eq('id',invId);
     closeModal(); toast('✅ '+L('Πληρωμή καταχωρήθηκε','Payment recorded')); renderDaily();
   }catch(e){toast('❌ '+(e.message||e));}
@@ -4033,8 +4029,15 @@ function computeSupplierBalances(){
 function drawDaily(){
   const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
   const date=dailyDate();
-  const cl=ST.dailyClose||{}; const exps=ST.dailyExps||[];
+  const cl=ST.dailyClose||{};
   const n=v=>(v!=null&&v!==''?(+v):0);
+  // Ενοποιημένη λίστα εξόδων ημέρας: άλλα έξοδα (daily_expenses) + πληρωμές προμηθευτών σήμερα (supplier_payments)
+  const rawExps=(ST.dailyExps||[]).filter(e=>e.category!=='suppliers'); // τα suppliers έρχονται από payments
+  const supPaysToday=(ST.dailyPaymentsToday||[]).map(p=>({
+    id:'pay_'+p.id, _isPay:true, label:p.supplier_name||T('Προμηθευτής','Supplier'),
+    category:'suppliers', payment_method:p.payment_method, amount:p.amount
+  }));
+  const exps=rawExps.concat(supPaysToday);
   const income = n(cl.cash_income)+n(cl.off_envelope)+n(cl.card_income)-n(cl.credit_notes);
   const expTotal = exps.reduce((s,e)=>s+n(e.amount),0);
   const net = income - expTotal;
@@ -4180,9 +4183,10 @@ function drawDaily(){
   h+='<div class="card"><h3 style="font-size:14px;margin:0 0 12px">🔄 '+T('Έξοδα Ημέρας','Daily Expenses')+'</h3>';
   if(!exps.length)h+='<div class="muted" style="font-size:13px;text-align:center;padding:8px">'+T('Κανένα έξοδο ακόμα','No expenses yet')+'</div>';
   exps.forEach(e=>{
+    const delFn=e._isPay?('delDayPay(\''+String(e.id).replace('pay_','')+'\')'):('delDailyExp(\''+e.id+'\')');
     h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px">'+
-      '<div style="min-width:0;flex:1"><div style="font-weight:600;word-break:break-word">'+esc(e.label||'—')+'</div><div class="muted" style="font-size:11px">'+catLabel(e.category)+' · '+payLabel(e.payment_method)+'</div></div>'+
-      '<div style="display:flex;align-items:center;gap:10px"><span style="font-weight:600">'+money2(n(e.amount))+'</span><span onclick="delDailyExp(\''+e.id+'\')" style="cursor:pointer;color:var(--bad)">🗑</span></div>'+
+      '<div style="min-width:0;flex:1"><div style="font-weight:600;word-break:break-word">'+(e._isPay?'💸 ':'')+esc(e.label||'—')+'</div><div class="muted" style="font-size:11px">'+catLabel(e.category)+' · '+payLabel(e.payment_method)+'</div></div>'+
+      '<div style="display:flex;align-items:center;gap:10px"><span style="font-weight:600">'+money2(n(e.amount))+'</span><span onclick="'+delFn+'" style="cursor:pointer;color:var(--bad)">🗑</span></div>'+
     '</div>';
   });
   h+='<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:10px;display:flex;justify-content:space-between;font-size:14px"><span class="muted">'+T('Σύνολο Εξόδων','Total Expenses')+'</span><span style="font-weight:700;color:var(--bad)">'+money2(expTotal)+'</span></div>'+
@@ -4230,10 +4234,11 @@ function dailyLive(){
   document.querySelectorAll('[id^="pt-"][id$="-cash"]').forEach(el=>{if(el.value!=='')cash+=(+el.value);});
   document.querySelectorAll('[id^="pt-"][id$="-card"]').forEach(el=>{if(el.value!=='')card+=(+el.value);});
   const off=g('dc-off'), cn=g('dc-cn');
-  // Πληρωμές μετρητά από τα ΠΡΑΓΜΑΤΙΚΑ δεδομένα (όχι από κείμενο)
+  // Πληρωμές μετρητά: daily_expenses(cash, μη-suppliers) + supplier_payments(cash) σήμερα
   const nn=v=>(v!=null&&v!==''?(+v):0);
-  const cashPay=(ST.dailyExps||[]).filter(e=>e.payment_method==='cash').reduce((s,e)=>s+nn(e.amount),0)
-    + (ST.dailyPaymentsToday||[]).filter(p=>p.payment_method==='cash').reduce((s,p)=>s+nn(p.amount),0);
+  const cashExp=(ST.dailyExps||[]).filter(e=>e.payment_method==='cash'&&e.category!=='suppliers').reduce((s,e)=>s+nn(e.amount),0);
+  const cashPaySup=(ST.dailyPaymentsToday||[]).filter(p=>p.payment_method==='cash').reduce((s,p)=>s+nn(p.amount),0);
+  const cashPay=cashExp+cashPaySup;
   const income = cash + off + card - cn;
   const envelope = cash - cashPay;
   const incEl=document.getElementById('daily-income'); if(incEl)incEl.textContent=money(Math.round(income*100)/100);
@@ -4647,6 +4652,11 @@ async function delDailyExp(id){
   try{await sb.from('daily_expenses').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));renderDaily();}
   catch(e){toast('❌ '+(e.message||e));}
 }
+async function delDayPay(id){
+  if(!confirm(L('Διαγραφή πληρωμής;','Delete payment?')))return;
+  try{await sb.from('supplier_payments').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));renderDaily();}
+  catch(e){toast('❌ '+(e.message||e));}
+}
 async function dailyArchive(){
   persistNav(); ST.view='dailyArch';
   const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
@@ -4880,7 +4890,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·201';
+const BUILD='v'+'2026.07.04·206';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
