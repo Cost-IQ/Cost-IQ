@@ -1130,7 +1130,8 @@ function renderRecipes(){
   let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div class="tabs lap-tabs" style="display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px">'+
     RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'active':'')+'" style="white-space:nowrap" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div></div></div>';
   if(!ST.recipes||!ST.recipes.length){
-    h+='<div class="card muted" style="text-align:center;margin-top:14px">'+L('Καμία συνταγή ακόμα — πάτα «+ Νέα Συνταγή» ή «+ Νέα Homemade».','No recipes yet — tap «+ New Recipe» or «+ New Homemade».')+'</div>';
+    h+='<div style="display:flex;justify-content:flex-end;margin:8px 2px"><button class="pick" onclick="newRecipe(false)">+ '+lbl('rNewRecipe','Νέα Συνταγή')+'</button></div>';
+    h+='<div class="card muted" style="text-align:center;margin-top:14px">'+L('Καμία συνταγή ακόμα — πάτα «+ Νέα Συνταγή».','No recipes yet — tap «+ New Recipe».')+'</div>';
     c.innerHTML=h;return;
   }
   h+='<input class="search" autocomplete="off" autocorrect="off" spellcheck="false" id="rq" placeholder="'+lbl('rSearch','Αναζήτηση…')+'" oninput="debSearch(renderRecipes)" value="'+esc(q)+'">';
@@ -3704,7 +3705,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·152';
+const BUILD='v'+'2026.07.04·153';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
