@@ -3169,6 +3169,12 @@ function renderOcr(){
     '</div>'+
     '<div class="field"><label>Ημερομηνία</label><input id="ocr-date" type="date" value="'+esc(o.date||new Date().toISOString().slice(0,10))+'"></div>'+
     '<div class="field"><label>Αρ. Τιμολογίου</label><input id="ocr-invno" type="text" value="'+esc(o.invoiceNo||'')+'" onchange="ST.ocr.invoiceNo=this.value" placeholder="σειρά-αριθμός"></div>'+
+    '<div class="field"><label>'+L('Τρόπος Πληρωμής','Payment Method')+'</label><select id="ocr-paymethod" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
+      '<option value="">— '+L('Επιλογή','Select')+' —</option>'+
+      '<option value="cash"'+(o.paymentMethod==='cash'?' selected':'')+'>💵 '+L('Μετρητά','Cash')+'</option>'+
+      '<option value="credit"'+(o.paymentMethod==='credit'?' selected':'')+'>🧾 '+L('Πίστωση','Credit')+'</option>'+
+      '<option value="transfer"'+(o.paymentMethod==='transfer'?' selected':'')+'>🏦 '+L('Τραπεζικό Έμβασμα','Bank Transfer')+'</option>'+
+    '</select></div>'+
     ((o.grandTotal||o.netTotal)?'<div class="muted" style="font-size:12px">Τιμολόγιο: Καθαρό '+(o.netTotal!=null?money(o.netTotal):'—')+' · ΦΠΑ '+(o.vatTotal!=null?money(o.vatTotal):'—')+' · Σύνολο '+(o.grandTotal!=null?money(o.grandTotal):'—')+'</div>':'')+
     '</div>';
   const nNo=o.lines.filter(l=>!l.productId).length, nLow=o.lines.filter(l=>l.productId&&l.conf==='low').length, nMed=o.lines.filter(l=>l.productId&&l.conf==='med').length;
@@ -3427,7 +3433,8 @@ async function ocrApprove(){
     }catch(e){console.error(e);}
   }
   try{
-    const {data:invRow}=await sb.from('invoices').insert({tenant_id:tid,supplier_id:sid,supplier_name:supN,date:date,invoice_number:o.invoiceNo||null,category:anyBev?'Beverage':'Food',total_net:(o.netTotal!=null?o.netTotal:grossR),vat_pct:(o.vatTotal!=null?o.vatTotal:null),total_gross:(o.grandTotal!=null?o.grandTotal:grossR),new_balance:(o.newBalance!=null?o.newBalance:null),file_url:fileUrl,status:'approved'}).select().single();
+    const payMethod=(document.getElementById('ocr-paymethod')||{}).value||null;
+    const {data:invRow}=await sb.from('invoices').insert({tenant_id:tid,supplier_id:sid,supplier_name:supN,date:date,invoice_number:o.invoiceNo||null,category:anyBev?'Beverage':'Food',total_net:(o.netTotal!=null?o.netTotal:grossR),vat_pct:(o.vatTotal!=null?o.vatTotal:null),total_gross:(o.grandTotal!=null?o.grandTotal:grossR),new_balance:(o.newBalance!=null?o.newBalance:null),payment_method:payMethod,file_url:fileUrl,status:'approved'}).select().single();
     if(invRow)invId=invRow.id;
   }catch(e){console.error(e);}
   let ok=0;
@@ -3757,14 +3764,15 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·158';
+const BUILD='v'+'2026.07.04·159';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
 // Ο admin (εσύ) εξαιρείται. Θέλει το SQL: COST_IQ_device_limit.sql
 const DEVICE_LIMIT=2;
-function freeUsers(){return (ST.plan==='basic')?2:3;}   // Basic: 2 δωρεάν χρήστες · Advanced: 3. Πάνω από αυτό, μόνο ο admin (χρέωση +10€/μήνα)
-function planPrice(plan){return (plan==='basic')?60:90;}   // μηνιαία τιμή πακέτου (€)
+function freeUsers(){return (ST.plan==='basic')?2:(ST.plan==='pro')?4:3;}   // Basic 2 · Advanced 3 · Pro 4 δωρεάν χρήστες
+function planPrice(plan){return (plan==='basic')?60:(plan==='pro')?120:90;}   // μηνιαία τιμή (€): Basic 60 · Advanced 90 · Pro 120
+function isPro(){return ST.plan==='pro';}   // Pro tier = Daily Routine module
 let _hbTimer=null;
 function deviceId(){
   let d='';try{d=localStorage.getItem('ciq_dev')||'';}catch(e){}
@@ -4045,7 +4053,8 @@ async function openMembers(){
       '<h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">💳 '+L('Πακέτο & Συνδρομή','Plan & Subscription')+'</h3>'+
       '<div class="field"><label>'+L('Πακέτο','Plan')+'</label><select id="pl-plan" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:var(--card)">'+
         '<option value="basic"'+(ST.plan==='basic'?' selected':'')+'>BASIC — '+L('Προμηθευτές/Προϊόντα/Συνταγές/Παραγγελίες/Σκάναρε/Τιμολόγια','Suppliers/Products/Recipes/Orders/Scan/Invoices')+'</option>'+
-        '<option value="advanced"'+(ST.plan!=='basic'?' selected':'')+'>ADVANCED — '+L('Όλα (+Στατιστικά, Συμφωνίες, Εκδηλώσεις)','All (+Stats, Agreements, Events)')+'</option>'+
+        '<option value="advanced"'+(ST.plan==='advanced'?' selected':'')+'>ADVANCED — '+L('Όλα (+Στατιστικά, Συμφωνίες, Εκδηλώσεις)','All (+Stats, Agreements, Events)')+'</option>'+
+        '<option value="pro"'+(ST.plan==='pro'?' selected':'')+'>PRO — '+L('Όλα + Daily Routine (Κλείσιμο Ταμείου, Έξοδα Ημέρας)','All + Daily Routine (Cash Close, Daily Expenses)')+'</option>'+
       '</select></div>'+
       '<div class="field"><label>'+L('Πληρωμένο μέχρι','Paid until')+'</label><input id="pl-until" type="date" value="'+esc(ST.paidUntil||'')+'"></div>'+
       '<div style="font-size:13px;font-weight:600;color:'+(act?'var(--ok)':'var(--bad)')+';margin:6px 0">'+(act?('✅ '+L('Ενεργή','Active')+' — '+dl+' '+L('μέρες','days')):('🔒 '+L('ΛΗΓΜΕΝΗ','EXPIRED')))+'</div>'+
