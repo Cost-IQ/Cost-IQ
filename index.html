@@ -582,9 +582,9 @@ async function loadAll(){
     // (η γλώσσα φορτώνεται ανά χρήστη από το profile, όχι από localStorage)
     if(nav.kind)ST.kind=nav.kind; if(nav.okind)ST.okind=nav.okind; if(nav.invsub)ST.invsub=nav.invsub; if(nav.repsub)ST.repsub=nav.repsub;
     ST.homeView=!!nav.homeView;
-    if(nav.prod&&nav.view==='detail'){const p=ST.products.find(x=>x.id===nav.prod);if(p){ST.prod=p;ST.view='detail';}}
-    else if(nav.recipe&&nav.view==='detail'){const r=ST.recipes.find(x=>x.id===nav.recipe);if(r){ST.recipe=r;ST.view='detail';}}
-    else if(nav.inv){const i=ST.invoices.find(x=>x.id===nav.inv);if(i)ST.inv=i;}
+    if(nav.prod&&nav.view==='detail'){const p=ST.products.find(x=>x.id===nav.prod);if(p){ST.prod=p;ST.section='products';ST.view='detail';}}
+    else if(nav.recipe&&nav.view==='detail'){const r=ST.recipes.find(x=>x.id===nav.recipe);if(r){ST.recipe=r;ST.section='recipes';ST.view='detail';}}
+    else if(nav.inv&&nav.section==='invoices'){const i=ST.invoices.find(x=>x.id===nav.inv);if(i){ST.inv=i;ST.section='invoices';ST.view='detail';}}
     else if(nav.view&&nav.view!=='detail'){ST.view=nav.view;}
   }catch(e){}
   rerenderCurrent();
@@ -767,7 +767,7 @@ function renderList(){
 
 function openProd(pid){
   const p=ST.products.find(x=>x.id===pid);if(!p)return;
-  ST.prod=p;ST.view='detail';persistNav();
+  ST.prod=p;ST.section='products';ST.view='detail';persistNav();
   document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}
   document.getElementById('hTitle').textContent=p.sku;
   drawProd();
@@ -3694,7 +3694,7 @@ function priceDbView(){
 }
 function openInvoice(id){
   const v=ST.invoices.find(x=>x.id===id);if(!v)return;
-  ST.inv=v;persistNav();document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🧾 '+(v.supplier_name||lbl('oScanTitle','Τιμολόγιο'));
+  ST.inv=v;ST.section='invoices';ST.view='detail';persistNav();document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🧾 '+(v.supplier_name||lbl('oScanTitle','Τιμολόγιο'));
   const c=document.getElementById('content');
   const lines=ST.history.filter(r=> r.invoice_id===id || ((r.supplier_name&&v.supplier_name&&normStr(r.supplier_name)===normStr(v.supplier_name))&&r.date===v.date) );
   let h='<div class="card"><h3 style="font-size:14px;margin-bottom:10px">🧾 '+esc(v.supplier_name||supName(v.supplier_id))+'</h3>'+
@@ -3767,7 +3767,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·163';
+const BUILD='v'+'2026.07.04·164';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
