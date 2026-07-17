@@ -359,6 +359,8 @@ async function enterApp(){
   const shopsB=document.getElementById('shopsBtn');if(shopsB)shopsB.style.display=(ST.role==='admin'||ST.multiShop)?'inline-block':'none';
   const labelB=document.getElementById('labelBtn');if(labelB)labelB.style.display=(ST.role==='admin')?'inline-block':'none';
   // Πλοήγηση στο refresh:
+  // Φόρτωσε το αποθηκευμένο μαγαζί ΠΡΙΝ τους ελέγχους (αλλιώς ο admin/owner πετιέται στη λίστα σε κάθε refresh)
+  try{const savedTenant=localStorage.getItem('ciq_tenant');if(savedTenant)ST.tenant=savedTenant;}catch(e){}
   let savedView='';try{const nv=JSON.parse(localStorage.getItem('ciq_nav')||'{}');savedView=nv.view||'';}catch(e){}
   // 1) Αν ήμασταν στη λίστα μαγαζιών → εκεί
   if(savedView==='shops'&&(ST.role==='admin'||ST.multiShop)){ return chooseShop(); }
@@ -3767,7 +3769,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·164';
+const BUILD='v'+'2026.07.04·165';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
