@@ -767,7 +767,7 @@ function renderList(){
 
 function openProd(pid){
   const p=ST.products.find(x=>x.id===pid);if(!p)return;
-  ST.prod=p;ST.view='detail';
+  ST.prod=p;ST.view='detail';persistNav();
   document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}
   document.getElementById('hTitle').textContent=p.sku;
   drawProd();
@@ -1166,7 +1166,7 @@ function renderRecipes(){
 }
 function openRecipe(rid){
   const r=(ST.recipes||[]).find(x=>x.id===rid);if(!r)return;
-  ST.recipe=r;ST.view='detail';
+  ST.recipe=r;ST.view='detail';persistNav();
   document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}
   document.getElementById('hTitle').textContent=r.name;
   drawRecipe();
@@ -2417,7 +2417,47 @@ function drawProfit(){
   // ΔΕΞΙΑ: Αποτελέσματα
   h+='<div id="pf-results">'+profitResultsHtml(R)+'</div>';
   h+='</div></div></div>';
+  h+='<div id="pf-saved" style="margin-top:16px"></div>';
   box.innerHTML=h;
+  loadProfitList();
+}
+async function loadProfitList(){
+  const box=document.getElementById('pf-saved'); if(!box)return;
+  let rows=[];
+  try{const {data}=await sb.from('profit_periods').select('*').eq('tenant_id',curTenant()).order('period_start',{ascending:false});rows=data||[];}catch(e){}
+  if(!rows.length){box.innerHTML='';return;}
+  const T=(el,en)=>L(el,en);
+  let h='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">📅 '+T('Αποθηκευμένες Περίοδοι','Saved Periods')+'</h3>';
+  rows.forEach(r=>{
+    const R=profitCalcFromRow(r);
+    const prof=R&&R.np!=null?R.np:null;
+    const col=(prof!=null&&prof>=0)?'var(--ok)':'var(--bad)';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px">'+
+      '<div style="cursor:pointer;flex:1" onclick="openProfitPeriod(\''+r.period_start+'\',\''+r.period_end+'\')"><b>'+dGRs(r.period_start)+' – '+dGRs(r.period_end)+'</b>'+(r.label?(' · '+esc(r.label)):'')+
+      (prof!=null?('<div style="color:'+col+';font-weight:700">'+T('Καθαρό','Net')+': '+money(prof)+'</div>'):'')+'</div>'+
+      '<div style="display:flex;gap:10px;align-items:center"><span onclick="openProfitPeriod(\''+r.period_start+'\',\''+r.period_end+'\')" style="cursor:pointer;color:var(--accent)">'+T('Άνοιγμα','Open')+'</span>'+
+      '<span onclick="delProfitPeriod(\''+r.period_start+'\',\''+r.period_end+'\')" style="cursor:pointer;color:var(--bad)">🗑</span></div></div>';
+  });
+  h+='</div>';
+  box.innerHTML=h;
+}
+function profitCalcFromRow(r){
+  try{return calcProfit(r);}catch(e){return null;}
+}
+async function openProfitPeriod(start,end){
+  // Βρες τον σωστό τύπο περιόδου από τις ημερομηνίες
+  const s=new Date(start),e=new Date(end);
+  const months=(e.getFullYear()-s.getFullYear())*12+(e.getMonth()-s.getMonth())+1;
+  ST.pfType=(months>=12?'year':months>=6?'half':months>=3?'quarter':'month');
+  ST.pfDate=start;
+  try{const {data}=await sb.from('profit_periods').select('*').eq('tenant_id',curTenant()).eq('period_start',start).eq('period_end',end).maybeSingle();ST.pf=data||null;}catch(e){}
+  drawProfit();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+async function delProfitPeriod(start,end){
+  if(!confirm(L('Διαγραφή περιόδου;','Delete period?')))return;
+  try{await sb.from('profit_periods').delete().eq('tenant_id',curTenant()).eq('period_start',start).eq('period_end',end);toast('✅ '+L('Διαγράφηκε','Deleted'));loadProfitList();}
+  catch(e){toast('❌ '+(e.message||e));}
 }
 function pfLive(){
   const p=ST.pf||{};
@@ -3705,7 +3745,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·153';
+const BUILD='v'+'2026.07.04·155';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
