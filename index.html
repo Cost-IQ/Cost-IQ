@@ -3881,6 +3881,28 @@ function drawDaily(){
     '<button class="btn" style="margin-top:10px" onclick="saveZClosing()">💾 '+T('Αποθήκευση Z','Save Z')+'</button>'+
   '</div>';
 
+  // ── DELIVERY ──
+  const delPlatforms=(ST.daySetup&&ST.daySetup.delivery)||[];
+  if(delPlatforms.length){
+    let delData=[];
+    try{delData=(typeof ST.dailyClose.delivery_data==='string')?JSON.parse(ST.dailyClose.delivery_data):(ST.dailyClose.delivery_data||[]);}catch(e){delData=[];}
+    h+='<div class="card"><h3 style="font-size:14px;margin:0 0 12px">🛵 '+T('Delivery','Delivery')+'</h3>';
+    delPlatforms.forEach((pl,i)=>{
+      const saved=delData.find(d=>d.name===pl.name)||{};
+      h+='<div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+          '<span style="font-size:13px;font-weight:600">'+esc(pl.name)+'</span>'+
+          '<span style="font-size:11px;color:var(--muted)">'+T('προμήθεια','commission')+' '+(pl.commission||0)+'%</span>'+
+        '</div>'+
+        '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Σύνολο (με ΦΠΑ)','Total (incl. VAT)')+'</label><input id="del-'+i+'" type="number" step="0.01" value="'+(saved.gross!=null?saved.gross:'')+'" placeholder="0" oninput="delLive()" data-delname="'+esc(pl.name)+'" data-delcom="'+(pl.commission||0)+'" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
+        '<div id="del-info-'+i+'" style="font-size:11px;color:var(--bad);margin-top:6px">—</div>'+
+      '</div>';
+    });
+    h+='<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:10px;display:flex;justify-content:space-between;font-size:14px"><span class="muted">'+T('Σύνολο Delivery','Delivery Total')+'</span><span id="del-total" style="font-weight:700;color:var(--ok)">'+money(0)+'</span></div>'+
+      '<button class="btn" style="margin-top:10px" onclick="saveDelivery()">💾 '+T('Αποθήκευση Delivery','Save Delivery')+'</button>'+
+    '</div>';
+  }
+
   // ── ΕΞΟΔΑ ΗΜΕΡΑΣ ──
   h+='<div class="card"><h3 style="font-size:14px;margin:0 0 12px">🔄 '+T('Έξοδα Ημέρας','Daily Expenses')+'</h3>';
   if(!exps.length)h+='<div class="muted" style="font-size:13px;text-align:center;padding:8px">'+T('Κανένα έξοδο ακόμα','No expenses yet')+'</div>';
@@ -3920,6 +3942,7 @@ function drawDaily(){
   c.innerHTML=h;
   dailyLive();
   zLive();
+  delLive();
 }
 function dailyLive(){
   const g=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?(+el.value):0;};
@@ -3998,6 +4021,32 @@ async function saveZClosing(){
     created_by:ST.userEmail||''};
   try{const {error}=await sb.from('z_closing').upsert(row,{onConflict:'tenant_id,z_date'});
     if(error)throw error; toast('✅ '+L('Αποθηκεύτηκε το Z','Z Saved')); renderDaily();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+function delLive(){
+  const money2=x=>money(Math.round(x*100)/100);
+  let total=0;
+  document.querySelectorAll('[data-delname]').forEach((el,idx)=>{
+    const gross=el.value!==''?(+el.value):0; const com=+el.getAttribute('data-delcom')||0;
+    const commission=gross*com/100; const netTake=gross-commission;
+    total+=netTake;
+    const info=document.getElementById('del-info-'+idx);
+    if(info){
+      if(gross>0)info.textContent='− '+L('Προμήθεια','Commission')+': '+money2(commission)+' · '+L('Καθαρά','Net')+': '+money2(netTake);
+      else info.textContent='—';
+    }
+  });
+  const tEl=document.getElementById('del-total'); if(tEl)tEl.textContent=money2(total);
+}
+async function saveDelivery(){
+  const data=[];
+  document.querySelectorAll('[data-delname]').forEach(el=>{
+    const name=el.getAttribute('data-delname'); const gross=el.value!==''?(+el.value):0;
+    const com=+el.getAttribute('data-delcom')||0;
+    data.push({name:name,gross:gross,commission:com,net:gross-(gross*com/100)});
+  });
+  try{const {error}=await sb.from('daily_close').upsert({tenant_id:curTenant(),close_date:dailyDate(),delivery_data:JSON.stringify(data)},{onConflict:'tenant_id,close_date'});
+    if(error)throw error; toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderDaily();
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function addDailyExp(){
@@ -4183,6 +4232,19 @@ function daySetupScreen(){
   });
   h+='</div>'+
     '<button class="btn ghost" style="width:100%;margin-top:4px" onclick="dsAddPoint()">➕ '+T('Προσθήκη Σημείου','Add Point')+'</button>'+
+    // Delivery
+    '<div style="font-size:12px;color:var(--muted);margin:18px 0 4px">'+T('Delivery','Delivery')+'</div>'+
+    '<div class="muted" style="font-size:11px;margin-bottom:8px">'+T('Πλατφόρμες + προμήθεια που κρατάνε','Platforms + commission they take')+'</div>'+
+    '<div id="ds-delivery">';
+  (s.delivery||[]).forEach((d,i)=>{
+    h+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px" data-del="'+i+'">'+
+      '<input type="text" id="ds-delname-'+i+'" value="'+esc(d.name||'')+'" placeholder="'+T('π.χ. Efood','e.g. Efood')+'" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:8px">'+
+      '<div style="display:flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:8px;padding:4px 8px"><input type="number" id="ds-delcom-'+i+'" value="'+(d.commission!=null?d.commission:0)+'" style="width:44px;border:none;text-align:center;font-size:14px">%</div>'+
+      '<span onclick="dsRemoveDelivery('+i+')" style="cursor:pointer;color:var(--bad);font-size:16px;padding:0 4px">✕</span>'+
+    '</div>';
+  });
+  h+='</div>'+
+    '<button class="btn ghost" style="width:100%;margin-top:4px" onclick="dsAddDelivery()">➕ '+T('Πλατφόρμα','Platform')+'</button>'+
     '<button class="btn" style="margin-top:14px" onclick="saveDaySetup()">💾 '+T('Αποθήκευση Ρύθμισης','Save Setup')+'</button>'+
   '</div>';
   h+='</div></div>';
@@ -4197,8 +4259,14 @@ function dsCollect(){
     const em=document.getElementById('ds-emoji-'+i), nm=document.getElementById('ds-name-'+i);
     points.push({emoji:em?em.value:'💰', name:nm?nm.value:''});
   });
-  return {shifts,currency,vatRates,points};
+  const delivery=[]; document.querySelectorAll('[data-del]').forEach(d=>{const i=d.getAttribute('data-del');
+    const nm=document.getElementById('ds-delname-'+i), cm=document.getElementById('ds-delcom-'+i);
+    delivery.push({name:nm?nm.value:'', commission:cm&&cm.value!==''?(+cm.value):0});
+  });
+  return {shifts,currency,vatRates,points,delivery};
 }
+function dsAddDelivery(){ const s=dsCollect(); s.delivery=s.delivery||[]; s.delivery.push({name:'',commission:30}); ST.daySetup=s; daySetupScreen(); }
+function dsRemoveDelivery(i){ const s=dsCollect(); s.delivery.splice(i,1); ST.daySetup=s; daySetupScreen(); }
 function dsToggleShifts(){ const s=dsCollect(); s.shifts=!s.shifts; ST.daySetup=s; daySetupScreen(); }
 function dsAddVat(){ const s=dsCollect(); s.vatRates.push(0); ST.daySetup=s; daySetupScreen(); }
 function dsRemoveVat(i){ const s=dsCollect(); s.vatRates.splice(i,1); ST.daySetup=s; daySetupScreen(); }
@@ -4262,7 +4330,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·181';
+const BUILD='v'+'2026.07.04·182';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
