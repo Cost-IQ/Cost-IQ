@@ -43,7 +43,7 @@
   .center{min-height:70vh;display:flex;align-items:center;justify-content:center}
   .muted{color:var(--muted)}
   .tabs{display:flex;gap:8px;margin:14px 0 6px}
-  .tab{flex:1;padding:10px;text-align:center;border-radius:10px;background:var(--card);border:1px solid var(--line);color:var(--muted);cursor:pointer;font-size:14px;font-weight:600}
+  .tab{flex:1;padding:10px;text-align:center;border-radius:10px;background:var(--card);border:1px solid var(--line);color:var(--muted);cursor:pointer;font-size:14px;font-weight:600;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis}
   .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
   .search{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:14px;margin-bottom:8px}
   .cathead{font-weight:700;font-size:14px;padding:8px 4px 4px;margin-top:6px}
@@ -693,8 +693,8 @@ function sectionNav(){
   let items=[['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['products','📦',lbl('products','Προϊόντα')],['recipes','🍸',lbl('recipes','Συνταγές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['daily','📅',lbl('daily','Ημέρα')],['agree','🤝',lbl('agree','Συμφωνίες')],['events','🎉',lbl('events','Εκδηλώσεις')],['history','📊',lbl('history','Στατιστικά')]];
   items=items.filter(i=>allow.indexOf(i[0])>=0);
   // ── Desktop: οριζόντια tabs ──
-  const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:104px;white-space:nowrap;padding:10px 12px">'+emo+' '+txt+'</div>';
-  let desk='<div class="nav-desktop" style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px);margin-top:12px"><div class="tabs" style="flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch;gap:8px;margin:0;padding-bottom:4px">'+
+  const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:0 0 auto;min-width:0;white-space:nowrap;padding:10px 14px;box-sizing:border-box">'+emo+' '+txt+'</div>';
+  let desk='<div class="nav-desktop" style="width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px);margin-top:12px"><div class="tabs" style="flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch;gap:8px;margin:0;padding:0 12px 4px 0">'+
     items.map(i=>tab(i[0],i[1],i[2])).join('')+
     '<div class="tab" onclick="loadAll()" style="flex:0 0 auto;min-width:44px" title="Ανανέωση">🔄</div></div></div>';
   // ── Mobile: κάθετο αναπτυσσόμενο μενού ──
@@ -3877,7 +3877,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·169';
+const BUILD='v'+'2026.07.04·170';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
