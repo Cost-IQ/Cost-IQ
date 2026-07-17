@@ -166,7 +166,7 @@ let ST={products:[],suppliers:[],prices:[],best:{},orders:{},history:[],invoices
 function curTenant(){return ST.tenant||ST.myTenant||(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id)||null;}
 const T={
   el:{tProducts:'📦 Προϊόντα',tSuppliers:'🏢 Προμηθευτές',tOrders:'🛒 Παραγγελίες',tHistory:'📊 Στατιστικά',tOcr:'📷 Πρόσθεσε Τιμολόγιο',tInvoices:'📋 Τιμολόγια',tRecipes:'🍸 Συνταγές',tAgree:'🤝 Συμφωνίες',logout:'Έξοδος'},
-  en:{tProducts:'📦 Products',tSuppliers:'🏢 Suppliers',tOrders:'🛒 Orders',tHistory:'📊 Stats',tOcr:'📷 Add Invoice',tInvoices:'📋 Invoices',tRecipes:'🍸 Recipes',tAgree:'🤝 Agreements',logout:'Logout'}
+  en:{tProducts:'📦 Products',tSuppliers:'🏢 Suppliers',tOrders:'🛒 Orders',tHistory:'📊 Stats',tOcr:'📷 Scan Invoice',tInvoices:'📋 Invoices',tRecipes:'🍸 Recipes',tAgree:'🤝 Agreements',logout:'Logout'}
 };
 function t(k){return (T[ST.lang]&&T[ST.lang][k])||k;}
 function L(el,en){return ST.lang==='en'?en:el;}
@@ -179,7 +179,7 @@ function lbl(key,def){
 let _searchT=null;
 function debSearch(fn){clearTimeout(_searchT);_searchT=setTimeout(fn,220);}
 const EN_DEF={
-  products:'Products',suppliers:'Suppliers',orders:'Orders',ocr:'Scan',invoices:'Invoices',recipes:'Recipes',agree:'Agreements',events:'Events',history:'Stats',
+  products:'Products',suppliers:'Suppliers',orders:'Orders',ocr:'Scan Invoice',invoices:'Invoices',recipes:'Recipes',agree:'Agreements',events:'Events',history:'Stats',
   kindBeverage:'Drinks',kindFood:'Food',kindSupplies:'Supplies',sale:'Sale',
   searchPh:'🔍 Search…',sortLabel:'Sort:',sortCat:'Category',sortSub:'Sub-Category',sortName:'Name (A→Z)',sortPrice:'Price (low→high)',
   wordProducts:'products',addBtn:'Add',noProducts:'No products',
@@ -3767,7 +3767,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·162';
+const BUILD='v'+'2026.07.04·163';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -4055,7 +4055,7 @@ async function openMembers(){
     h+='<div class="card" style="border:1.5px solid '+(act?'var(--ok)':'var(--bad)')+';background:'+(act?'#e7f6ec':'#FFF0F0')+'">'+
       '<h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">💳 '+L('Πακέτο & Συνδρομή','Plan & Subscription')+'</h3>'+
       '<div class="field"><label>'+L('Πακέτο','Plan')+'</label><select id="pl-plan" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:var(--card)">'+
-        '<option value="basic"'+(ST.plan==='basic'?' selected':'')+'>BASIC — '+L('Προμηθευτές/Προϊόντα/Συνταγές/Παραγγελίες/Πρόσθεσε Τιμολόγιο/Τιμολόγια','Suppliers/Products/Recipes/Orders/Add Invoice/Invoices')+'</option>'+
+        '<option value="basic"'+(ST.plan==='basic'?' selected':'')+'>BASIC — '+L('Προμηθευτές/Προϊόντα/Συνταγές/Παραγγελίες/Πρόσθεσε Τιμολόγιο/Τιμολόγια','Suppliers/Products/Recipes/Orders/Scan Invoice/Invoices')+'</option>'+
         '<option value="advanced"'+(ST.plan==='advanced'?' selected':'')+'>ADVANCED — '+L('Όλα (+Στατιστικά, Συμφωνίες, Εκδηλώσεις)','All (+Stats, Agreements, Events)')+'</option>'+
         '<option value="pro"'+(ST.plan==='pro'?' selected':'')+'>PRO — '+L('Όλα + Daily Routine (Κλείσιμο Ταμείου, Έξοδα Ημέρας)','All + Daily Routine (Cash Close, Daily Expenses)')+'</option>'+
       '</select></div>'+
@@ -4152,7 +4152,7 @@ async function openMembers(){
     '<div class="field"><label>'+L('Ρόλος ασφαλείας','Security role')+'</label><select id="nm-role" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
       (ST.role==='admin'?'<option value="owner">Owner ('+L('πλήρης','full')+')</option>':'')+
       '<option value="manager">Manager ('+L('πλήρης, χωρίς μέλη','full, no members')+')</option>'+
-      '<option value="staff" selected>Staff ('+L('μόνο Πρόσθεσε Τιμολόγιο + Παραγγελίες','only Add Invoice + Orders')+')</option>'+
+      '<option value="staff" selected>Staff ('+L('μόνο Πρόσθεσε Τιμολόγιο + Παραγγελίες','only Scan Invoice + Orders')+')</option>'+
     '</select></div>'+
     '<button class="btn" id="nm-save" onclick="addMember()">➕ '+L('Δημιουργία μέλους','Create member')+'</button>'+
     '<div class="muted" style="font-size:11px;margin-top:8px">'+L('Ο κωδικός δίνεται στο μέλος. Μπορεί να τον αλλάξει με «Ξέχασα τον κωδικό» αν έχει email.','Give the password to the member. They can change it via «Forgot password» if they have email.')+'</div>'+
