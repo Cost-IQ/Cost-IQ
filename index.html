@@ -103,7 +103,7 @@
     <button class="out" onclick="goHome()" style="margin-right:6px" title="Αρχική">🏠</button>
     <button class="out" id="shopsBtn" onclick="chooseShop()" style="margin-right:6px;display:none" title="Τα μαγαζιά μου">🏪</button>
     <button class="out" id="shopBtn" onclick="openMembers()" style="margin-right:6px;display:none" title="Μαγαζί & Μέλη">👥</button>
-    <button class="out" onclick="openLabelEditor()" style="margin-right:6px" title="Ονόματα καρτελών">⚙️</button>
+    <button class="out" id="labelBtn" onclick="openLabelEditor()" style="margin-right:6px;display:none" title="Ονόματα καρτελών">⚙️</button>
     <button class="out" id="fsBtn" onclick="toggleFullscreen()" style="margin-right:6px" title="Πλήρης οθόνη">⛶</button>
     <button class="out" id="langBtn" onclick="toggleLang()" style="margin-right:6px"><img src="https://flagcdn.com/28x21/gb.png" alt="EN" style="height:15px;vertical-align:middle;border-radius:2px"></button>
     <button class="out" id="logoutBtn" onclick="doLogout()">Έξοδος</button>
@@ -357,6 +357,7 @@ async function enterApp(){
   document.getElementById('whoami').textContent='';
   const shopB=document.getElementById('shopBtn');if(shopB)shopB.style.display=(ST.role==='admin'||ST.role==='owner')?'inline-block':'none';
   const shopsB=document.getElementById('shopsBtn');if(shopsB)shopsB.style.display=(ST.role==='admin'||ST.multiShop)?'inline-block':'none';
+  const labelB=document.getElementById('labelBtn');if(labelB)labelB.style.display=(ST.role==='admin')?'inline-block':'none';
   // Πλοήγηση στο refresh:
   let savedView='';try{const nv=JSON.parse(localStorage.getItem('ciq_nav')||'{}');savedView=nv.view||'';}catch(e){}
   // 1) Αν ήμασταν στη λίστα μαγαζιών → εκεί
@@ -3703,7 +3704,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·151';
+const BUILD='v'+'2026.07.04·152';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -3923,7 +3924,8 @@ async function chooseShop(){
   c.innerHTML=h;
 }
 async function pickShop(id){
-  ST.tenant=id;ST.view='list'; const t=(ST.tenants||[]).find(x=>x.id===id); ST.shopName=(t&&t.name)||'';
+  ST.tenant=id;ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;
+  const t=(ST.tenants||[]).find(x=>x.id===id); ST.shopName=(t&&t.name)||'';
   persistNav();
   const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';
   await enterShop();
@@ -3965,7 +3967,7 @@ async function deleteShop(){
   toast('✅ '+L('Το μαγαζί διαγράφηκε','Shop deleted')); chooseShop();
 }
 async function openMembers(){
-  ST.view='members'; const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
+  ST.view='members';persistNav(); const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
   document.getElementById('hTitle').textContent='👥 '+L('Μέλη','Members');
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
