@@ -2281,9 +2281,14 @@ function pPeriodDates(){
   const f=x=>{const y=x.getFullYear(),m=String(x.getMonth()+1).padStart(2,'0'),dd=String(x.getDate()).padStart(2,'0');return y+'-'+m+'-'+dd;};
   return {start:f(s),end:f(e)};
 }
+function monthNamesFull(){
+  return ST.lang==='en'
+    ?['January','February','March','April','May','June','July','August','September','October','November','December']
+    :['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος'];
+}
 function pLabel(){
   const t=ST.pfType||'month'; const d=ST.pfDate?new Date(ST.pfDate):new Date();
-  const M=ST.lang==='en'?['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']:['Ιαν','Φεβ','Μαρ','Απρ','Μάι','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+  const M=monthNamesFull();
   if(t==='month')return M[d.getMonth()]+' '+d.getFullYear();
   if(t==='quarter')return 'Q'+(Math.floor(d.getMonth()/3)+1)+' '+d.getFullYear();
   if(t==='half')return (d.getMonth()<6?'H1':'H2')+' '+d.getFullYear();
@@ -2432,7 +2437,7 @@ async function loadProfitList(){
     const R=profitCalcFromRow(r);
     const prof=R&&R.np!=null?R.np:null;
     const col=(prof!=null&&prof>=0)?'var(--ok)':'var(--bad)';
-    const name=r.label||periodLabelFromDates(r.period_start,r.period_end);
+    const name=periodLabelFromDates(r.period_start,r.period_end);
     h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px">'+
       '<div style="cursor:pointer;flex:1;min-width:0" onclick="openProfitPeriod(\''+r.period_start+'\',\''+r.period_end+'\')"><b>'+esc(name)+'</b>'+
       (prof!=null?('<div style="color:'+col+';font-weight:700">'+T('Καθαρό','Net')+': '+money(prof)+'</div>'):'')+'</div>'+
@@ -2442,11 +2447,10 @@ async function loadProfitList(){
   box.innerHTML=h;
 }
 function periodLabelFromDates(start,end){
-  // Απλό label από την ημερομηνία έναρξης (μήνας + έτος)
+  // Πλήρες όνομα μήνα + έτος, στην τρέχουσα γλώσσα
   try{
     const s=new Date(start+'T12:00:00');   // μεσημέρι για αποφυγή timezone shift
-    const months=L('Ιαν,Φεβ,Μαρ,Απρ,Μάι,Ιουν,Ιουλ,Αυγ,Σεπ,Οκτ,Νοε,Δεκ','Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec').split(',');
-    return months[s.getMonth()]+' '+s.getFullYear();
+    return monthNamesFull()[s.getMonth()]+' '+s.getFullYear();
   }catch(e){return start;}
 }
 function profitCalcFromRow(r){
@@ -3753,7 +3757,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·157';
+const BUILD='v'+'2026.07.04·158';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
