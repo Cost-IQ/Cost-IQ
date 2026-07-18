@@ -4105,7 +4105,7 @@ function drawPayroll(){
       const otLbl=e.ot_mode==='percent'?(n(e.ot_value)+'% '+T('ανά ώρα','per hour')):(money2(n(e.ot_value))+' '+T('ανά ώρα','per hour'));
       h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)">'+
         '<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600">'+esc(e.name)+(e.active===false?' <span class="muted" style="font-size:11px">('+T('Ανενεργός','Inactive')+')</span>':'')+'</div>'+
-        '<div class="muted" style="font-size:11px">'+esc(e.position||'—')+' · '+money2(n(e.daily_wage))+'/'+T('ημέρα','day')+' · '+T('Υπερ','OT')+': '+otLbl+' · '+T('Μονάδες','Units')+': '+n(e.tip_units)+'</div></div>'+
+        '<div class="muted" style="font-size:11px">'+esc(e.position||'—')+' · '+(e.pay_type==='hourly'?(money2(n(e.hourly_rate))+'/'+T('ώρα','hr')):(money2(n(e.daily_wage))+'/'+T('ημέρα','day')))+' · '+T('Υπερ','OT')+': '+otLbl+' · '+T('Μονάδες','Units')+': '+n(e.tip_units)+'</div></div>'+
         '<div style="display:flex;gap:8px"><span onclick="editEmployee(\''+e.id+'\')" style="cursor:pointer;color:var(--accent);font-size:15px">✏️</span>'+
         '<span onclick="delEmployee(\''+e.id+'\')" style="cursor:pointer;color:var(--bad);font-size:15px">🗑</span></div>'+
       '</div>';
@@ -4166,10 +4166,20 @@ function empFormHtml(e){
   const T=(el,en)=>L(el,en);
   const posOpts=['Bar','Service','Kitchen','DJ','Security','Cleaning'].map(p=>'<option value="'+p+'"'+(e.position===p?' selected':'')+'>'+p+'</option>').join('');
   const isPct=e.ot_mode==='percent';
+  const isHourly=e.pay_type==='hourly';
   return '<div style="display:flex;flex-direction:column;gap:12px">'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα','Name')+'</label><input id="emp-name" type="text" value="'+esc(e.name||'')+'" placeholder="'+T('π.χ. Γιώργος Παπαδόπουλος','e.g. John Smith')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Θέση','Position')+'</label><input id="emp-pos" list="emp-positions" type="text" value="'+esc(e.position||'')+'" placeholder="Bar" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"><datalist id="emp-positions">'+posOpts+'</datalist></div>'+
-    '<div><label style="font-size:12px;color:var(--muted)">'+T('Συμφωνηθέν Μεροκάματο','Agreed Daily Wage')+'</label><input id="emp-wage" type="number" step="0.01" value="'+(e.daily_wage||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div style="border-top:1px solid var(--line);padding-top:10px">'+
+      '<label style="font-size:12px;color:var(--muted)">'+T('Τύπος Αμοιβής','Pay Type')+'</label>'+
+      '<div style="display:flex;gap:6px;margin:6px 0 8px">'+
+        '<div id="pt-mode-shift" onclick="empSetPayType(\'shift\')" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(!isHourly?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+T('Ανά Βάρδια','Per Shift')+'</div>'+
+        '<div id="pt-mode-hourly" onclick="empSetPayType(\'hourly\')" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(isHourly?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+T('Ανά Ώρα','Per Hour')+'</div>'+
+      '</div>'+
+      '<input type="hidden" id="emp-paytype" value="'+(e.pay_type||'shift')+'">'+
+      '<div id="emp-wage-wrap" style="'+(isHourly?'display:none':'')+'"><label style="font-size:11px;color:var(--muted)">'+T('Συμφωνηθέν Μεροκάματο','Agreed Daily Wage')+'</label><input id="emp-wage" type="number" step="0.01" value="'+(e.daily_wage||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div id="emp-hourly-wrap" style="'+(isHourly?'':'display:none')+'"><label style="font-size:11px;color:var(--muted)">'+T('Ωρομίσθιο','Hourly Rate')+'</label><input id="emp-hourly" type="number" step="0.01" value="'+(e.hourly_rate||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '</div>'+
     '<div style="border-top:1px solid var(--line);padding-top:10px">'+
       '<label style="font-size:12px;color:var(--muted)">'+T('Υπερωρία — Τρόπος Χρέωσης','Overtime — Charge Mode')+'</label>'+
       '<div style="display:flex;gap:6px;margin:6px 0 8px">'+
@@ -4186,6 +4196,16 @@ function empFormHtml(e){
     '<div class="muted" style="font-size:11px;margin-top:4px">'+T('Πόσα μερίδια παίρνει από τη διανομή','How many shares from the distribution')+'</div></div>'+
   '</div>';
 }
+function empSetPayType(mode){
+  const hid=document.getElementById('emp-paytype'); if(hid)hid.value=mode;
+  const s=document.getElementById('pt-mode-shift'), hr=document.getElementById('pt-mode-hourly');
+  const on='background:var(--accent);color:#fff', off='border:1px solid var(--line);color:var(--muted)';
+  if(s)s.style.cssText='flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(mode==='shift'?on:off);
+  if(hr)hr.style.cssText='flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(mode==='hourly'?on:off);
+  const ww=document.getElementById('emp-wage-wrap'), hw=document.getElementById('emp-hourly-wrap');
+  if(ww)ww.style.display=(mode==='hourly')?'none':'';
+  if(hw)hw.style.display=(mode==='hourly')?'':'none';
+}
 function empSetOtMode(mode){
   const hid=document.getElementById('emp-otmode'); if(hid)hid.value=mode;
   const a=document.getElementById('ot-mode-amount'), p=document.getElementById('ot-mode-percent');
@@ -4200,7 +4220,8 @@ async function saveEmployee(id){
   const row={tenant_id:curTenant(),name:name,position:g('emp-pos').trim()||null,
     daily_wage:parseFloat(g('emp-wage'))||0,ot_mode:g('emp-otmode')||'amount',
     ot_value:parseFloat(g('emp-otval'))||0,tip_units:parseFloat(g('emp-units'))||1,
-    contrib_class:g('emp-contrib')||null};
+    contrib_class:g('emp-contrib')||null,
+    pay_type:g('emp-paytype')||'shift', hourly_rate:parseFloat(g('emp-hourly'))||0};
   try{
     if(id){const {error}=await sb.from('employees').update(row).eq('id',id); if(error)throw error;}
     else{row.created_by=ST.userEmail||''; const {error}=await sb.from('employees').insert(row); if(error)throw error;}
@@ -4273,9 +4294,12 @@ function shiftCalc(){
   const empId=g('sh-emp'); const e=(ST.employees||[]).find(x=>x.id===empId);
   if(!e)return null;
   const nn=v=>(v!=null&&v!==''?(+v):0);
-  const wage=nn(e.daily_wage); const otH=parseFloat(g('sh-ot'))||0;
+  const hrs=parseFloat(g('sh-hours'))||0; const otH=parseFloat(g('sh-ot'))||0;
+  const isHourly=e.pay_type==='hourly';
+  const wage=isHourly?(hrs*nn(e.hourly_rate)):nn(e.daily_wage);
+  const baseHourly=isHourly?nn(e.hourly_rate):(nn(e.daily_wage)/8);
   let otAmt=0;
-  if(e.ot_mode==='percent'){ const hourly=wage/8; otAmt=otH*hourly*(1+nn(e.ot_value)/100); }
+  if(e.ot_mode==='percent'){ otAmt=otH*baseHourly*(1+nn(e.ot_value)/100); }
   else { otAmt=otH*nn(e.ot_value); }
   const gross=wage+otAmt;
   // Εισφορές από την κατηγορία
@@ -4289,7 +4313,8 @@ function shiftLive(){
   if(!box)return;
   if(!r){box.textContent='—';return;}
   const money2=x=>money(Math.round(x*100)/100);
-  let inner='<div style="display:flex;justify-content:space-between"><span>'+L('Μεροκάματο','Daily Wage')+'</span><span>'+money2(r.wage)+'</span></div>'+
+  const wLbl=(r.emp&&r.emp.pay_type==='hourly')?L('Ώρες × Ωρομίσθιο','Hours × Rate'):L('Μεροκάματο','Daily Wage');
+  let inner='<div style="display:flex;justify-content:space-between"><span>'+wLbl+'</span><span>'+money2(r.wage)+'</span></div>'+
     (r.otAmt>0?'<div style="display:flex;justify-content:space-between"><span>'+L('Υπερωρίες','Overtime')+'</span><span>'+money2(r.otAmt)+'</span></div>':'')+
     '<div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--accent);margin-top:4px;padding-top:4px"><span>'+L('Μικτά','Gross')+'</span><span>'+money2(r.gross)+'</span></div>';
   if(r.cls){
@@ -5343,7 +5368,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·224';
+const BUILD='v'+'2026.07.04·225';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
