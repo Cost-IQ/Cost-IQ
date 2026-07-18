@@ -4773,7 +4773,7 @@ async function dailyArchive(){
   // Φόρτωση όλων των κλεισμένων ημερών + εξόδων + πληρωμών
   let closes=[],exps=[],pays=[];
   try{const {data}=await sb.from('daily_close').select('*').eq('tenant_id',curTenant()).order('close_date',{ascending:false});closes=data||[];}catch(e){}
-  try{const {data}=await sb.from('daily_expenses').select('exp_date,amount').eq('tenant_id',curTenant());exps=data||[];}catch(e){}
+  try{const {data}=await sb.from('daily_expenses').select('exp_date,amount,payment_method,category').eq('tenant_id',curTenant());exps=data||[];}catch(e){}
   try{const {data}=await sb.from('supplier_payments').select('pay_date,amount,payment_method').eq('tenant_id',curTenant());pays=data||[];}catch(e){}
   ST.archCloses=closes; ST.archExps=exps; ST.archPays=pays;
   drawDailyArchive();
@@ -4787,11 +4787,16 @@ function drawDailyArchive(){
   // Υπολογισμός ανά μέρα
   const dayData=d=>{
     const cl=d;
-    const income=n(cl.cash_income)+n(cl.off_envelope)+n(cl.card_income)-n(cl.credit_notes);
-    const cashPay=pays.filter(p=>p.pay_date===cl.close_date&&p.payment_method==='cash').reduce((s,p)=>s+n(p.amount),0);
+    // Ίδια λογική με το Day: Φάκελος = Μετρητά − Έξοδα cash · Τζίρος = Φάκελος + Εκτός + Κάρτες + Delivery(καθαρή)
+    const cashExpDay=exps.filter(e=>e.exp_date===cl.close_date&&e.payment_method==='cash'&&e.category!=='suppliers').reduce((s,e)=>s+n(e.amount),0);
+    const cashPay=cashExpDay+pays.filter(p=>p.pay_date===cl.close_date&&p.payment_method==='cash').reduce((s,p)=>s+n(p.amount),0);
     const envelope=n(cl.cash_income)-cashPay;
-    const dayExp=exps.filter(e=>e.exp_date===cl.close_date).reduce((s,e)=>s+n(e.amount),0);
-    const net=income-dayExp;
+    let delNetDay=0;
+    try{const ddArr=(typeof cl.delivery_data==='string')?JSON.parse(cl.delivery_data):(cl.delivery_data||[]);
+      (ddArr||[]).forEach(d=>{delNetDay+=(n(d.net_val)||(n(d.gross)-n(d.vat)));});
+    }catch(e){}
+    const income=envelope+n(cl.off_envelope)+n(cl.card_income)-n(cl.credit_notes)+delNetDay;
+    const net=income;
     return {income,envelope,net};
   };
   // Ομαδοποίηση σε μήνες
@@ -4997,7 +5002,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·219';
+const BUILD='v'+'2026.07.04·220';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
