@@ -4047,6 +4047,7 @@ async function renderPayroll(){
   try{const {data:tn}=await sb.from('tenants').select('contrib_setup').eq('id',curTenant()).single();
     let cs=tn&&tn.contrib_setup; if(typeof cs==='string')cs=JSON.parse(cs); ST.contribSetup=cs||[];
   }catch(e){ST.contribSetup=ST.contribSetup||[];}
+  try{const {data:cls}=await sb.from('daily_close').select('close_date,tips_data').eq('tenant_id',curTenant());ST.payCloses=cls||[];}catch(e){ST.payCloses=[];}
   ST.employees=emps; ST.workShifts=shifts;
   if(!ST.payPeriod)ST.payPeriod='month';
   if(!ST.payView)ST.payView='summary';
@@ -4071,7 +4072,43 @@ function drawPayroll(){
   h+='<div style="font-size:16px;font-weight:700;margin:0 2px 12px">👥 '+T('Μισθοδοσία','Payroll')+'</div>';
   // Pills: Σύνοψη / Εργαζόμενοι
   const vp=(id,label)=>'<div onclick="ST.payView=\''+id+'\';drawPayroll()" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:13px;'+(view===id?'background:var(--accent);color:#fff;font-weight:600':'border:1px solid var(--line);color:var(--muted)')+'">'+label+'</div>';
-  h+='<div style="display:flex;gap:6px;margin-bottom:14px">'+vp('summary','📊 '+T('Σύνοψη','Summary'))+vp('staff','👤 '+T('Εργαζόμενοι','Staff'))+vp('contrib','⚙️ '+T('Εισφορές','Contributions'))+'</div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:14px">'+vp('summary','📊 '+T('Σύνοψη','Summary'))+vp('tips','🫙 Tips')+vp('staff','👤 '+T('Εργαζόμενοι','Staff'))+vp('contrib','⚙️ '+T('Εισφορές','Contributions'))+'</div>';
+
+  if(view==='tips'){
+    const period=ST.payPeriod||'month'; const range=payPeriodRange(period);
+    const periods=[['week',T('Εβδομάδα','Week')],['half',T('15 Μέρες','15 Days')],['month',T('Μήνας','Month')]];
+    h+='<div style="display:flex;gap:6px;margin-bottom:14px">';
+    periods.forEach(p=>{const on=period===p[0];
+      h+='<div onclick="ST.payPeriod=\''+p[0]+'\';drawPayroll()" style="flex:1;text-align:center;padding:7px;border-radius:20px;cursor:pointer;font-size:12px;'+(on?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+p[1]+'</div>';
+    });
+    h+='</div>';
+    const td=computeTips(range);
+    // Αξίες ώρας
+    h+='<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:12px">';
+    Object.keys(td.rates).forEach(k=>{
+      const lbl=k==='morning'?('🌅 '+T('Πρωί','Morning')):(k==='night'?('🌙 '+T('Βράδυ','Night')):T('Αξία Ώρας','Hour Value'));
+      h+='<div class="card" style="padding:10px"><div class="muted" style="font-size:11px">'+lbl+'</div><div style="font-size:17px;font-weight:700">'+money2(td.rates[k])+'</div></div>';
+    });
+    h+='</div>';
+    h+='<div class="card" style="padding:0;overflow:hidden">';
+    if(!td.rows.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Καμία εγγραφή σε αυτή την περίοδο','No records in this period')+'</div>';
+    td.rows.forEach(r=>{
+      h+='<div style="padding:11px 14px;border-bottom:1px solid var(--line)">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center">'+
+          '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(r.name)+'</div>'+
+          '<div class="muted" style="font-size:11px">'+T('Μονάδα','Unit')+' '+r.unit+' · '+r.hoursLbl+'</div></div>'+
+          '<span style="font-size:15px;font-weight:700">'+money2(r.total)+'</span>'+
+        '</div>'+
+        '<div style="display:flex;gap:14px;margin-top:5px;font-size:11px;color:var(--muted)"><span>'+T('Κάρτα','Card')+' '+money2(r.card)+'</span><span>'+T('Μετρητά','Cash')+' '+money2(r.cash)+'</span></div>'+
+      '</div>';
+    });
+    h+='</div>';
+    h+='<div style="background:var(--accent-bg);border-radius:10px;padding:14px;margin-top:12px;display:flex;justify-content:space-between;align-items:center">'+
+      '<span style="font-size:13px;color:var(--accent)">'+T('Σύνολο Tips Περιόδου','Period Tips Total')+'</span>'+
+      '<span style="font-size:19px;font-weight:800;color:var(--accent)">'+money2(td.grandTips)+'</span>'+
+    '</div>';
+    h+='</div></div>'; c.innerHTML=h; return;
+  }
 
   if(view==='contrib'){
     const cs=(ST.contribSetup&&ST.contribSetup.length)?ST.contribSetup:[];
@@ -4264,10 +4301,12 @@ function addShift(){
   const opts=avail.map(e=>'<option value="'+e.id+'">'+esc(e.name)+(e.position?' · '+esc(e.position):'')+'</option>').join('');
   const html='<div style="display:flex;flex-direction:column;gap:12px">'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Εργαζόμενος','Employee')+'</label><select id="sh-emp" onchange="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)">'+opts+'</select></div>'+
+    shiftTypeHtml('all')+
     '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
-      '<div><label style="font-size:12px;color:var(--muted)">'+T('Ώρες','Hours')+'</label><input id="sh-hours" type="number" step="0.5" placeholder="8" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('Ώρες','Hours')+' <span style="color:var(--bad)">*</span></label><input id="sh-hours" type="number" step="0.5" placeholder="8" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
       '<div><label style="font-size:12px;color:var(--muted)">'+T('Υπερωρίες','Overtime')+'</label><input id="sh-ot" type="number" step="0.5" placeholder="0" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '</div>'+
+    '<div class="muted" style="font-size:11px">'+T('Οι ώρες είναι υποχρεωτικές — χρησιμοποιούνται στη διανομή tips','Hours are required — used for tip distribution')+'</div>'+
     '<div id="sh-calc" style="background:var(--accent-bg);border-radius:8px;padding:10px;font-size:12px;color:var(--accent)">—</div>'+
   '</div>';
   showModal('➕ '+T('Προσθήκη Εργαζομένου','Add Staff'),html,T('Καταχώρηση','Add'),()=>saveShift(null));
@@ -4280,8 +4319,9 @@ function editShift(id){
   const html='<div style="display:flex;flex-direction:column;gap:12px">'+
     '<div class="muted" style="font-size:13px">'+esc(e.name||'')+(e.position?' · '+esc(e.position):'')+'</div>'+
     '<input type="hidden" id="sh-emp" value="'+s.employee_id+'">'+
+    shiftTypeHtml(s.shift_type||'all',s)+
     '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
-      '<div><label style="font-size:12px;color:var(--muted)">'+T('Ώρες','Hours')+'</label><input id="sh-hours" type="number" step="0.5" value="'+(s.hours||'')+'" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('Ώρες','Hours')+' <span style="color:var(--bad)">*</span></label><input id="sh-hours" type="number" step="0.5" value="'+(s.hours||'')+'" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
       '<div><label style="font-size:12px;color:var(--muted)">'+T('Υπερωρίες','Overtime')+'</label><input id="sh-ot" type="number" step="0.5" value="'+(s.ot_hours||'')+'" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '</div>'+
     '<div id="sh-calc" style="background:var(--accent-bg);border-radius:8px;padding:10px;font-size:12px;color:var(--accent)">—</div>'+
@@ -4329,10 +4369,14 @@ async function saveShift(id){
   const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
   const r=shiftCalc();
   if(!r){toast('❌ '+L('Διάλεξε εργαζόμενο','Choose an employee'));return;}
+  const hrsVal=parseFloat(g('sh-hours'));
+  if(isNaN(hrsVal)||hrsVal<=0){toast('❌ '+L('Οι ώρες είναι υποχρεωτικές','Hours are required'));return;}
   const row={tenant_id:curTenant(),employee_id:g('sh-emp'),work_date:dailyDate(),
     hours:parseFloat(g('sh-hours'))||0, ot_hours:parseFloat(g('sh-ot'))||0,
     wage_amount:r.wage, ot_amount:r.otAmt, total_amount:r.total,
-    emp_contrib:r.empC||0, empr_contrib:r.emprC||0};
+    emp_contrib:r.empC||0, empr_contrib:r.emprC||0,
+    shift_type:g('sh-type')||'all',
+    hours_morning:parseFloat(g('sh-hm'))||0, hours_night:parseFloat(g('sh-hn'))||0};
   try{
     if(id){const {error}=await sb.from('work_shifts').update(row).eq('id',id); if(error)throw error;}
     else{row.created_by=ST.userEmail||''; const {error}=await sb.from('work_shifts').insert(row); if(error)throw error;}
@@ -4370,6 +4414,130 @@ async function saveContribSetup(){
   try{const {error}=await sb.from('tenants').update({contrib_setup:JSON.stringify(list)}).eq('id',curTenant());
     if(error)throw error; ST.contribSetup=list; toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderPayroll();
   }catch(e){toast('❌ '+(e.message||e));}
+}
+function tipsLive(){
+  const money2=x=>money(Math.round(x*100)/100);
+  let total=0;
+  document.querySelectorAll('.tip-in').forEach(el=>{if(el.value!=='')total+=(+el.value);});
+  const t=document.getElementById('tips-total'); if(t)t.textContent=money2(total);
+}
+function collectTips(){
+  const data={};
+  ['morning','night','all'].forEach(k=>{
+    const cEl=document.getElementById('tip-'+k+'-card'), sEl=document.getElementById('tip-'+k+'-cash');
+    if(cEl||sEl){
+      data[k]={card:(cEl&&cEl.value!=='')?(+cEl.value):0, cash:(sEl&&sEl.value!=='')?(+sEl.value):0};
+    }
+  });
+  return data;
+}
+async function saveTips(silent){
+  const data=collectTips();
+  if(!Object.keys(data).length)return;
+  try{const {error}=await sb.from('daily_close').upsert({tenant_id:curTenant(),close_date:dailyDate(),tips_data:JSON.stringify(data)},{onConflict:'tenant_id,close_date'});
+    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderDaily();}
+  }catch(e){if(!silent)toast('❌ '+(e.message||e)); else throw e;}
+}
+function shiftTypeHtml(cur,s){
+  const T=(el,en)=>L(el,en);
+  if(!(ST.daySetup&&ST.daySetup.shifts))return '<input type="hidden" id="sh-type" value="all">';
+  s=s||{};
+  const btn=(id,lbl)=>'<div id="sht-'+id+'" onclick="shSetType(\''+id+'\')" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(cur===id?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+lbl+'</div>';
+  return '<div><label style="font-size:12px;color:var(--muted)">'+T('Βάρδια','Shift')+'</label>'+
+    '<div style="display:flex;gap:5px;margin:6px 0 8px">'+btn('morning','🌅 '+T('Πρωί','Morning'))+btn('night','🌙 '+T('Βράδυ','Night'))+btn('both',T('Και τα δύο','Both'))+'</div>'+
+    '<input type="hidden" id="sh-type" value="'+cur+'">'+
+    '<div id="sh-split" style="display:'+(cur==='both'?'grid':'none')+';grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:4px">'+
+      '<div><label style="font-size:11px;color:var(--muted)">'+T('Ώρες Πρωί','Morning Hours')+'</label><input id="sh-hm" type="number" step="0.5" value="'+(s.hours_morning||'')+'" placeholder="0" oninput="shSplitLive()" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:11px;color:var(--muted)">'+T('Ώρες Βράδυ','Night Hours')+'</label><input id="sh-hn" type="number" step="0.5" value="'+(s.hours_night||'')+'" placeholder="0" oninput="shSplitLive()" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '</div>'+
+  '</div>';
+}
+function shSetType(t){
+  const hid=document.getElementById('sh-type'); if(hid)hid.value=t;
+  const on='background:var(--accent);color:#fff', off='border:1px solid var(--line);color:var(--muted)';
+  ['morning','night','both'].forEach(id=>{
+    const el=document.getElementById('sht-'+id);
+    if(el)el.style.cssText='flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(t===id?on:off);
+  });
+  const sp=document.getElementById('sh-split'); if(sp)sp.style.display=(t==='both')?'grid':'none';
+  if(t!=='both'){const a=document.getElementById('sh-hm'),b=document.getElementById('sh-hn');if(a)a.value='';if(b)b.value='';}
+  shSplitLive();
+}
+function shSplitLive(){
+  const t=(document.getElementById('sh-type')||{}).value;
+  if(t!=='both')return;
+  const a=parseFloat((document.getElementById('sh-hm')||{}).value)||0;
+  const b=parseFloat((document.getElementById('sh-hn')||{}).value)||0;
+  const h=document.getElementById('sh-hours'); if(h&&(a||b))h.value=a+b;
+  shiftLive();
+}
+function computeTips(range){
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const emps=ST.employees||[]; const shifts=ST.workShifts||[]; const closes=ST.payCloses||[];
+  const T=(el,en)=>L(el,en);
+  // Ανά ημέρα: pot ανά βάρδια + σύνολο ωρών ανά βάρδια
+  const days={};
+  closes.forEach(cl=>{
+    const d=cl.close_date; if(!d||d<range.from||d>range.to)return;
+    let tp={}; try{tp=(typeof cl.tips_data==='string')?JSON.parse(cl.tips_data):(cl.tips_data||{});}catch(e){tp={};}
+    if(!Object.keys(tp).length)return;
+    days[d]={pots:tp,hours:{}};
+  });
+  // Ώρες ανά ημέρα/βάρδια
+  shifts.forEach(s=>{
+    const d=s.work_date; if(!days[d])return;
+    const st=s.shift_type||'all';
+    const add=(k,hh)=>{if(hh>0)days[d].hours[k]=(days[d].hours[k]||0)+hh;};
+    if(st==='both'){ add('morning',n(s.hours_morning)); add('night',n(s.hours_night)); }
+    else if(st==='morning'||st==='night'){ add(st,n(s.hours)); }
+    else { add('all',n(s.hours)); }
+  });
+  // Rate ανά ημέρα/βάρδια, και μοίρασμα
+  const perEmp={}; let grandTips=0;
+  const rateSum={}, rateCount={};
+  Object.keys(days).forEach(d=>{
+    const day=days[d];
+    Object.keys(day.pots).forEach(k=>{
+      const pot=day.pots[k]||{}; const potTotal=n(pot.card)+n(pot.cash);
+      if(potTotal<=0)return;
+      grandTips+=potTotal;
+      // Σταθμισμένες μονάδες: ώρες × μονάδα
+      let weighted=0; const parts=[];
+      shifts.forEach(s=>{
+        if(s.work_date!==d)return;
+        const e=emps.find(x=>x.id===s.employee_id); if(!e)return;
+        const unit=n(e.tip_units)||1; const st=s.shift_type||'all';
+        let hh=0;
+        if(st==='both')hh=(k==='morning')?n(s.hours_morning):(k==='night'?n(s.hours_night):0);
+        else if(st===k)hh=n(s.hours);
+        else if(st==='all'&&k==='all')hh=n(s.hours);
+        if(hh<=0)return;
+        const w=hh*unit; weighted+=w; parts.push({id:e.id,name:e.name,unit:unit,hh:hh,w:w,k:k});
+      });
+      if(weighted<=0)return;
+      const rate=potTotal/weighted;
+      rateSum[k]=(rateSum[k]||0)+rate; rateCount[k]=(rateCount[k]||0)+1;
+      const cardShare=potTotal>0?(n(pot.card)/potTotal):0;
+      parts.forEach(p=>{
+        const amt=p.w*rate;
+        if(!perEmp[p.id])perEmp[p.id]={name:p.name,unit:p.unit,total:0,card:0,cash:0,hM:0,hN:0,hA:0};
+        perEmp[p.id].total+=amt;
+        perEmp[p.id].card+=amt*cardShare;
+        perEmp[p.id].cash+=amt*(1-cardShare);
+        if(p.k==='morning')perEmp[p.id].hM+=p.hh; else if(p.k==='night')perEmp[p.id].hN+=p.hh; else perEmp[p.id].hA+=p.hh;
+      });
+    });
+  });
+  const rates={}; Object.keys(rateSum).forEach(k=>{rates[k]=rateSum[k]/rateCount[k];});
+  const rows=Object.keys(perEmp).map(id=>{
+    const x=perEmp[id];
+    const bits=[];
+    if(x.hM>0)bits.push(x.hM+T('ω πρωί','h morn'));
+    if(x.hN>0)bits.push(x.hN+T('ω βράδυ','h night'));
+    if(x.hA>0)bits.push(x.hA+T('ώρες','hours'));
+    return {id:id,name:x.name,unit:x.unit,total:x.total,card:x.card,cash:x.cash,hoursLbl:bits.join(' + ')||'—'};
+  }).sort((a,b)=>b.total-a.total);
+  return {rows:rows,rates:rates,grandTips:grandTips};
 }
 function computeSupplierBalances(){
   const sups=ST.suppliers||[]; const invs=ST.invoices||[]; const pays=ST.dailyPayments||[]; const credits=ST.supplierCredits||[];
@@ -4578,6 +4746,24 @@ function drawDaily(){
     h+='<div style="display:flex;justify-content:space-between;padding:10px 0 4px;font-size:14px;font-weight:700"><span>'+T('Σύνολο Προσωπικού','Staff Total')+'</span><span>'+money2(shTotal)+'</span></div>'+
       '<button class="btn ghost" style="width:100%;margin-top:6px" onclick="addShift()">➕ '+T('Προσθήκη Εργαζομένου','Add Staff')+'</button>'+
     '</div>';
+
+    // ── TIPS ΗΜΕΡΑΣ ──
+    let tipsD={}; try{tipsD=(typeof cl.tips_data==='string')?JSON.parse(cl.tips_data):(cl.tips_data||{});}catch(e){tipsD={};}
+    const hasShifts=!!(ST.daySetup&&ST.daySetup.shifts);
+    const tipRow=(key,label)=>{
+      const sv=tipsD[key]||{};
+      return (label?'<div style="font-size:12px;font-weight:600;color:var(--accent);margin:8px 0 6px">'+label+'</div>':'')+
+      '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">'+
+        '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Tips Κάρτας','Card Tips')+'</label><input id="tip-'+key+'-card" type="number" step="0.01" value="'+(sv.card!=null&&(+sv.card)!==0?sv.card:'')+'" placeholder="0" oninput="tipsLive();autoSaveDay()" class="tip-in" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
+        '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Tips Μετρητών','Cash Tips')+'</label><input id="tip-'+key+'-cash" type="number" step="0.01" value="'+(sv.cash!=null&&(+sv.cash)!==0?sv.cash:'')+'" placeholder="0" oninput="tipsLive();autoSaveDay()" class="tip-in" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '</div>';
+    };
+    h+='<div class="card" style="margin-top:14px"><h3 style="font-size:14px;margin:0 0 2px">🫙 '+T('Tips Ημέρας','Today\'s Tips')+'</h3>'+
+      '<div class="muted" style="font-size:11px;margin-bottom:6px">'+T('Μοιράζονται βάσει ωρών και μονάδων','Shared by hours and units')+'</div>';
+    if(hasShifts){ h+=tipRow('morning','🌅 '+T('Πρωί','Morning'))+tipRow('night','🌙 '+T('Βράδυ','Night')); }
+    else { h+=tipRow('all',''); }
+    h+='<div style="display:flex;justify-content:space-between;padding:10px 0 2px;border-top:1px solid var(--line);margin-top:10px;font-size:14px;font-weight:700"><span>'+T('Σύνολο Tips','Total Tips')+'</span><span id="tips-total">'+money2(0)+'</span></div>'+
+    '</div>';
   }
 
   // ── ΤΙΜΟΛΟΓΙΑ ΗΜΕΡΑΣ (καταχώρηση στην καρτέλα) ──
@@ -4609,6 +4795,7 @@ function drawDaily(){
   c.innerHTML=h;
   dailyLive();
   zLive();
+  if(typeof tipsLive==='function')tipsLive();
   delLive();
 }
 function dailyLive(){
@@ -4687,7 +4874,7 @@ function autoSaveDay(){
 async function doAutoSaveDay(){
   const ind=document.getElementById('day-save-status');
   try{
-    await Promise.all([saveDailyClose(true),saveZClosing(true),saveDelivery(true)]);
+    await Promise.all([saveDailyClose(true),saveZClosing(true),saveDelivery(true),saveTips(true)]);
     if(ind){ind.textContent='✓ '+L('Αποθηκεύτηκε','Saved');ind.style.color='var(--ok)';}
     setTimeout(()=>{if(ind&&ind.textContent.indexOf('✓')===0)ind.textContent='';},2500);
   }catch(e){
@@ -4699,7 +4886,7 @@ async function saveAllDay(){
   const ind=document.getElementById('day-save-status');
   if(ind){ind.textContent='…';ind.style.color='var(--muted)';}
   try{
-    await Promise.all([saveDailyClose(true),saveZClosing(true),saveDelivery(true)]);
+    await Promise.all([saveDailyClose(true),saveZClosing(true),saveDelivery(true),saveTips(true)]);
     toast('✅ '+L('Όλα αποθηκεύτηκαν','All saved'));
     if(ind){ind.textContent='';}
     renderDaily();
@@ -5368,7 +5555,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·225';
+const BUILD='v'+'2026.07.04·228';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
