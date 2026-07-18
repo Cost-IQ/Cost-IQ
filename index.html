@@ -4056,6 +4056,7 @@ async function renderPayroll(){
     let cs=tn&&tn.contrib_setup; if(typeof cs==='string')cs=JSON.parse(cs); ST.contribSetup=cs||[];
   }catch(e){ST.contribSetup=ST.contribSetup||[];}
   try{const {data:cls}=await sb.from('daily_close').select('close_date,tips_data').eq('tenant_id',curTenant());ST.payCloses=cls||[];}catch(e){ST.payCloses=[];}
+  try{const {data:pp}=await sb.from('payroll_payments').select('*').eq('tenant_id',curTenant());ST.payrollPayments=pp||[];}catch(e){ST.payrollPayments=[];}
   ST.employees=emps; ST.workShifts=shifts;
   if(!ST.payPeriod)ST.payPeriod='month';
   if(!ST.payView)ST.payView='summary';
@@ -4161,7 +4162,7 @@ function drawPayroll(){
       const otLbl=e.ot_mode==='percent'?(n(e.ot_value)+'% '+T('ανά ώρα','per hour')):(money2(n(e.ot_value))+' '+T('ανά ώρα','per hour'));
       h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)">'+
         '<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600">'+esc(e.name)+(e.active===false?' <span class="muted" style="font-size:11px">('+T('Ανενεργός','Inactive')+')</span>':'')+'</div>'+
-        '<div class="muted" style="font-size:11px">'+esc(e.position||'—')+' · '+(e.pay_type==='hourly'?(money2(n(e.hourly_rate))+'/'+T('ώρα','hr')):(money2(n(e.daily_wage))+'/'+T('ημέρα','day')))+' · '+T('Υπερ','OT')+': '+otLbl+' · '+T('Μονάδες','Units')+': '+n(e.tip_units)+'</div></div>'+
+        '<div class="muted" style="font-size:11px">'+esc(e.position||'—')+' · '+(e.pay_type==='hourly'?(money2(n(e.hourly_rate))+'/'+T('ώρα','hr')):(money2(n(e.daily_wage))+'/'+T('ημέρα','day')))+' · '+T('Υπερωρία','Over Time')+': '+otLbl+' · '+T('Μονάδες','Units')+': '+n(e.tip_units)+'</div></div>'+
         '<div style="display:flex;gap:8px"><span onclick="editEmployee(\''+e.id+'\')" style="cursor:pointer;color:var(--accent);font-size:15px">✏️</span>'+
         '<span onclick="delEmployee(\''+e.id+'\')" style="cursor:pointer;color:var(--bad);font-size:15px">🗑</span></div>'+
       '</div>';
@@ -4217,11 +4218,25 @@ function drawPayroll(){
         '<span style="font-size:14px;font-weight:700;color:var(--accent)">'+money2(posCost)+'</span>'+
       '</div>';
     list.forEach(r=>{
-      h+='<div onclick="payrollDetail(\''+r.id+'\')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer">'+
-        '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600;color:var(--accent)">'+esc(r.name)+' ›</div>'+
-        '<div class="muted" style="font-size:11px">'+r.days+' '+T('ημέρες','days')+(r.otH>0?' · '+r.otH+' '+T('υπερ.','OT'):'')+'</div></div>'+
-        '<div style="text-align:right"><div style="font-size:14px;font-weight:700">'+money2(r.cost)+'</div>'+
-        (r.empC>0?'<div class="muted" style="font-size:10px">'+T('καθαρά','net')+' '+money2(r.net)+'</div>':'')+'</div>'+
+      const paid=payrollPaidFor(r.id,range,'wage');
+      const due=r.net-paid.total;
+      h+='<div style="padding:11px 14px;border-bottom:1px solid var(--line)">'+
+        '<div onclick="payrollDetail(\''+r.id+'\')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer">'+
+          '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600;color:var(--accent)">'+esc(r.name)+' ›</div>'+
+          '<div class="muted" style="font-size:11px">'+r.days+' '+T('ημέρες','days')+(r.otH>0?' · '+r.otH+' '+T('Υπερωρίες','Over Time'):'')+'</div></div>'+
+          '<div style="text-align:right"><div style="font-size:14px;font-weight:700">'+money2(r.cost)+'</div>'+
+          (r.empC>0?'<div class="muted" style="font-size:10px">'+T('Καθαρά','Net')+' '+money2(r.net)+'</div>':'')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:7px">'+
+          '<div style="font-size:11px;flex:1">'+
+            (paid.total>0?('<span style="color:var(--ok)">✓ '+T('Πληρώθηκε','Paid')+' '+money2(paid.total)+'</span>'+
+              (paid.bank>0?' <span class="muted">🏦 '+money2(paid.bank)+'</span>':'')+
+              (paid.cash>0?' <span class="muted">💵 '+money2(paid.cash)+'</span>':'')+
+              (due>0.005?' <span style="color:var(--bad)">· '+T('Υπόλοιπο','Due')+' '+money2(due)+'</span>':'')
+            ):'<span class="muted">'+T('Εκκρεμεί','Pending')+'</span>')+
+          '</div>'+
+          '<button class="btn ghost" style="padding:5px 12px;font-size:12px;width:auto;margin:0" onclick="payWage(\''+r.id+'\','+(due>0?due.toFixed(2):0)+')">💰 '+T('Πληρωμή','Pay')+'</button>'+
+        '</div>'+
       '</div>';
     });
     h+='</div>';
@@ -4234,6 +4249,7 @@ function drawPayroll(){
       '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Εισφορές Εργοδότη','Employer Contributions')+'</span><span>'+money2(grandEmprC)+'</span></div>':'')+
       '<div style="display:flex;justify-content:space-between;padding:8px 0 3px;margin-top:3px;border-top:1px solid var(--line);font-size:15px;font-weight:700"><span>'+T('Πραγματικό Κόστος','Real Cost')+'</span><span style="color:var(--accent)">'+money2(grandCost)+'</span></div>'+
     '</div>';
+    h+='<button class="btn ghost" style="width:100%;margin-top:10px" onclick="payAllWages()">💰 '+T('Πληρωμή Όλων','Pay Everyone')+'</button>';
   }
   h+='</div></div>';
   c.innerHTML=h;
@@ -4274,7 +4290,7 @@ function empFormHtml(e){
       '<div id="emp-hourly-wrap" style="'+(isHourly?'':'display:none')+'"><label style="font-size:11px;color:var(--muted)">'+T('Ωρομίσθιο','Hourly Rate')+'</label><input id="emp-hourly" type="number" step="0.01" value="'+(e.hourly_rate||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '</div>'+
     '<div style="border-top:1px solid var(--line);padding-top:10px">'+
-      '<label style="font-size:12px;color:var(--muted)">'+T('Υπερωρία — Τρόπος Χρέωσης','Overtime — Charge Mode')+'</label>'+
+      '<label style="font-size:12px;color:var(--muted)">'+T('Υπερωρία — Τρόπος Χρέωσης','Over Time — Charge Mode')+'</label>'+
       '<div style="display:flex;gap:6px;margin:6px 0 8px">'+
         '<div id="ot-mode-amount" onclick="empSetOtMode(\'amount\')" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(!isPct?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+T('Ποσό / Ώρα','Amount / Hour')+'</div>'+
         '<div id="ot-mode-percent" onclick="empSetOtMode(\'percent\')" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(isPct?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+T('Ποσοστό %','Percent %')+'</div>'+
@@ -4341,7 +4357,7 @@ function payrollDetail(empId){
   if(!list.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Καμία εγγραφή','No records')+'</div>';
   list.forEach(s=>{
     h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)">'+
-      '<div><div style="font-size:13px">'+fmtDate(s.work_date)+'</div><div class="muted" style="font-size:11px">'+n(s.hours)+T('ω','h')+(n(s.ot_hours)>0?' + '+n(s.ot_hours)+T('ω υπερ.','h OT'):'')+'</div></div>'+
+      '<div><div style="font-size:13px">'+fmtDate(s.work_date)+'</div><div class="muted" style="font-size:11px">'+n(s.hours)+T('ω','h')+(n(s.ot_hours)>0?' + '+n(s.ot_hours)+T('ω Υπερωρία','h Over Time'):'')+'</div></div>'+
       '<span style="font-size:14px;font-weight:600">'+money2(n(s.total_amount))+'</span>'+
     '</div>';
   });
@@ -4360,7 +4376,7 @@ function addShift(){
     shiftTypeHtml('all')+
     '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
       '<div><label style="font-size:12px;color:var(--muted)">'+T('Ώρες','Hours')+' <span style="color:var(--bad)">*</span></label><input id="sh-hours" type="number" step="0.5" placeholder="8" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
-      '<div><label style="font-size:12px;color:var(--muted)">'+T('Υπερωρίες','Overtime')+'</label><input id="sh-ot" type="number" step="0.5" placeholder="0" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('Υπερωρίες','Over Time')+'</label><input id="sh-ot" type="number" step="0.5" placeholder="0" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '</div>'+
     '<div class="muted" style="font-size:11px">'+T('Οι ώρες είναι υποχρεωτικές — χρησιμοποιούνται στη διανομή tips','Hours are required — used for tip distribution')+'</div>'+
     '<div id="sh-calc" style="background:var(--accent-bg);border-radius:8px;padding:10px;font-size:12px;color:var(--accent)">—</div>'+
@@ -4378,7 +4394,7 @@ function editShift(id){
     shiftTypeHtml(s.shift_type||'all',s)+
     '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
       '<div><label style="font-size:12px;color:var(--muted)">'+T('Ώρες','Hours')+' <span style="color:var(--bad)">*</span></label><input id="sh-hours" type="number" step="0.5" value="'+(s.hours||'')+'" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
-      '<div><label style="font-size:12px;color:var(--muted)">'+T('Υπερωρίες','Overtime')+'</label><input id="sh-ot" type="number" step="0.5" value="'+(s.ot_hours||'')+'" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('Υπερωρίες','Over Time')+'</label><input id="sh-ot" type="number" step="0.5" value="'+(s.ot_hours||'')+'" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '</div>'+
     '<div id="sh-calc" style="background:var(--accent-bg);border-radius:8px;padding:10px;font-size:12px;color:var(--accent)">—</div>'+
   '</div>';
@@ -4411,7 +4427,7 @@ function shiftLive(){
   const money2=x=>money(Math.round(x*100)/100);
   const wLbl=(r.emp&&r.emp.pay_type==='hourly')?L('Ώρες × Ωρομίσθιο','Hours × Rate'):L('Μεροκάματο','Daily Wage');
   let inner='<div style="display:flex;justify-content:space-between"><span>'+wLbl+'</span><span>'+money2(r.wage)+'</span></div>'+
-    (r.otAmt>0?'<div style="display:flex;justify-content:space-between"><span>'+L('Υπερωρίες','Overtime')+'</span><span>'+money2(r.otAmt)+'</span></div>':'')+
+    (r.otAmt>0?'<div style="display:flex;justify-content:space-between"><span>'+L('Υπερωρίες','Over Time')+'</span><span>'+money2(r.otAmt)+'</span></div>':'')+
     '<div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--accent);margin-top:4px;padding-top:4px"><span>'+L('Μικτά','Gross')+'</span><span>'+money2(r.gross)+'</span></div>';
   if(r.cls){
     inner+='<div style="display:flex;justify-content:space-between;margin-top:4px"><span>'+L('Εισφορές Εργαζ.','Employee Contrib.')+' ('+r.cls.emp_pct+'%)</span><span>− '+money2(r.empC)+'</span></div>'+
@@ -4588,12 +4604,117 @@ function computeTips(range){
   const rows=Object.keys(perEmp).map(id=>{
     const x=perEmp[id];
     const bits=[];
-    if(x.hM>0)bits.push(x.hM+T('ω πρωί','h morn'));
-    if(x.hN>0)bits.push(x.hN+T('ω βράδυ','h night'));
+    if(x.hM>0)bits.push(x.hM+T('ω Πρωί','h Morning'));
+    if(x.hN>0)bits.push(x.hN+T('ω Βράδυ','h Night'));
     if(x.hA>0)bits.push(x.hA+T('ώρες','hours'));
     return {id:id,name:x.name,unit:x.unit,total:x.total,card:x.card,cash:x.cash,hoursLbl:bits.join(' + ')||'—'};
   }).sort((a,b)=>b.total-a.total);
   return {rows:rows,rates:rates,grandTips:grandTips};
+}
+function payrollPaidFor(empId,range,kind){
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const list=(ST.payrollPayments||[]).filter(p=>p.employee_id===empId&&(p.kind||'wage')===kind
+    &&p.period_from===range.from&&p.period_to===range.to);
+  const bank=list.reduce((t,p)=>t+n(p.amount_bank),0);
+  const cash=list.reduce((t,p)=>t+n(p.amount_cash),0);
+  return {bank:bank,cash:cash,total:bank+cash,list:list};
+}
+function payWage(empId,suggested){
+  const e=(ST.employees||[]).find(x=>x.id===empId); if(!e)return;
+  const T=(el,en)=>L(el,en);
+  const range=payPeriodRange(ST.payPeriod||'month');
+  const sug=(+suggested)||0;
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div class="muted" style="font-size:13px">'+esc(e.name)+' · '+periodLabel(ST.payPeriod||'month',range)+'</div>'+
+    '<div style="background:var(--accent-bg);border-radius:8px;padding:10px;font-size:12px;color:var(--accent)">'+T('Καθαρά Πληρωτέα','Net Payable')+': <b>'+money(Math.round(sug*100)/100)+'</b></div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
+      '<div><label style="font-size:12px;color:var(--muted)">🏦 '+T('Τράπεζα','Bank')+'</label><input id="pw-bank" type="number" step="0.01" value="'+(sug?sug.toFixed(2):'')+'" placeholder="0" oninput="pwLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">💵 '+T('Μετρητά','Cash')+'</label><input id="pw-cash" type="number" step="0.01" placeholder="0" oninput="pwLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '</div>'+
+    '<div id="pw-total" style="font-size:13px;font-weight:600;text-align:right">—</div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημερομηνία','Date')+'</label><input id="pw-date" type="date" value="'+todayISO()+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Σημείωση','Note')+'</label><input id="pw-note" type="text" placeholder="'+T('π.χ. προκαταβολή','e.g. advance')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div class="muted" style="font-size:11px">'+T('Τα μετρητά βγαίνουν από το χρηματοκιβώτιο, όχι από το ταμείο ημέρας','Cash comes from the safe, not the daily till')+'</div>'+
+  '</div>';
+  showModal('💰 '+T('Πληρωμή Μισθού','Wage Payment'),html,T('Καταχώρηση','Record'),()=>saveWagePayment(empId));
+  setTimeout(pwLive,50);
+}
+function pwLive(){
+  const g=x=>{const el=document.getElementById(x);return el&&el.value!==''?(+el.value):0;};
+  const t=document.getElementById('pw-total');
+  if(t)t.textContent=L('Σύνολο','Total')+': '+money(Math.round((g('pw-bank')+g('pw-cash'))*100)/100);
+}
+function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+async function saveWagePayment(empId){
+  const e=(ST.employees||[]).find(x=>x.id===empId); if(!e)return;
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  const bank=parseFloat(g('pw-bank'))||0, cash=parseFloat(g('pw-cash'))||0;
+  if(bank+cash<=0){toast('❌ '+L('Βάλε ποσό','Enter an amount'));return;}
+  const range=payPeriodRange(ST.payPeriod||'month');
+  try{
+    const {error}=await sb.from('payroll_payments').insert({tenant_id:curTenant(),employee_id:empId,
+      employee_name:e.name,pay_date:g('pw-date')||todayISO(),period_from:range.from,period_to:range.to,
+      kind:'wage',amount_bank:bank,amount_cash:cash,notes:g('pw-note')||null,created_by:ST.userEmail||''});
+    if(error)throw error;
+    closeModal(); toast('✅ '+L('Καταχωρήθηκε','Recorded')); keepScroll(renderPayroll);
+  }catch(err){toast('❌ '+(err.message||err));}
+}
+function payAllWages(){
+  const T=(el,en)=>L(el,en);
+  const range=payPeriodRange(ST.payPeriod||'month');
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const emps=ST.employees||[]; const shifts=ST.workShifts||[];
+  const pend=[];
+  emps.forEach(e=>{
+    const es=shifts.filter(s=>s.employee_id===e.id&&s.work_date>=range.from&&s.work_date<=range.to);
+    if(!es.length)return;
+    const gross=es.reduce((t,s)=>t+n(s.total_amount),0);
+    const empC=es.reduce((t,s)=>t+n(s.emp_contrib),0);
+    const net=gross-empC;
+    const paid=payrollPaidFor(e.id,range,'wage').total;
+    const due=net-paid;
+    if(due>0.005)pend.push({id:e.id,name:e.name,due:due});
+  });
+  if(!pend.length){toast('ℹ️ '+L('Δεν εκκρεμεί καμία πληρωμή','No pending payments'));return;}
+  const money2=x=>money(Math.round(x*100)/100);
+  let rowsHtml='';
+  pend.forEach((p,i)=>{
+    rowsHtml+='<div style="border:1px solid var(--line);border-radius:8px;padding:9px;margin-bottom:7px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+        '<span style="font-size:13px;font-weight:600">'+esc(p.name)+'</span>'+
+        '<span style="font-size:12px;color:var(--muted)">'+money2(p.due)+'</span>'+
+      '</div>'+
+      '<input type="hidden" id="pa-id-'+i+'" value="'+p.id+'">'+
+      '<input type="hidden" id="pa-name-'+i+'" value="'+esc(p.name)+'">'+
+      '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px">'+
+        '<div><label style="font-size:10px;color:var(--muted)">🏦 '+T('Τράπεζα','Bank')+'</label><input id="pa-bank-'+i+'" type="number" step="0.01" value="'+p.due.toFixed(2)+'" style="width:100%;box-sizing:border-box;padding:7px;border:1px solid var(--line);border-radius:6px;font-size:12px"></div>'+
+        '<div><label style="font-size:10px;color:var(--muted)">💵 '+T('Μετρητά','Cash')+'</label><input id="pa-cash-'+i+'" type="number" step="0.01" placeholder="0" style="width:100%;box-sizing:border-box;padding:7px;border:1px solid var(--line);border-radius:6px;font-size:12px"></div>'+
+      '</div>'+
+    '</div>';
+  });
+  const html='<div style="display:flex;flex-direction:column;gap:10px">'+
+    '<div class="muted" style="font-size:12px">'+periodLabel(ST.payPeriod||'month',range)+' · '+pend.length+' '+T('εκκρεμείς','pending')+'</div>'+
+    '<div style="max-height:50vh;overflow-y:auto">'+rowsHtml+'</div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημερομηνία','Date')+'</label><input id="pa-date" type="date" value="'+todayISO()+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+  '</div>';
+  showModal('💰 '+T('Πληρωμή Όλων','Pay Everyone'),html,T('Καταχώρηση','Record'),()=>saveAllWages(pend.length));
+}
+async function saveAllWages(count){
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  const range=payPeriodRange(ST.payPeriod||'month');
+  const date=g('pa-date')||todayISO();
+  const rows=[];
+  for(let i=0;i<count;i++){
+    const bank=parseFloat(g('pa-bank-'+i))||0, cash=parseFloat(g('pa-cash-'+i))||0;
+    if(bank+cash<=0)continue;
+    rows.push({tenant_id:curTenant(),employee_id:g('pa-id-'+i),employee_name:g('pa-name-'+i),
+      pay_date:date,period_from:range.from,period_to:range.to,kind:'wage',
+      amount_bank:bank,amount_cash:cash,created_by:ST.userEmail||''});
+  }
+  if(!rows.length){toast('❌ '+L('Βάλε ποσά','Enter amounts'));return;}
+  try{const {error}=await sb.from('payroll_payments').insert(rows); if(error)throw error;
+    closeModal(); toast('✅ '+rows.length+' '+L('πληρωμές καταχωρήθηκαν','payments recorded')); keepScroll(renderPayroll);
+  }catch(err){toast('❌ '+(err.message||err));}
 }
 function computeSupplierBalances(){
   const sups=ST.suppliers||[]; const invs=ST.invoices||[]; const pays=ST.dailyPayments||[]; const credits=ST.supplierCredits||[];
@@ -4798,7 +4919,7 @@ function drawDaily(){
       const e=dayEmps.find(x=>x.id===s.employee_id)||{};
       h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">'+
         '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(e.name||'—')+'</div>'+
-        '<div class="muted" style="font-size:11px">'+esc(e.position||'')+' · '+n(s.hours)+T('ω','h')+(n(s.ot_hours)>0?' + '+n(s.ot_hours)+T('ω υπερ.','h OT'):'')+'</div></div>'+
+        '<div class="muted" style="font-size:11px">'+esc(e.position||'')+' · '+n(s.hours)+T('ω','h')+(n(s.ot_hours)>0?' + '+n(s.ot_hours)+T('ω Υπερωρία','h Over Time'):'')+'</div></div>'+
         '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:600">'+money2(n(s.total_amount))+'</span>'+
         '<span onclick="editShift(\''+s.id+'\')" style="cursor:pointer;color:var(--accent);font-size:14px">✏️</span>'+
         '<span onclick="delShift(\''+s.id+'\')" style="cursor:pointer;color:var(--bad);font-size:14px">🗑</span></div>'+
@@ -5619,7 +5740,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·231';
+const BUILD='v'+'2026.07.04·233';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
