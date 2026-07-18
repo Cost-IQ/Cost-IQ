@@ -4048,7 +4048,7 @@ function drawDaily(){
   let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:1400px;margin:0 auto">';
   // Κεφαλίδα: ημερομηνία
   h+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:0 2px 14px">'+
-    '<div style="font-size:16px;font-weight:700">📅 '+T('Ημέρα','Day')+'</div>'+
+    '<div style="display:flex;align-items:center;gap:10px"><div style="font-size:16px;font-weight:700">📅 '+T('Ημέρα','Day')+'</div><span id="day-save-status" style="font-size:12px;color:var(--muted)"></span></div>'+
     '<div style="display:flex;gap:8px;align-items:stretch">'+
       '<button class="btn ghost" style="padding:9px 16px;font-size:13px;white-space:nowrap" onclick="daySetupScreen()">⚙️ '+T('Ρύθμιση','Setup')+'</button>'+
       '<button class="btn ghost" style="padding:9px 16px;font-size:13px;white-space:nowrap" onclick="dailyArchive()">📁 '+T('Αρχείο','Archive')+'</button>'+
@@ -4077,11 +4077,11 @@ function drawDaily(){
   const shifts=setup.shifts;
   // Φορτωμένα δεδομένα σημείων
   let ptData={}; try{ptData=(typeof cl.points_data==='string')?JSON.parse(cl.points_data):(cl.points_data||{});}catch(e){ptData={};}
-  const f=(id,lb,val)=>'<div style="min-width:0"><label style="font-size:12px;color:var(--muted)">'+lb+'</label><input id="'+id+'" type="number" step="0.01" value="'+(val!=null&&val!==''?val:'')+'" placeholder="0" oninput="dailyLive()" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>';
+  const f=(id,lb,val)=>'<div style="min-width:0"><label style="font-size:12px;color:var(--muted)">'+lb+'</label><input id="'+id+'" type="number" step="0.01" value="'+(val!=null&&val!==''?val:'')+'" placeholder="0" oninput="dailyLive();autoSaveDay()" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>';
   // Πεδίο σημείου (cash/card) με key
   const ptf=(pkey,cashV,cardV)=>'<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">'+
-    '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Μετρητά','Cash')+'</label><input id="pt-'+pkey+'-cash" type="number" step="0.01" value="'+(cashV!=null&&cashV!==''?cashV:'')+'" placeholder="0" oninput="dailyLive()" class="pt-input" style="width:100%;box-sizing:border-box;padding:7px;border:1px solid var(--line);border-radius:8px"></div>'+
-    '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Κάρτες','Cards')+'</label><input id="pt-'+pkey+'-card" type="number" step="0.01" value="'+(cardV!=null&&cardV!==''?cardV:'')+'" placeholder="0" oninput="dailyLive()" class="pt-input" style="width:100%;box-sizing:border-box;padding:7px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Μετρητά','Cash')+'</label><input id="pt-'+pkey+'-cash" type="number" step="0.01" value="'+(cashV!=null&&cashV!==''?cashV:'')+'" placeholder="0" oninput="dailyLive();autoSaveDay()" class="pt-input" style="width:100%;box-sizing:border-box;padding:7px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Κάρτες','Cards')+'</label><input id="pt-'+pkey+'-card" type="number" step="0.01" value="'+(cardV!=null&&cardV!==''?cardV:'')+'" placeholder="0" oninput="dailyLive();autoSaveDay()" class="pt-input" style="width:100%;box-sizing:border-box;padding:7px;border:1px solid var(--line);border-radius:8px"></div>'+
   '</div>';
   h+='<div class="card"><h3 style="font-size:14px;margin:0 0 12px">💰 '+T('Κλείσιμο Ταμείου','Cash Close')+'</h3>';
   const shiftList=shifts?[['morning','🌅 '+T('Πρωί','Morning')],['night','🌙 '+T('Βράδυ','Night')]]:[['all','']];
@@ -4106,7 +4106,7 @@ function drawDaily(){
       '<span id="dc-envelope" style="font-size:18px;font-weight:800;color:var(--accent)">'+money2(0)+'</span>'+
     '</div>'+
     '<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;font-size:14px"><span class="muted">'+T('Σύνολο Εσόδων','Total Income')+'</span><span id="daily-income" style="font-weight:700;color:var(--ok)">'+money2(income)+'</span></div>'+
-    '<button class="btn" style="margin-top:10px" onclick="saveDailyClose()">💾 '+T('Αποθήκευση Ταμείου','Save Cash Close')+'</button>'+
+    
   '</div>';
 
   // ── ΚΛΕΙΣΙΜΟ Z ──
@@ -4117,7 +4117,7 @@ function drawDaily(){
     const rates=(ST.daySetup&&ST.daySetup.vatRates&&ST.daySetup.vatRates.length)?ST.daySetup.vatRates:[13,24];
     zLines=rates.map(r=>({rate:r,net:''}));
   }
-  const zf=(id,lb,val,ph)=>'<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+lb+'</label><input id="'+id+'" type="number" step="0.01" value="'+(val!=null&&val!==''?val:'')+'" placeholder="'+(ph||'0')+'" oninput="zLive()" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>';
+  const zf=(id,lb,val,ph)=>'<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+lb+'</label><input id="'+id+'" type="number" step="0.01" value="'+(val!=null&&val!==''?val:'')+'" placeholder="'+(ph||'0')+'" oninput="zLive();autoSaveDay()" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>';
   h+='<div class="card"><h3 style="font-size:14px;margin:0 0 2px">🧾 '+T('Κλείσιμο Z','Z Closing')+'</h3>'+
     '<div class="muted" style="font-size:11px;margin-bottom:10px">'+T('Επίσημο σύνολο ημέρας (ταμειακό Ζ)','Official day total (Z report)')+'</div>'+
     '<label class="btn ghost" style="display:block;text-align:center;margin-bottom:12px;cursor:pointer">📷 '+T('Σκάναρε Ζ','Scan Z')+'<input type="file" accept="image/*" style="display:none" onchange="scanZ(this)"></label>'+
@@ -4130,7 +4130,7 @@ function drawDaily(){
     h+='<div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px" data-zrow="'+i+'">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
         '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px;font-weight:600">'+T('ΦΠΑ','VAT')+'</span>'+
-        '<input type="number" id="z-rate-'+i+'" value="'+(ln.rate!=null?ln.rate:'')+'" oninput="zLive()" style="width:56px;padding:5px;border:1px solid var(--line);border-radius:6px;font-size:13px">%</div>'+
+        '<input type="number" id="z-rate-'+i+'" value="'+(ln.rate!=null?ln.rate:'')+'" oninput="zLive();autoSaveDay()" style="width:56px;padding:5px;border:1px solid var(--line);border-radius:6px;font-size:13px">%</div>'+
         (zLines.length>1?'<span onclick="zRemoveLine('+i+')" style="cursor:pointer;color:var(--bad);font-size:14px">✕</span>':'')+
       '</div>'+
       '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">'+
@@ -4151,7 +4151,7 @@ function drawDaily(){
       '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Σύνολο ΦΠΑ','Total VAT')+'</span><span id="z-tvat">—</span></div>'+
       '<div style="display:flex;justify-content:space-between;padding:8px 0 3px;margin-top:3px;border-top:1px solid var(--line);font-size:15px;font-weight:700"><span>'+T('Σύνολο (Μικτό)','Total (Gross)')+'</span><span id="z-tgross" style="color:var(--ok)">—</span></div>'+
     '</div>'+
-    '<button class="btn" style="margin-top:10px" onclick="saveZClosing()">💾 '+T('Αποθήκευση Z','Save Z')+'</button>'+
+    
   '</div>';
 
   // ── DELIVERY ──
@@ -4168,14 +4168,14 @@ function drawDaily(){
           '<span style="font-size:11px;color:var(--muted)">'+T('προμήθεια','commission')+' '+(pl.commission||0)+'%</span>'+
         '</div>'+
         '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">'+
-          '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Καθαρή Αξία','Net')+'</label><input id="del-net-'+i+'" type="number" step="0.01" value="'+(saved.net_val!=null?saved.net_val:'')+'" placeholder="0" oninput="delLive()" data-delname="'+esc(pl.name)+'" data-delcom="'+(pl.commission||0)+'" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
-          '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('ΦΠΑ','VAT')+'</label><input id="del-vat-'+i+'" type="number" step="0.01" value="'+(saved.vat!=null?saved.vat:'')+'" placeholder="0" oninput="delLive()" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
+          '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Καθαρή Αξία','Net')+'</label><input id="del-net-'+i+'" type="number" step="0.01" value="'+(saved.net_val!=null?saved.net_val:'')+'" placeholder="0" oninput="delLive();autoSaveDay()" data-delname="'+esc(pl.name)+'" data-delcom="'+(pl.commission||0)+'" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
+          '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('ΦΠΑ','VAT')+'</label><input id="del-vat-'+i+'" type="number" step="0.01" value="'+(saved.vat!=null?saved.vat:'')+'" placeholder="0" oninput="delLive();autoSaveDay()" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
         '</div>'+
         '<div id="del-info-'+i+'" style="font-size:11px;color:var(--muted);margin-top:6px">—</div>'+
       '</div>';
     });
     h+='<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:10px;display:flex;justify-content:space-between;font-size:14px"><span class="muted">'+T('Σύνολο Delivery','Delivery Total')+'</span><span id="del-total" style="font-weight:700;color:var(--ok)">'+money(0)+'</span></div>'+
-      '<button class="btn" style="margin-top:10px" onclick="saveDelivery()">💾 '+T('Αποθήκευση Delivery','Save Delivery')+'</button>'+
+      
     '</div>';
   }
 
@@ -4217,6 +4217,8 @@ function drawDaily(){
     });
     h+='</div>';
   }
+
+  h+='<button class="btn" style="margin-top:6px;padding:14px;font-size:15px" onclick="saveAllDay()">💾 '+T('Αποθήκευση Ημέρας','Save Day')+'</button>';
 
   h+='</div></div>';
   c.innerHTML=h;
@@ -4282,7 +4284,36 @@ function recLive(){
     else{box.style.background='#FFF7E6';if(lab){lab.textContent='⚠ '+L('Διαφορά — έλεγξε','Difference — check');lab.style.color='#B8860B';}if(df){df.textContent=money2(Math.abs(diff));df.style.color='#B8860B';}}
   }
 }
-async function saveDailyClose(){
+// ── AUTO-SAVE: σώζει αυτόματα ό,τι γράφεις (με debounce) ──
+let _autoSaveTimer=null;
+function autoSaveDay(){
+  if(_autoSaveTimer)clearTimeout(_autoSaveTimer);
+  const ind=document.getElementById('day-save-status');
+  if(ind){ind.textContent='…';ind.style.color='var(--muted)';}
+  _autoSaveTimer=setTimeout(()=>{doAutoSaveDay();},1200);
+}
+async function doAutoSaveDay(){
+  const ind=document.getElementById('day-save-status');
+  try{
+    await Promise.all([saveDailyClose(true),saveZClosing(true),saveDelivery(true)]);
+    if(ind){ind.textContent='✓ '+L('Αποθηκεύτηκε','Saved');ind.style.color='var(--ok)';}
+    setTimeout(()=>{if(ind&&ind.textContent.indexOf('✓')===0)ind.textContent='';},2500);
+  }catch(e){
+    if(ind){ind.textContent='⚠ '+L('Σφάλμα','Error');ind.style.color='var(--bad)';}
+  }
+}
+async function saveAllDay(){
+  if(_autoSaveTimer)clearTimeout(_autoSaveTimer);
+  const ind=document.getElementById('day-save-status');
+  if(ind){ind.textContent='…';ind.style.color='var(--muted)';}
+  try{
+    await Promise.all([saveDailyClose(true),saveZClosing(true),saveDelivery(true)]);
+    toast('✅ '+L('Όλα αποθηκεύτηκαν','All saved'));
+    if(ind){ind.textContent='';}
+    renderDaily();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function saveDailyClose(silent){
   const g=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?(+el.value):0;};
   const ptData={}; let totalCash=0,totalCard=0;
   document.querySelectorAll('[id^="pt-"][id$="-cash"]').forEach(el=>{
@@ -4301,8 +4332,8 @@ async function saveDailyClose(){
     points_data:JSON.stringify(ptData),
     created_by:ST.userEmail||''};
   try{const {error}=await sb.from('daily_close').upsert(row,{onConflict:'tenant_id,close_date'});
-    if(error)throw error; toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderDaily();
-  }catch(e){toast('❌ '+(e.message||e));}
+    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderDaily();}
+  }catch(e){if(!silent)toast('❌ '+(e.message||e)); else throw e;}
 }
 function zCollectLines(){
   const rows=document.querySelectorAll('[data-zrow]'); const lines=[];
@@ -4348,7 +4379,7 @@ function saveZState(){
   ST.dailyZ.z_number=g('z-number'); ST.dailyZ.receipts_count=g('z-receipts');
   ST.dailyZ.pay_cash=g('z-cash'); ST.dailyZ.pay_card=g('z-card'); ST.dailyZ.voids=g('z-voids');
 }
-async function saveZClosing(){
+async function saveZClosing(silent){
   const g=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?(+el.value):0;};
   const gt=id=>{const el=document.getElementById(id);return el?el.value:'';};
   const lines=zCollectLines().map(ln=>({rate:ln.rate,net:ln.net}));
@@ -4360,8 +4391,8 @@ async function saveZClosing(){
     receipts_count:g('z-receipts'), voids:g('z-voids'),
     created_by:ST.userEmail||''};
   try{const {error}=await sb.from('z_closing').upsert(row,{onConflict:'tenant_id,z_date'});
-    if(error)throw error; toast('✅ '+L('Αποθηκεύτηκε το Z','Z Saved')); renderDaily();
-  }catch(e){toast('❌ '+(e.message||e));}
+    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε το Z','Z Saved')); renderDaily();}
+  }catch(e){if(!silent)toast('❌ '+(e.message||e)); else throw e;}
 }
 async function scanZ(input){
   const file=input.files&&input.files[0]; if(!file)return;
@@ -4401,7 +4432,7 @@ function delLive(){
   });
   const tEl=document.getElementById('del-total'); if(tEl)tEl.textContent=money2(total);
 }
-async function saveDelivery(){
+async function saveDelivery(silent){
   const data=[];
   document.querySelectorAll('[data-delname]').forEach((el,idx)=>{
     const name=el.getAttribute('data-delname'); const net=el.value!==''?(+el.value):0;
@@ -4411,8 +4442,8 @@ async function saveDelivery(){
     data.push({name:name,net_val:net,vat:vat,gross:gross,commission:com,net:gross-(gross*com/100)});
   });
   try{const {error}=await sb.from('daily_close').upsert({tenant_id:curTenant(),close_date:dailyDate(),delivery_data:JSON.stringify(data)},{onConflict:'tenant_id,close_date'});
-    if(error)throw error; toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderDaily();
-  }catch(e){toast('❌ '+(e.message||e));}
+    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderDaily();}
+  }catch(e){if(!silent)toast('❌ '+(e.message||e)); else throw e;}
 }
 function addDailyExp(){
   const T=(el,en)=>L(el,en);
@@ -4893,7 +4924,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·212';
+const BUILD='v'+'2026.07.04·213';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
