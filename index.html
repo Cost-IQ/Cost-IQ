@@ -624,10 +624,13 @@ async function loadAll(){
     if(nav.payPeriod)ST.payPeriod=nav.payPeriod; if(nav.payOffset)ST.payOffset=nav.payOffset; if(nav.expPeriod)ST.expPeriod=nav.expPeriod;
     if(nav.ledgerSid)ST._ledgerSid=nav.ledgerSid; if(nav.delLedgerName)ST._delLedgerName=nav.delLedgerName;
     ST.homeView=!!nav.homeView;
-    if(nav.prod){const p=ST.products.find(x=>x.id===nav.prod);if(p){ST.prod=p;ST.section='products';ST.view='detail';}}
-    else if(nav.recipe){const r=ST.recipes.find(x=>x.id===nav.recipe);if(r){ST.recipe=r;ST.section='recipes';ST.view='detail';}}
-    else if(nav.inv){const i=ST.invoices.find(x=>x.id===nav.inv);if(i){ST.inv=i;ST.section='invoices';ST.view='detail';}}
-    else if(nav.view&&nav.view!=='detail'){ST.view=nav.view;}
+    // Πρώτα το view. Λεπτομέρεια μόνο αν ταιριάζει η ενότητα.
+    if(nav.view&&nav.view!=='detail'){ST.view=nav.view;}
+    if(nav.view==='detail'){
+      if(nav.section==='products'&&nav.prod){const p=ST.products.find(x=>x.id===nav.prod);if(p){ST.prod=p;ST.section='products';ST.view='detail';}}
+      else if(nav.section==='recipes'&&nav.recipe){const r=ST.recipes.find(x=>x.id===nav.recipe);if(r){ST.recipe=r;ST.section='recipes';ST.view='detail';}}
+      else if(nav.section==='invoices'&&nav.inv){const i=ST.invoices.find(x=>x.id===nav.inv);if(i){ST.inv=i;ST.section='invoices';ST.view='detail';}}
+    }
   }catch(e){}
   ST._booting=false;
   rerenderCurrent();
@@ -679,7 +682,17 @@ function keepScroll(fn){
   timers.push(setTimeout(stop,1600));
   return r;
 }
-function goSection(s){ST.section=s;ST.navOpen=false;if(s==='recipes')ST.homeView=false;if(s==='daily'){ST.dailyDate=null;ST.view='list';}renderSection();window.scrollTo(0,0);}
+function goSection(s){
+  ST.section=s;ST.navOpen=false;
+  // Καθαρίζουμε τις λεπτομέρειες άλλων ενοτήτων, αλλιώς το refresh μας γυρνάει εκεί
+  if(s!=='products')ST.prod=null;
+  if(s!=='recipes')ST.recipe=null;
+  if(s!=='invoices')ST.inv=null;
+  ST.view='list';
+  if(s==='recipes')ST.homeView=false;
+  if(s==='daily')ST.dailyDate=null;
+  renderSection();window.scrollTo(0,0);
+}
 function goHome(){ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';document.getElementById('hTitle').textContent=brandTitle();renderSection();window.scrollTo(0,0);}
 function toggleFullscreen(){
   const d=document.documentElement;
@@ -5969,7 +5982,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·243';
+const BUILD='v'+'2026.07.04·244';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
