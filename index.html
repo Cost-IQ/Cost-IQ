@@ -4244,13 +4244,23 @@ function drawPayroll(){ persistNav();
     h+='<div class="card" style="padding:0;overflow:hidden">';
     if(!td.rows.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Καμία εγγραφή σε αυτή την περίοδο','No records in this period')+'</div>';
     td.rows.forEach(r=>{
+      const paid=payrollPaidFor(r.id,range,'tips');
+      const due=r.total-paid.total;
       h+='<div style="padding:11px 14px;border-bottom:1px solid var(--line)">'+
         '<div style="display:flex;justify-content:space-between;align-items:center">'+
           '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(r.name)+'</div>'+
           '<div class="muted" style="font-size:11px">'+T('Μονάδα','Unit')+' '+r.unit+' · '+r.hoursLbl+'</div></div>'+
           '<span style="font-size:15px;font-weight:700">'+money2(r.total)+'</span>'+
         '</div>'+
-        '<div style="display:flex;gap:14px;margin-top:5px;font-size:11px;color:var(--muted)"><span>'+T('Κάρτα','Card')+' '+money2(r.card)+'</span><span>'+T('Μετρητά','Cash')+' '+money2(r.cash)+'</span></div>'+
+        '<div style="display:flex;gap:14px;margin-top:5px;font-size:11px;color:var(--muted)"><span>🏦 '+T('Κάρτα','Card')+' '+money2(r.card)+'</span><span>💵 '+T('Μετρητά','Cash')+' '+money2(r.cash)+'</span></div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:7px">'+
+          '<div style="font-size:11px;flex:1">'+
+            (paid.total>0?('<span style="color:var(--ok)">✓ '+T('Δόθηκαν','Paid')+' '+money2(paid.total)+'</span>'+
+              (due>0.005?' <span style="color:var(--bad)">· '+T('Απομένουν','Remaining')+' '+money2(due)+'</span>':'')
+            ):'<span class="muted">'+T('Εκκρεμεί','Pending')+'</span>')+
+          '</div>'+
+          (due>0.005?'<button class="btn ghost" style="padding:5px 12px;font-size:12px;width:auto;margin:0" onclick="payTips(\''+r.id+'\','+r.card.toFixed(2)+','+r.cash.toFixed(2)+','+paid.total.toFixed(2)+')">🫙 '+T('Πληρωμή','Pay')+'</button>':'')+
+        '</div>'+
       '</div>';
     });
     h+='</div>';
@@ -4258,6 +4268,7 @@ function drawPayroll(){ persistNav();
       '<span style="font-size:13px;color:var(--accent)">'+T('Σύνολο Φιλοδωρημάτων Περιόδου','Period Tips Total')+'</span>'+
       '<span style="font-size:19px;font-weight:800;color:var(--accent)">'+money2(td.grandTips)+'</span>'+
     '</div>';
+    if(td.rows.length)h+='<button class="btn ghost" style="width:100%;margin-top:10px" onclick="payAllTips()">🫙 '+T('Πληρωμή Όλων','Pay Everyone')+'</button>';
     h+='</div></div>'; c.innerHTML=h; return;
   }
 
@@ -5036,12 +5047,15 @@ function computeCashflow(range){
   });
   pays.forEach(p=>addOut(p.supplier_name||T('Προμηθευτής','Supplier'),n(p.amount),p.payment_method==='cash'?'till':'bank'));
   pr.forEach(p=>{
-    const lbl=(p.kind==='efka')?T('Εισφορές','Contributions'):T('Μισθοί','Wages');
+    const lbl=(p.kind==='efka')?T('Εισφορές','Contributions'):((p.kind==='tips')?T('Φιλοδωρήματα','Tips'):T('Μισθοί','Wages'));
     if(n(p.amount_bank)>0)addOut(lbl,n(p.amount_bank),'bank');
     if(n(p.amount_cash)>0)addOut(lbl,n(p.amount_cash),'till');
   });
   const outflow=Object.values(outMap).sort((a,b)=>b.amt-a.amt);
   // ── ΥΠΟΛΟΙΠΑ ──
+  // Φιλοδωρήματα που έχουν ήδη δοθεί (δεν είναι πια υποχρέωση)
+  const tipsPaidBank=pr.filter(p=>p.kind==='tips').reduce((t,p)=>t+n(p.amount_bank),0);
+  const tipsPaidCash=pr.filter(p=>p.kind==='tips').reduce((t,p)=>t+n(p.amount_cash),0);
   const bal=(ST.cfBalances||[]).filter(b=>b.as_of<=range.from).slice(-1)[0];
   const openBank=bal?n(bal.bank):0, openTill=bal?n(bal.till):0;
   const inBank=inflow.filter(x=>x.where==='bank').reduce((t,x)=>t+x.amt,0);
@@ -5050,7 +5064,7 @@ function computeCashflow(range){
   const outTill=outflow.filter(x=>x.where==='till').reduce((t,x)=>t+x.amt,0);
   return {inflow,outflow,openBank,openTill,
     bank:openBank+inBank-outBank, till:openTill+inTill-outTill,
-    tipsCard:tipsCard, tipsCash:tipsCash, hasOpening:!!bal};
+    tipsCard:Math.max(0,tipsCard-tipsPaidBank), tipsCash:tipsCash, hasOpening:!!bal};
 }
 function drawCashflow(){ persistNav();
   const c=document.getElementById('cashflow-mount')||document.getElementById('content'); const T=(el,en)=>L(el,en);
@@ -5123,7 +5137,7 @@ function cfDetail(encLabel){
   });
   (ST.cfPays||[]).forEach(p=>{ if(inR(p.pay_date)&&(p.supplier_name||'')===label)items.push({date:p.pay_date,amt:n(p.amount),via:p.payment_method}); });
   (ST.cfPayroll||[]).forEach(p=>{
-    const lbl=(p.kind==='efka')?T('Εισφορές','Contributions'):T('Μισθοί','Wages');
+    const lbl=(p.kind==='efka')?T('Εισφορές','Contributions'):((p.kind==='tips')?T('Φιλοδωρήματα','Tips'):T('Μισθοί','Wages'));
     if(inR(p.pay_date)&&lbl===label){
       if(n(p.amount_bank)>0)items.push({date:p.pay_date,amt:n(p.amount_bank),via:'transfer',who:p.employee_name});
       if(n(p.amount_cash)>0)items.push({date:p.pay_date,amt:n(p.amount_cash),via:'cash',who:p.employee_name});
@@ -5165,6 +5179,100 @@ async function saveOpeningBalance(){
       bank:parseFloat(g('cb-bank'))||0,till:parseFloat(g('cb-till'))||0,created_by:ST.userEmail||''},{onConflict:'tenant_id,as_of'});
     if(error)throw error; closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved')); keepScroll(renderCashflow);
   }catch(e){toast('❌ '+(e.message||e));}
+}
+function payTips(empId,card,cash,alreadyPaid){
+  const e=(ST.employees||[]).find(x=>x.id===empId); if(!e)return;
+  const T=(el,en)=>L(el,en);
+  const range=payPeriodRange(ST.payPeriod||'month');
+  const money2=x=>money(Math.round(x*100)/100);
+  const c=(+card)||0, k=(+cash)||0, done=(+alreadyPaid)||0;
+  // Αν έχει πάρει ήδη κάτι, αφαιρούμε αναλογικά
+  const tot=c+k; const left=Math.max(0,tot-done);
+  const ratio=tot>0?(left/tot):0;
+  const dueCard=c*ratio, dueCash=k*ratio;
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div class="muted" style="font-size:13px">'+esc(e.name)+' · '+periodLabel(ST.payPeriod||'month',range)+'</div>'+
+    '<div style="background:var(--accent-bg);border-radius:8px;padding:12px">'+
+      '<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:13px;color:var(--accent)"><span>🏦 '+T('Από Λογαριασμό','From Account')+'</span><span>'+money2(dueCard)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:13px;color:var(--accent)"><span>💵 '+T('Από Ταμείο','From Till')+'</span><span>'+money2(dueCash)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;padding:6px 0 2px;margin-top:2px;border-top:1px solid var(--accent);font-size:15px;font-weight:700;color:var(--accent)"><span>'+T('Σύνολο','Total')+'</span><span>'+money2(left)+'</span></div>'+
+    '</div>'+
+    '<input type="hidden" id="tp-card" value="'+dueCard.toFixed(2)+'">'+
+    '<input type="hidden" id="tp-cash" value="'+dueCash.toFixed(2)+'">'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημερομηνία','Date')+'</label><input id="tp-date" type="date" value="'+todayISO()+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Σημείωση','Note')+'</label><input id="tp-note" type="text" placeholder="'+T('προαιρετικό','optional')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+  '</div>';
+  showModal('🫙 '+T('Πληρωμή Φιλοδωρημάτων','Tips Payment'),html,T('Καταχώρηση','Record'),()=>saveTipsPayment(empId));
+}
+async function saveTipsPayment(empId){
+  const e=(ST.employees||[]).find(x=>x.id===empId); if(!e)return;
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  const bank=parseFloat(g('tp-card'))||0, cash=parseFloat(g('tp-cash'))||0;
+  if(bank+cash<=0){toast('❌ '+L('Δεν υπάρχει ποσό','No amount'));return;}
+  const range=payPeriodRange(ST.payPeriod||'month');
+  try{
+    const {error}=await sb.from('payroll_payments').insert({tenant_id:curTenant(),employee_id:empId,
+      employee_name:e.name,pay_date:g('tp-date')||todayISO(),period_from:range.from,period_to:range.to,
+      kind:'tips',amount_bank:bank,amount_cash:cash,notes:g('tp-note')||null,created_by:ST.userEmail||''});
+    if(error)throw error;
+    closeModal(); toast('✅ '+L('Δόθηκαν','Paid')); keepScroll(renderPayroll);
+  }catch(err){toast('❌ '+(err.message||err));}
+}
+function payAllTips(){
+  const T=(el,en)=>L(el,en);
+  const range=payPeriodRange(ST.payPeriod||'month');
+  const money2=x=>money(Math.round(x*100)/100);
+  const td=computeTips(range);
+  const pend=[];
+  td.rows.forEach(r=>{
+    const paid=payrollPaidFor(r.id,range,'tips').total;
+    const tot=r.total; const left=tot-paid;
+    if(left<=0.005)return;
+    const ratio=tot>0?(left/tot):0;
+    pend.push({id:r.id,name:r.name,card:r.card*ratio,cash:r.cash*ratio,total:left});
+  });
+  if(!pend.length){toast('ℹ️ '+L('Δεν εκκρεμεί καμία πληρωμή','No pending payments'));return;}
+  const tCard=pend.reduce((t,p)=>t+p.card,0), tCash=pend.reduce((t,p)=>t+p.cash,0);
+  let rowsHtml='';
+  pend.forEach((p,i)=>{
+    rowsHtml+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)">'+
+      '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(p.name)+'</div>'+
+      '<div class="muted" style="font-size:11px">🏦 '+money2(p.card)+' · 💵 '+money2(p.cash)+'</div></div>'+
+      '<span style="font-size:14px;font-weight:600">'+money2(p.total)+'</span>'+
+      '<input type="hidden" id="ta-id-'+i+'" value="'+p.id+'">'+
+      '<input type="hidden" id="ta-name-'+i+'" value="'+esc(p.name)+'">'+
+      '<input type="hidden" id="ta-card-'+i+'" value="'+p.card.toFixed(2)+'">'+
+      '<input type="hidden" id="ta-cash-'+i+'" value="'+p.cash.toFixed(2)+'">'+
+    '</div>';
+  });
+  const html='<div style="display:flex;flex-direction:column;gap:10px">'+
+    '<div class="muted" style="font-size:12px">'+periodLabel(ST.payPeriod||'month',range)+' · '+pend.length+' '+T('άτομα','people')+'</div>'+
+    '<div style="max-height:45vh;overflow-y:auto">'+rowsHtml+'</div>'+
+    '<div style="background:var(--accent-bg);border-radius:8px;padding:12px">'+
+      '<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:13px;color:var(--accent)"><span>🏦 '+T('Από Λογαριασμό','From Account')+'</span><span>'+money2(tCard)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:13px;color:var(--accent)"><span>💵 '+T('Από Ταμείο','From Till')+'</span><span>'+money2(tCash)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;padding:6px 0 2px;margin-top:2px;border-top:1px solid var(--accent);font-size:15px;font-weight:700;color:var(--accent)"><span>'+T('Σύνολο','Total')+'</span><span>'+money2(tCard+tCash)+'</span></div>'+
+    '</div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημερομηνία','Date')+'</label><input id="ta-date" type="date" value="'+todayISO()+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+  '</div>';
+  showModal('🫙 '+T('Πληρωμή Φιλοδωρημάτων','Tips Payment'),html,T('Καταχώρηση','Record'),()=>saveAllTips(pend.length));
+}
+async function saveAllTips(count){
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  const range=payPeriodRange(ST.payPeriod||'month');
+  const date=g('ta-date')||todayISO();
+  const rows=[];
+  for(let i=0;i<count;i++){
+    const bank=parseFloat(g('ta-card-'+i))||0, cash=parseFloat(g('ta-cash-'+i))||0;
+    if(bank+cash<=0)continue;
+    rows.push({tenant_id:curTenant(),employee_id:g('ta-id-'+i),employee_name:g('ta-name-'+i),
+      pay_date:date,period_from:range.from,period_to:range.to,kind:'tips',
+      amount_bank:bank,amount_cash:cash,created_by:ST.userEmail||''});
+  }
+  if(!rows.length){toast('❌ '+L('Δεν υπάρχουν ποσά','No amounts'));return;}
+  try{const {error}=await sb.from('payroll_payments').insert(rows); if(error)throw error;
+    closeModal(); toast('✅ '+rows.length+' '+L('πληρωμές καταχωρήθηκαν','payments recorded')); keepScroll(renderPayroll);
+  }catch(err){toast('❌ '+(err.message||err));}
 }
 function computeSupplierBalances(){
   const sups=ST.suppliers||[]; const invs=ST.invoices||[]; const pays=ST.dailyPayments||[]; const credits=ST.supplierCredits||[];
@@ -6190,7 +6298,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·251';
+const BUILD='v'+'2026.07.04·252';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
