@@ -633,6 +633,14 @@ function pricesFor(pid){return ST.prices.filter(p=>p.product_id===pid);}
 
 function brandTitle(){return 'Cost IQ'+(ST.shopName?' · '+ST.shopName:'');}
 function goList(){ST.view='list';ST.prod=null;document.getElementById('backBtn').style.display='none';document.getElementById('hTitle').textContent=brandTitle();renderSection();}
+function keepScroll(fn){
+  const y=window.scrollY||window.pageYOffset||0;
+  const r=fn();
+  const restore=()=>{window.scrollTo(0,y);};
+  if(r&&typeof r.then==='function'){ r.then(()=>{requestAnimationFrame(restore);setTimeout(restore,120);}); }
+  else { requestAnimationFrame(restore); setTimeout(restore,120); }
+  return r;
+}
 function goSection(s){ST.section=s;ST.navOpen=false;if(s==='recipes')ST.homeView=false;if(s==='daily'){ST.dailyDate=null;ST.view='list';}renderSection();window.scrollTo(0,0);}
 function goHome(){ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';document.getElementById('hTitle').textContent=brandTitle();renderSection();window.scrollTo(0,0);}
 function toggleFullscreen(){
@@ -3973,7 +3981,7 @@ async function postInvoiceCredit(invId){
   // Το τιμολόγιο ήδη μετράει στο υπόλοιπο (invoiced). Το μαρκάρουμε ως καταχωρημένο στην καρτέλα.
   try{
     await sb.from('invoices').update({ledger_posted:true}).eq('id',invId);
-    toast('✅ '+L('Καταχωρήθηκε στην καρτέλα','Posted to ledger')); renderDaily();
+    toast('✅ '+L('Καταχωρήθηκε στην καρτέλα','Posted to ledger')); keepScroll(renderDaily);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function payInvoice(invId){
@@ -3998,7 +4006,7 @@ async function saveInvoicePayment(invId){
   try{
     await sb.from('supplier_payments').insert({tenant_id:curTenant(),supplier_id:inv.supplier_id,supplier_name:inv.supplier_name,pay_date:dailyDate(),amount:amount,payment_method:method,invoice_id:invId,notes:L('Πληρωμή τιμολογίου','Invoice payment')+(inv.invoice_number?' '+inv.invoice_number:''),created_by:ST.userEmail||''});
     await sb.from('invoices').update({ledger_posted:true}).eq('id',invId);
-    closeModal(); toast('✅ '+L('Πληρωμή καταχωρήθηκε','Payment recorded')); renderDaily();
+    closeModal(); toast('✅ '+L('Πληρωμή καταχωρήθηκε','Payment recorded')); keepScroll(renderDaily);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function creditNoteInvoice(invId){
@@ -4020,7 +4028,7 @@ async function saveInvoiceCreditNote(invId){
   try{
     await sb.from('supplier_credits').insert({tenant_id:curTenant(),supplier_id:inv.supplier_id,credit_date:dailyDate(),amount:amount,vat:0,reason:g('cni-reason')||L('Πιστωτικό τιμολογίου','Invoice credit note'),invoice_id:invId,created_by:ST.userEmail||''});
     await sb.from('invoices').update({ledger_posted:true}).eq('id',invId);
-    closeModal(); toast('✅ '+L('Πιστωτικό καταχωρήθηκε','Credit note recorded')); renderDaily();
+    closeModal(); toast('✅ '+L('Πιστωτικό καταχωρήθηκε','Credit note recorded')); keepScroll(renderDaily);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function delExpFromAnalysis(id,encName){
@@ -4262,12 +4270,12 @@ async function saveEmployee(id){
   try{
     if(id){const {error}=await sb.from('employees').update(row).eq('id',id); if(error)throw error;}
     else{row.created_by=ST.userEmail||''; const {error}=await sb.from('employees').insert(row); if(error)throw error;}
-    closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderPayroll();
+    closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved')); keepScroll(renderPayroll);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function delEmployee(id){
   if(!confirm(L('Διαγραφή εργαζομένου; Θα σβηστούν και οι ώρες του.','Delete employee? Their shifts will be removed too.')))return;
-  try{await sb.from('employees').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));renderPayroll();}
+  try{await sb.from('employees').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));keepScroll(renderPayroll);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 function payrollDetail(empId){
@@ -4380,12 +4388,12 @@ async function saveShift(id){
   try{
     if(id){const {error}=await sb.from('work_shifts').update(row).eq('id',id); if(error)throw error;}
     else{row.created_by=ST.userEmail||''; const {error}=await sb.from('work_shifts').insert(row); if(error)throw error;}
-    closeModal(); toast('✅ '+L('Καταχωρήθηκε','Recorded')); renderDaily();
+    closeModal(); toast('✅ '+L('Καταχωρήθηκε','Recorded')); keepScroll(renderDaily);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function delShift(id){
   if(!confirm(L('Διαγραφή καταχώρησης;','Delete entry?')))return;
-  try{await sb.from('work_shifts').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));renderDaily();}
+  try{await sb.from('work_shifts').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));keepScroll(renderDaily);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 function csCollect(){
@@ -4412,7 +4420,7 @@ function csPresetGR(){
 async function saveContribSetup(){
   const list=csCollect();
   try{const {error}=await sb.from('tenants').update({contrib_setup:JSON.stringify(list)}).eq('id',curTenant());
-    if(error)throw error; ST.contribSetup=list; toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderPayroll();
+    if(error)throw error; ST.contribSetup=list; toast('✅ '+L('Αποθηκεύτηκε','Saved')); keepScroll(renderPayroll);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function tipsLive(){
@@ -4435,7 +4443,7 @@ async function saveTips(silent){
   const data=collectTips();
   if(!Object.keys(data).length)return;
   try{const {error}=await sb.from('daily_close').upsert({tenant_id:curTenant(),close_date:dailyDate(),tips_data:JSON.stringify(data)},{onConflict:'tenant_id,close_date'});
-    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderDaily();}
+    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε','Saved')); keepScroll(renderDaily);}
   }catch(e){if(!silent)toast('❌ '+(e.message||e)); else throw e;}
 }
 function shiftTypeHtml(cur,s){
@@ -4916,7 +4924,7 @@ async function saveDailyClose(silent){
     points_data:JSON.stringify(ptData),
     created_by:ST.userEmail||''};
   try{const {error}=await sb.from('daily_close').upsert(row,{onConflict:'tenant_id,close_date'});
-    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderDaily();}
+    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε','Saved')); keepScroll(renderDaily);}
   }catch(e){if(!silent)toast('❌ '+(e.message||e)); else throw e;}
 }
 function zCollectLines(){
@@ -4975,7 +4983,7 @@ async function saveZClosing(silent){
     receipts_count:g('z-receipts'), voids:g('z-voids'),
     created_by:ST.userEmail||''};
   try{const {error}=await sb.from('z_closing').upsert(row,{onConflict:'tenant_id,z_date'});
-    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε το Z','Z Saved')); renderDaily();}
+    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε το Z','Z Saved')); keepScroll(renderDaily);}
   }catch(e){if(!silent)toast('❌ '+(e.message||e)); else throw e;}
 }
 async function scanZ(input){
@@ -5029,7 +5037,7 @@ async function saveDelivery(silent){
     data.push({name:name,gross:gross,vat:vat,net_val:net,commission:com,commission_amt:commission,net:gross-commission});
   });
   try{const {error}=await sb.from('daily_close').upsert({tenant_id:curTenant(),close_date:dailyDate(),delivery_data:JSON.stringify(data)},{onConflict:'tenant_id,close_date'});
-    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε','Saved')); renderDaily();}
+    if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε','Saved')); keepScroll(renderDaily);}
   }catch(e){if(!silent)toast('❌ '+(e.message||e)); else throw e;}
 }
 function addDailyExp(){
@@ -5069,14 +5077,14 @@ async function saveDailyExp(){
     const sup=(ST.suppliers||[]).find(x=>x.id===sid); const sname=sup?sup.name:'';
     try{
       await sb.from('supplier_payments').insert({tenant_id:curTenant(),supplier_id:sid,supplier_name:sname,pay_date:dailyDate(),amount:amount,payment_method:g('ne-pay'),notes:L('Πληρωμή από Έξοδα Ημέρας','Payment from Daily Expenses'),created_by:ST.userEmail||''});
-      closeModal(); toast('✅ '+L('Πληρωμή '+sname+' — μειώθηκε το υπόλοιπο','Payment recorded')); renderDaily();
+      closeModal(); toast('✅ '+L('Πληρωμή '+sname+' — μειώθηκε το υπόλοιπο','Payment recorded')); keepScroll(renderDaily);
     }catch(e){toast('❌ '+(e.message||e));}
     return;
   }
   const label=g('ne-label').trim();
   if(!label){toast('❌ '+L('Βάλε κατηγορία','Enter a category'));return;}
   try{const {error}=await sb.from('daily_expenses').insert({tenant_id:curTenant(),exp_date:dailyDate(),label:label,category:'other',payment_method:g('ne-pay'),amount:amount,created_by:ST.userEmail||''});
-    if(error)throw error; closeModal(); toast('✅ '+L('Προστέθηκε','Added')); renderDaily();
+    if(error)throw error; closeModal(); toast('✅ '+L('Προστέθηκε','Added')); keepScroll(renderDaily);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function paySupplier(sid){
@@ -5101,7 +5109,7 @@ async function saveSupplierPayment(sid,sname){
   const amount=parseFloat(g('sp-amount'));
   if(isNaN(amount)||amount<=0){toast('❌ '+L('Βάλε ποσό','Enter an amount'));return;}
   try{const {error}=await sb.from('supplier_payments').insert({tenant_id:curTenant(),supplier_id:sid,supplier_name:sname,pay_date:g('sp-date')||dailyDate(),amount:amount,payment_method:g('sp-pay'),notes:g('sp-note')||null,created_by:ST.userEmail||''});
-    if(error)throw error; closeModal(); toast('✅ '+L('Καταχωρήθηκε','Recorded')); if(ST.view==='supLedger')supplierLedger(sid); else renderDaily();
+    if(error)throw error; closeModal(); toast('✅ '+L('Καταχωρήθηκε','Recorded')); if(ST.view==='supLedger')keepScroll(()=>supplierLedger(sid)); else keepScroll(renderDaily);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function creditSupplier(sid){
@@ -5123,7 +5131,7 @@ async function saveSupplierCredit(sid,sname){
   const amount=parseFloat(g('sc-amount')); const vat=parseFloat(g('sc-vat'))||0;
   if(isNaN(amount)||amount<=0){toast('❌ '+L('Βάλε ποσό','Enter an amount'));return;}
   try{const {error}=await sb.from('supplier_credits').insert({tenant_id:curTenant(),supplier_id:sid,supplier_name:sname,credit_date:g('sc-date')||dailyDate(),amount:amount,vat:vat,reason:g('sc-reason')||null,created_by:ST.userEmail||''});
-    if(error)throw error; closeModal(); toast('✅ '+L('Καταχωρήθηκε','Recorded')); if(ST.view==='supLedger')supplierLedger(ST._ledgerSid); else renderDaily();
+    if(error)throw error; closeModal(); toast('✅ '+L('Καταχωρήθηκε','Recorded')); if(ST.view==='supLedger')keepScroll(()=>supplierLedger(ST._ledgerSid)); else keepScroll(renderDaily);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function supplierLedger(sid){
@@ -5271,7 +5279,7 @@ async function delSettlement(id,encName){
 }
 async function delDailyExp(id){
   if(!confirm(L('Διαγραφή εξόδου; Δεν αναιρείται.','Delete expense? This cannot be undone.')))return;
-  try{await sb.from('daily_expenses').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));renderDaily();}
+  try{await sb.from('daily_expenses').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));keepScroll(renderDaily);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 function editDailyExp(id){
@@ -5293,7 +5301,7 @@ async function saveEditExp(id){
   if(!label){toast('❌ '+L('Βάλε κατηγορία','Enter a category'));return;}
   if(isNaN(amount)){toast('❌ '+L('Βάλε ποσό','Enter an amount'));return;}
   try{const {error}=await sb.from('daily_expenses').update({label:label,amount:amount,payment_method:g('ee-pay')}).eq('id',id);
-    if(error)throw error; closeModal(); toast('✅ '+L('Ενημερώθηκε','Updated')); renderDaily();
+    if(error)throw error; closeModal(); toast('✅ '+L('Ενημερώθηκε','Updated')); keepScroll(renderDaily);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function editDayPay(id){
@@ -5315,12 +5323,12 @@ async function saveEditPay(id){
   const amount=parseFloat(g('ep-amount'));
   if(isNaN(amount)||amount<=0){toast('❌ '+L('Βάλε ποσό','Enter an amount'));return;}
   try{const {error}=await sb.from('supplier_payments').update({amount:amount,payment_method:g('ep-pay'),notes:g('ep-note')||null}).eq('id',id);
-    if(error)throw error; closeModal(); toast('✅ '+L('Ενημερώθηκε','Updated')); renderDaily();
+    if(error)throw error; closeModal(); toast('✅ '+L('Ενημερώθηκε','Updated')); keepScroll(renderDaily);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function delDayPay(id){
   if(!confirm(L('Διαγραφή πληρωμής; Θα ενημερωθεί και το υπόλοιπο του προμηθευτή.','Delete payment? Supplier balance will be updated.')))return;
-  try{await sb.from('supplier_payments').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));renderDaily();}
+  try{await sb.from('supplier_payments').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));keepScroll(renderDaily);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 async function dailyArchive(){
@@ -5560,7 +5568,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·229';
+const BUILD='v'+'2026.07.04·230';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
