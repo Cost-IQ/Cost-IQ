@@ -216,7 +216,11 @@ const EN_DEF={
   pdSumQty:'Total Quantity',pdSumSpend:'Total Spend',pdAvgPrice:'Avg Price',pdLast:'Last',pdChgE:'Change €',pdChgP:'Change %',pdHistH:'HISTORY',pdNoRec:'No records in this period',
   p9m:'9 Months',pCustom:'Custom',wUnitWord:'unit',rcSetYield:'set yield',wAll:'All',wAllM:'All',rcSaveAll:'Save all'
 };
-function persistNav(){try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,repsub:ST.repsub,adminShop:ST._adminShop,homeView:ST.homeView,lang:ST.lang}));}catch(e){}}
+function persistNav(){
+  if(ST._booting)return;
+  try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,repsub:ST.repsub,adminShop:ST._adminShop,homeView:ST.homeView,lang:ST.lang,
+    payView:ST.payView,expView:ST.expView,payPeriod:ST.payPeriod,payOffset:ST.payOffset,expPeriod:ST.expPeriod,ledgerSid:ST._ledgerSid,delLedgerName:ST._delLedgerName}));}catch(e){}
+}
 function rerenderCurrent(){ return keepScroll(_rerenderCurrent); }
 function _rerenderCurrent(){
   if(ST.section==='events')return renderEvents();
@@ -238,6 +242,8 @@ function _rerenderCurrent(){
   if(ST.section==='products'&&ST.view==='detail'&&ST.prod){ST.prod=ST.products.find(p=>p.id===ST.prod.id)||ST.prod;return drawProd();}
   if(ST.section==='recipes'&&ST.view==='detail'&&ST.recipe){ST.recipe=ST.recipes.find(r=>r.id===ST.recipe.id)||ST.recipe;return drawRecipe();}
   if(ST.section==='invoices'&&ST.inv){const fresh=ST.invoices.find(i=>i.id===ST.inv.id);if(fresh)return openInvoice(ST.inv.id);}
+  if(ST.section==='history'&&ST.repsub==='payroll')return renderStats();
+  if(ST.section==='history'&&ST.repsub==='expenses')return renderStats();
   renderSection();
 }
 function langFlag(){ // δείχνει τη σημαία της γλώσσας στην οποία θα πας
@@ -609,16 +615,21 @@ async function loadAll(){
   if(res[0].error&&!ST.products.length&&msgs.indexOf('products')>=0){
     c.innerHTML='<div class="err">Σφάλμα σύνδεσης: '+esc(res[0].error.message)+'</div>';return;
   }
+  ST._booting=true;
   try{const nav=JSON.parse(localStorage.getItem('ciq_nav')||localStorage.getItem('ciq_section')&&JSON.stringify({section:localStorage.getItem('ciq_section')})||'{}');
     if(nav.section)ST.section=nav.section;
     // (η γλώσσα φορτώνεται ανά χρήστη από το profile, όχι από localStorage)
     if(nav.kind)ST.kind=nav.kind; if(nav.okind)ST.okind=nav.okind; if(nav.invsub)ST.invsub=nav.invsub; if(nav.repsub)ST.repsub=nav.repsub;
+    if(nav.payView)ST.payView=nav.payView; if(nav.expView)ST.expView=nav.expView;
+    if(nav.payPeriod)ST.payPeriod=nav.payPeriod; if(nav.payOffset)ST.payOffset=nav.payOffset; if(nav.expPeriod)ST.expPeriod=nav.expPeriod;
+    if(nav.ledgerSid)ST._ledgerSid=nav.ledgerSid; if(nav.delLedgerName)ST._delLedgerName=nav.delLedgerName;
     ST.homeView=!!nav.homeView;
     if(nav.prod){const p=ST.products.find(x=>x.id===nav.prod);if(p){ST.prod=p;ST.section='products';ST.view='detail';}}
     else if(nav.recipe){const r=ST.recipes.find(x=>x.id===nav.recipe);if(r){ST.recipe=r;ST.section='recipes';ST.view='detail';}}
     else if(nav.inv){const i=ST.invoices.find(x=>x.id===nav.inv);if(i){ST.inv=i;ST.section='invoices';ST.view='detail';}}
     else if(nav.view&&nav.view!=='detail'){ST.view=nav.view;}
   }catch(e){}
+  ST._booting=false;
   rerenderCurrent();
 }
 function copySetup(){const ta=document.createElement('textarea');ta.value=ST.setupSql;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('✅ Αντιγράφηκε');}catch(e){}document.body.removeChild(ta);}
@@ -634,36 +645,38 @@ function pricesFor(pid){return ST.prices.filter(p=>p.product_id===pid);}
 
 function brandTitle(){return 'Cost IQ'+(ST.shopName?' · '+ST.shopName:'');}
 function goList(){ST.view='list';ST.prod=null;document.getElementById('backBtn').style.display='none';document.getElementById('hTitle').textContent=brandTitle();renderSection();}
+let _ksActive=null;
 function keepScroll(fn){
   const y=window.scrollY||window.pageYOffset||0;
   if(!y)return fn();
+  // Ακυρώνουμε προηγούμενο keepScroll αν τρέχει
+  if(_ksActive){_ksActive();_ksActive=null;}
   const c=document.getElementById('content');
   const hBefore=c?c.offsetHeight:0;
   if(c&&hBefore)c.style.minHeight=hBefore+'px';
-  let done=false;
   const restore=()=>{
-    if(done)return;
     const cur=window.scrollY||window.pageYOffset||0;
-    if(Math.abs(cur-y)>2){ window.scrollTo(0,y); document.documentElement.scrollTop=y; document.body.scrollTop=y; }
+    if(Math.abs(cur-y)>2){ window.scrollTo(0,y); }
   };
-  // Παρακολουθούμε το DOM: κάθε φορά που αλλάζει, επαναφέρουμε
   let obs=null;
   if(c&&window.MutationObserver){
-    obs=new MutationObserver(()=>{restore();});
+    obs=new MutationObserver(restore);
     obs.observe(c,{childList:true,subtree:true});
   }
-  const release=()=>{
-    done=true;
-    if(obs)obs.disconnect();
+  const timers=[];
+  const stop=()=>{
+    if(obs){obs.disconnect();obs=null;}
+    timers.forEach(clearTimeout);
     if(c)c.style.minHeight='';
+    if(_ksActive===stop)_ksActive=null;
   };
+  _ksActive=stop;
   let r;
-  try{ r=fn(); }catch(e){ release(); throw e; }
+  try{ r=fn(); }catch(e){ stop(); throw e; }
+  restore();
   requestAnimationFrame(restore);
-  [0,40,90,160,280,450,700].forEach(ms=>setTimeout(restore,ms));
-  const finish=()=>{ restore(); setTimeout(()=>{restore();release();},80); };
-  if(r&&typeof r.then==='function'){ r.then(()=>setTimeout(finish,120),()=>release()); }
-  else { setTimeout(finish,750); }
+  [10,40,80,150,250,400,600,900,1300].forEach(ms=>timers.push(setTimeout(restore,ms)));
+  timers.push(setTimeout(stop,1600));
   return r;
 }
 function goSection(s){ST.section=s;ST.navOpen=false;if(s==='recipes')ST.homeView=false;if(s==='daily'){ST.dailyDate=null;ST.view='list';}renderSection();window.scrollTo(0,0);}
@@ -3861,7 +3874,7 @@ function expPeriodRange(period){
   const fmt=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
   return {from:fmt(from),to:fmt(to)};
 }
-function drawExpenses(){
+function drawExpenses(){ persistNav();
   const c=(ST._expMount&&document.getElementById('exp-mount'))||document.getElementById('content'); const T=(el,en)=>L(el,en);
   const n=v=>(v!=null&&v!==''?(+v):0); const money2=x=>money(Math.round(x*100)/100);
   const D=ST.expData||{exps:[],pays:[],closes:[],invoices:[]};
@@ -4103,7 +4116,7 @@ function payPeriodRange(period){
   const fmt=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
   return {from:fmt(from),to:fmt(to)};
 }
-function drawPayroll(){
+function drawPayroll(){ persistNav();
   const c=document.getElementById('payroll-mount')||document.getElementById('content'); const T=(el,en)=>L(el,en);
   const n=v=>(v!=null&&v!==''?(+v):0); const money2=x=>money(Math.round(x*100)/100);
   const emps=ST.employees||[]; const shifts=ST.workShifts||[];
@@ -4112,7 +4125,7 @@ function drawPayroll(){
   h+='<div style="font-size:16px;font-weight:700;margin:0 2px 12px">👥 '+T('Μισθοδοσία','Payroll')+'</div>';
   // Pills: Σύνοψη / Εργαζόμενοι
   const vp=(id,label)=>'<div onclick="ST.payView=\''+id+'\';drawPayroll()" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:13px;'+(view===id?'background:var(--accent);color:#fff;font-weight:600':'border:1px solid var(--line);color:var(--muted)')+'">'+label+'</div>';
-  h+='<div style="display:flex;gap:6px;margin-bottom:8px">'+vp('summary','📊 '+T('Σύνοψη','Summary'))+vp('tips','🫙 Tips')+vp('efka','🏛️ '+T('Εισφορές','Contributions'))+'</div>'+
+  h+='<div style="display:flex;gap:6px;margin-bottom:8px">'+vp('summary','📊 '+T('Σύνοψη','Summary'))+vp('tips','🫙 '+T('Φιλοδωρήματα','Tips'))+vp('efka','🏛️ '+T('Εισφορές','Contributions'))+'</div>'+
     '<div style="display:flex;gap:6px;margin-bottom:14px">'+vp('staff','👤 '+T('Εργαζόμενοι','Staff'))+vp('contrib','⚙️ '+T('Ρύθμιση','Setup'))+'</div>';
 
   if(view==='efka'){
@@ -4207,7 +4220,7 @@ function drawPayroll(){
     });
     h+='</div>';
     h+='<div style="background:var(--accent-bg);border-radius:10px;padding:14px;margin-top:12px;display:flex;justify-content:space-between;align-items:center">'+
-      '<span style="font-size:13px;color:var(--accent)">'+T('Σύνολο Tips Περιόδου','Period Tips Total')+'</span>'+
+      '<span style="font-size:13px;color:var(--accent)">'+T('Σύνολο Φιλοδωρημάτων Περιόδου','Period Tips Total')+'</span>'+
       '<span style="font-size:19px;font-weight:800;color:var(--accent)">'+money2(td.grandTips)+'</span>'+
     '</div>';
     h+='</div></div>'; c.innerHTML=h; return;
@@ -4385,7 +4398,7 @@ function empFormHtml(e){
     '<div style="border-top:1px solid var(--line);padding-top:10px"><label style="font-size:12px;color:var(--muted)">'+T('Κατηγορία Εισφορών','Contribution Class')+'</label><select id="emp-contrib" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)"><option value="">'+T('— Καμία —','— None —')+'</option>'+
       ((ST.contribSetup||[]).map(x=>'<option value="'+esc(x.name)+'"'+(e.contrib_class===x.name?' selected':'')+'>'+esc(x.name)+' ('+x.emp_pct+'% / '+x.empr_pct+'%)</option>').join(''))+
     '</select></div>'+
-    '<div style="border-top:1px solid var(--line);padding-top:10px"><label style="font-size:12px;color:var(--muted)">'+T('Μονάδες Tips','Tip Units')+'</label><input id="emp-units" type="number" step="0.1" value="'+(e.tip_units!=null?e.tip_units:1)+'" placeholder="1" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px">'+
+    '<div style="border-top:1px solid var(--line);padding-top:10px"><label style="font-size:12px;color:var(--muted)">'+T('Μονάδες Φιλοδωρημάτων','Tip Units')+'</label><input id="emp-units" type="number" step="0.1" value="'+(e.tip_units!=null?e.tip_units:1)+'" placeholder="1" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px">'+
     '<div class="muted" style="font-size:11px;margin-top:4px">'+T('Πόσα μερίδια παίρνει από τη διανομή','How many shares from the distribution')+'</div></div>'+
   '</div>';
 }
@@ -4462,7 +4475,7 @@ function addShift(){
       '<div><label style="font-size:12px;color:var(--muted)">'+T('Ώρες','Hours')+' <span style="color:var(--bad)">*</span></label><input id="sh-hours" type="number" step="0.5" placeholder="8" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
       '<div><label style="font-size:12px;color:var(--muted)">'+T('Υπερωρίες','Over Time')+'</label><input id="sh-ot" type="number" step="0.5" placeholder="0" oninput="shiftLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '</div>'+
-    '<div class="muted" style="font-size:11px">'+T('Οι ώρες είναι υποχρεωτικές — χρησιμοποιούνται στη διανομή tips','Hours are required — used for tip distribution')+'</div>'+
+    '<div class="muted" style="font-size:11px">'+T('Οι ώρες είναι υποχρεωτικές — χρησιμοποιούνται στη διανομή φιλοδωρημάτων','Hours are required — used for tip distribution')+'</div>'+
     '<div id="sh-calc" style="background:var(--accent-bg);border-radius:8px;padding:10px;font-size:12px;color:var(--accent)">—</div>'+
   '</div>';
   showModal('➕ '+T('Προσθήκη Εργαζομένου','Add Staff'),html,T('Καταχώρηση','Add'),()=>saveShift(null));
@@ -4947,7 +4960,7 @@ function computeSupplierBalances(){
   bal.sort((a,b)=>b.owed-a.owed);
   ST.supplierBalances=bal;
 }
-function drawDaily(){
+function drawDaily(){ persistNav();
   const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
   const date=dailyDate();
   const cl=ST.dailyClose||{};
@@ -5152,15 +5165,15 @@ function drawDaily(){
       const sv=tipsD[key]||{};
       return (label?'<div style="font-size:12px;font-weight:600;color:var(--accent);margin:8px 0 6px">'+label+'</div>':'')+
       '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">'+
-        '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Tips Κάρτας','Card Tips')+'</label><input id="tip-'+key+'-card" type="number" step="0.01" value="'+(sv.card!=null&&(+sv.card)!==0?sv.card:'')+'" placeholder="0" oninput="tipsLive();autoSaveDay()" class="tip-in" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
-        '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Tips Μετρητών','Cash Tips')+'</label><input id="tip-'+key+'-cash" type="number" step="0.01" value="'+(sv.cash!=null&&(+sv.cash)!==0?sv.cash:'')+'" placeholder="0" oninput="tipsLive();autoSaveDay()" class="tip-in" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
+        '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Φιλοδωρήματα Κάρτας','Card Tips')+'</label><input id="tip-'+key+'-card" type="number" step="0.01" value="'+(sv.card!=null&&(+sv.card)!==0?sv.card:'')+'" placeholder="0" oninput="tipsLive();autoSaveDay()" class="tip-in" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
+        '<div style="min-width:0"><label style="font-size:11px;color:var(--muted)">'+T('Φιλοδωρήματα Μετρητών','Cash Tips')+'</label><input id="tip-'+key+'-cash" type="number" step="0.01" value="'+(sv.cash!=null&&(+sv.cash)!==0?sv.cash:'')+'" placeholder="0" oninput="tipsLive();autoSaveDay()" class="tip-in" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'+
       '</div>';
     };
-    h+='<div class="card" style="margin-top:14px"><h3 style="font-size:14px;margin:0 0 2px">🫙 '+T('Tips Ημέρας','Today\'s Tips')+'</h3>'+
+    h+='<div class="card" style="margin-top:14px"><h3 style="font-size:14px;margin:0 0 2px">🫙 '+T('Φιλοδωρήματα Ημέρας','Today\'s Tips')+'</h3>'+
       '<div class="muted" style="font-size:11px;margin-bottom:6px">'+T('Μοιράζονται βάσει ωρών και μονάδων','Shared by hours and units')+'</div>';
     if(hasShifts){ h+=tipRow('morning','🌅 '+T('Πρωί','Morning'))+tipRow('night','🌙 '+T('Βράδυ','Night')); }
     else { h+=tipRow('all',''); }
-    h+='<div style="display:flex;justify-content:space-between;padding:10px 0 2px;border-top:1px solid var(--line);margin-top:10px;font-size:14px;font-weight:700"><span>'+T('Σύνολο Tips','Total Tips')+'</span><span id="tips-total">'+money2(0)+'</span></div>'+
+    h+='<div style="display:flex;justify-content:space-between;padding:10px 0 2px;border-top:1px solid var(--line);margin-top:10px;font-size:14px;font-weight:700"><span>'+T('Σύνολο Φιλοδωρημάτων','Total Tips')+'</span><span id="tips-total">'+money2(0)+'</span></div>'+
     '</div>';
   }
 
@@ -5392,7 +5405,7 @@ async function scanZ(input){
     if(data.voids!=null)ST.dailyZ.voids=data.voids;
     if(data.vat_lines&&data.vat_lines.length)ST.dailyZ.vat_lines=data.vat_lines;
     toast('✅ '+L('Το Ζ διαβάστηκε — έλεγξε τα πεδία','Z read — check the fields'));
-    drawDaily();
+    keepScroll(drawDaily);
   }catch(e){toast('❌ '+(e.message||e)+' — '+L('έλεγξε το smart-worker','check smart-worker'));}
 }
 function delLive(){
@@ -5956,7 +5969,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·239';
+const BUILD='v'+'2026.07.04·243';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -6460,7 +6473,7 @@ async function removeAccessOwner(uid){
   if(!confirm(L('Αφαίρεση πρόσβασης owner από αυτό το μαγαζί;','Remove owner access from this shop?')))return;
   try{
     await sb.from('owner_shops').delete().eq('user_id',uid).eq('tenant_id',curTenant());
-    toast('✅ '+L('Αφαιρέθηκε','Removed')); openMembers();
+    toast('✅ '+L('Αφαιρέθηκε','Removed')); keepScroll(openMembers);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function saveShopFinance(){
@@ -6486,12 +6499,12 @@ async function addShopCharge(){
   if(amtS===null)return; const amt=parseFloat(amtS)||0;
   try{
     await sb.from('shop_charges').insert({tenant_id:tid,charge_date:iso,label:label||null,amount:amt,created_by:ST.userEmail||null});
-    toast('✅ '+L('Προστέθηκε','Added')); loadShopFinance();
+    toast('✅ '+L('Προστέθηκε','Added')); keepScroll(loadShopFinance);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function delShopCharge(id){
   if(!confirm(L('Διαγραφή χρέωσης;','Delete charge?')))return;
-  try{await sb.from('shop_charges').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));loadShopFinance();}
+  try{await sb.from('shop_charges').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));keepScroll(loadShopFinance);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 async function savePlan(){
@@ -6499,7 +6512,7 @@ async function savePlan(){
   const plan=document.getElementById('pl-plan').value;
   const until=document.getElementById('pl-until').value||null;
   try{const {error}=await sb.from('tenants').update({plan,paid_until:until}).eq('id',curTenant());if(error)throw error;
-    ST.plan=plan;ST.paidUntil=until;toast('✅ '+L('Αποθηκεύτηκε','Saved'));openMembers();
+    ST.plan=plan;ST.paidUntil=until;toast('✅ '+L('Αποθηκεύτηκε','Saved'));keepScroll(openMembers);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function addMonth(n){
@@ -6511,7 +6524,7 @@ async function addMonth(n){
   try{
     await sb.from('tenants').update({paid_until:until}).eq('id',curTenant());
     try{await sb.from('payments').insert({tenant_id:curTenant(),amount:fee,months:n||1,method:'χειροκίνητα'});}catch(e){}
-    ST.paidUntil=until;toast('✅ '+L('Πληρώθηκε — μέχρι','Paid — until')+' '+dGRs(until));openMembers();
+    ST.paidUntil=until;toast('✅ '+L('Πληρώθηκε — μέχρι','Paid — until')+' '+dGRs(until));keepScroll(openMembers);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function toggleTab(uid,tab){
@@ -6529,7 +6542,7 @@ async function deleteMember(uid,email){
     const r=await fetch(FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({action:'delete',user_id:uid})});
     const d=await r.json();
     if(d.error){toast('❌ '+d.error);return;}
-    toast('✅ '+L('Το μέλος διαγράφηκε','Member deleted')); openMembers();
+    toast('✅ '+L('Το μέλος διαγράφηκε','Member deleted')); keepScroll(openMembers);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 // ═══════════ ΘΕΣΕΙΣ ΕΡΓΑΣΙΑΣ (πρότυπα δικαιωμάτων) ═══════════
@@ -6560,7 +6573,7 @@ async function changeJob(uid,job){
   }
   try{await sb.from('profiles').update(upd).eq('id',uid);
     toast('✅ '+(jobLabel(job)||L('Θέση','Title'))+(j.tabs?(' · '+L('δικαιώματα ορίστηκαν','permissions set')):''));
-    openMembers();
+    keepScroll(openMembers);
   }catch(e){toast('❌ '+(e.message||e));openMembers();}
 }
 async function toggleGmailAccess(uid,val){
@@ -6574,7 +6587,7 @@ async function editMemberName(uid){
   const nm=prompt(L('Ονοματεπώνυμο:','Full name:'), m.full_name||'');
   if(nm===null)return;
   try{await sb.from('profiles').update({full_name:nm.trim()||null}).eq('id',uid);
-    toast('✅ '+L('Αποθηκεύτηκε','Saved')); openMembers();
+    toast('✅ '+L('Αποθηκεύτηκε','Saved')); keepScroll(openMembers);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function changeRole(uid,role){
@@ -6582,7 +6595,7 @@ async function changeRole(uid,role){
   if(role==='owner'&&ST.role!=='admin'){toast('❌ '+L('Μόνο ο διαχειριστής','Admin only'));openMembers();return;}
   if(uid===ST.myId){toast('❌ '+L('Δεν αλλάζεις τον δικό σου ρόλο','Cannot change your own role'));openMembers();return;}
   try{await sb.from('profiles').update({role}).eq('id',uid);
-    toast('✅ '+L('Ρόλος άλλαξε','Role changed')+': '+role); openMembers();
+    toast('✅ '+L('Ρόλος άλλαξε','Role changed')+': '+role); keepScroll(openMembers);
   }catch(e){toast('❌ '+(e.message||e));openMembers();}
 }
 async function addMember(){
@@ -6609,8 +6622,8 @@ async function addMember(){
     }
     btn.disabled=false;btn.innerHTML='➕ '+L('Δημιουργία μέλους','Create member');
     if(d.error){toast('❌ '+d.error);return;}
-    if(d.added_shop){toast('✅ '+L('Το μαγαζί προστέθηκε στον owner','Shop added to owner')); openMembers(); return;}
-    toast('✅ '+L('Το μέλος δημιουργήθηκε','Member created')); openMembers();
+    if(d.added_shop){toast('✅ '+L('Το μαγαζί προστέθηκε στον owner','Shop added to owner')); keepScroll(openMembers); return;}
+    toast('✅ '+L('Το μέλος δημιουργήθηκε','Member created')); keepScroll(openMembers);
   }catch(e){btn.disabled=false;btn.innerHTML='➕ '+L('Δημιουργία μέλους','Create member');toast('❌ '+(e.message||e));}
 }
 async function editShop(){
