@@ -217,7 +217,8 @@ const EN_DEF={
   p9m:'9 Months',pCustom:'Custom',wUnitWord:'unit',rcSetYield:'set yield',wAll:'All',wAllM:'All',rcSaveAll:'Save all'
 };
 function persistNav(){try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,repsub:ST.repsub,adminShop:ST._adminShop,homeView:ST.homeView,lang:ST.lang}));}catch(e){}}
-function rerenderCurrent(){
+function rerenderCurrent(){ return keepScroll(_rerenderCurrent); }
+function _rerenderCurrent(){
   if(ST.section==='events')return renderEvents();
   if(ST.view==='gmail')return gmailList();
   if(ST.view==='shops')return chooseShop();
@@ -635,13 +636,34 @@ function brandTitle(){return 'Cost IQ'+(ST.shopName?' · '+ST.shopName:'');}
 function goList(){ST.view='list';ST.prod=null;document.getElementById('backBtn').style.display='none';document.getElementById('hTitle').textContent=brandTitle();renderSection();}
 function keepScroll(fn){
   const y=window.scrollY||window.pageYOffset||0;
-  if(!y){return fn();}
-  const restore=()=>{ if(Math.abs((window.scrollY||0)-y)>2)window.scrollTo(0,y); };
-  const r=fn();
-  // Επαναφορά σε πολλαπλά σημεία: το περιεχόμενο μπορεί να χτίζεται async
-  [0,60,150,300,600].forEach(ms=>setTimeout(restore,ms));
+  if(!y)return fn();
+  const c=document.getElementById('content');
+  const hBefore=c?c.offsetHeight:0;
+  if(c&&hBefore)c.style.minHeight=hBefore+'px';
+  let done=false;
+  const restore=()=>{
+    if(done)return;
+    const cur=window.scrollY||window.pageYOffset||0;
+    if(Math.abs(cur-y)>2){ window.scrollTo(0,y); document.documentElement.scrollTop=y; document.body.scrollTop=y; }
+  };
+  // Παρακολουθούμε το DOM: κάθε φορά που αλλάζει, επαναφέρουμε
+  let obs=null;
+  if(c&&window.MutationObserver){
+    obs=new MutationObserver(()=>{restore();});
+    obs.observe(c,{childList:true,subtree:true});
+  }
+  const release=()=>{
+    done=true;
+    if(obs)obs.disconnect();
+    if(c)c.style.minHeight='';
+  };
+  let r;
+  try{ r=fn(); }catch(e){ release(); throw e; }
   requestAnimationFrame(restore);
-  if(r&&typeof r.then==='function'){ r.then(()=>{requestAnimationFrame(restore);[60,150,300].forEach(ms=>setTimeout(restore,ms));}); }
+  [0,40,90,160,280,450,700].forEach(ms=>setTimeout(restore,ms));
+  const finish=()=>{ restore(); setTimeout(()=>{restore();release();},80); };
+  if(r&&typeof r.then==='function'){ r.then(()=>setTimeout(finish,120),()=>release()); }
+  else { setTimeout(finish,750); }
   return r;
 }
 function goSection(s){ST.section=s;ST.navOpen=false;if(s==='recipes')ST.homeView=false;if(s==='daily'){ST.dailyDate=null;ST.view='list';}renderSection();window.scrollTo(0,0);}
@@ -5934,7 +5956,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·237';
+const BUILD='v'+'2026.07.04·239';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
