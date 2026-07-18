@@ -180,7 +180,7 @@ function lbl(key,def){
 let _searchT=null;
 function debSearch(fn){clearTimeout(_searchT);_searchT=setTimeout(fn,220);}
 const EN_DEF={
-  products:'Products',suppliers:'Suppliers',orders:'Orders',ocr:'Scan Invoice',invoices:'Invoices',recipes:'Recipes',agree:'Agreements',events:'Events',history:'Stats',daily:'Day',expenses:'Expenses',payroll:'Payroll',cashflow:'Cash Flow',
+  products:'Products',suppliers:'Suppliers',orders:'Orders',ocr:'Scan Invoice',invoices:'Invoices',recipes:'Recipes',agree:'Agreements',events:'Events',history:'Stats',daily:'Day',expenses:'Expenses',payroll:'Payroll',cashflow:'Cash Flow',vat:'VAT',
   kindBeverage:'Drinks',kindFood:'Food',kindSupplies:'Supplies',sale:'Sale',
   searchPh:'🔍 Search…',sortLabel:'Sort:',sortCat:'Category',sortSub:'Sub-Category',sortName:'Name (A→Z)',sortPrice:'Price (low→high)',
   wordProducts:'products',addBtn:'Add',noProducts:'No products',
@@ -1034,6 +1034,10 @@ function drawProd(){persistNav();
       '<div class="field"><label>'+lbl('pdSku','Όνομα προϊόντος (SKU)')+'</label><input id="pi-sku" type="text" value="'+esc(p.sku)+'"></div>'+
       '<div class="field"><label>'+lbl('pdKind','Τμήμα')+'</label><select id="pi-kind" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
         ['beverage','food','supplies'].map(k=>'<option value="'+k+'"'+(p.kind===k?' selected':'')+'>'+(k==='beverage'?'🍺 '+lbl('kindBeverage','Ποτά'):(k==='food'?'🍽️ '+lbl('kindFood','Τρόφιμα'):'📦 '+lbl('kindSupplies','Αναλώσιμα')))+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>'+lbl('pdCostGroup','Κατηγορία Κοστολόγησης')+'</label><select id="pi-cg" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
+        [['','— '+L('Αυτόματα από Τμήμα','Auto from Section')+' —'],['bev','🍸 '+L('Ποτά','Drinks')],['hot','☕ '+L('Ροφήματα','Beverages')],['food','🍽️ '+L('Φαγητό','Food')],['sup','📦 '+L('Αναλώσιμα','Supplies')]]
+          .map(x=>'<option value="'+x[0]+'"'+((p.cost_group||'')===x[0]?' selected':'')+'>'+x[1]+'</option>').join('')+'</select>'+
+        '<div class="muted" style="font-size:11px;margin-top:4px">'+L('Πού μετράει στην Κερδοφορία','Where it counts in Profit')+'</div></div>'+
       '<div class="field"><label>'+lbl('wCategory','Κατηγορία')+'</label><input id="pi-cat" type="text" value="'+esc(p.category||'')+'" placeholder="'+lbl('phCat','δικές σου κατηγορίες')+'"></div>'+
       '<div class="field"><label>'+lbl('wSubcat','Υποκατηγορία')+'</label><input id="pi-sub" type="text" value="'+esc(p.sub_category||'')+'" placeholder="'+lbl('phSub','δικές σου υποκατηγορίες')+'"></div>'+
       '<div class="field"><label>'+lbl('pdInvName','Όνομα Τιμολογίου (για OCR)')+'</label><input id="pi-inv" type="text" value="'+esc(p.invoice_name||'')+'" placeholder="'+lbl('phInv','λέξεις όπως στο τιμολόγιο')+'"></div>'+
@@ -1101,6 +1105,7 @@ async function saveAllProduct(pid){
   const sizeV=g('pi-size'); upd.size_ml=sizeV===''?null:parseFloat(sizeV);
   const packEl=document.getElementById('pi-pack'); if(packEl)upd.packaging=(packEl.value||'').trim()||null;
   const kindEl=document.getElementById('pi-kind'); if(kindEl)upd.kind=kindEl.value;
+  const cgEl=document.getElementById('pi-cg'); if(cgEl)upd.cost_group=cgEl.value||null;
   const unitEl=document.getElementById('pi-unit'); if(unitEl)upd.measure_unit=unitEl.value||null;
   const alcEl=document.getElementById('pi-alc');
   if(alcEl){const av=alcEl.value;upd.alcohol_pct=av===''?null:parseFloat(av);const ev=g('pi-efk');upd.efk=ev===''?null:parseFloat(ev);}
@@ -1133,6 +1138,7 @@ async function saveInfo(pid){
   const upd={sku,category:cat||null,sub_category:sub||null,invoice_name:inv||null,size_ml:size,notes:(notesEl?(notesEl.value||'').trim():'')||null};
   const packEl=document.getElementById('pi-pack'); if(packEl)upd.packaging=(packEl.value||'').trim()||null;
   const kindEl=document.getElementById('pi-kind'); if(kindEl)upd.kind=kindEl.value;
+  const cgEl=document.getElementById('pi-cg'); if(cgEl)upd.cost_group=cgEl.value||null;
   const unitEl=document.getElementById('pi-unit'); if(unitEl)upd.measure_unit=unitEl.value||null;
   const alcEl=document.getElementById('pi-alc');
   if(alcEl){                                   // beverage: αλκοόλ + ΕΦΚ (χειροκίνητο ή αυτόματο)
@@ -2083,12 +2089,13 @@ function renderStats(){
   const c=document.getElementById('content');
   const sub=ST.repsub||'overview';
   const b=(id,l)=>'<div class="tab '+(sub===id?'active':'')+'" style="flex:0 0 auto;padding:9px 14px;white-space:nowrap;text-align:center" onclick="setRepSub(\''+id+'\')">'+l+'</div>';
-  let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div class="tabs stat-tabs" style="margin-top:8px;flex-wrap:wrap;justify-content:center;gap:6px;padding-bottom:4px">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+(isPro()?b('expenses','📉 '+lbl('expenses','Έξοδα')):'')+(isPro()?b('payroll','👥 '+lbl('payroll','Μισθοδοσία')):'')+(isPro()?b('cashflow','🏦 '+lbl('cashflow','Ταμειακή Ροή')):'')+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+(ST.plan!=='basic'?b('menu','🍽️ '+lbl('sMenuEng','Menu Engineering')):'')+'</div></div></div>';
+  let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div class="tabs stat-tabs" style="margin-top:8px;flex-wrap:wrap;justify-content:center;gap:6px;padding-bottom:4px">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+(isPro()?b('expenses','📉 '+lbl('expenses','Έξοδα')):'')+(isPro()?b('payroll','👥 '+lbl('payroll','Μισθοδοσία')):'')+(isPro()?b('cashflow','🏦 '+lbl('cashflow','Ταμειακή Ροή')):'')+(isPro()?b('vat','🧾 '+lbl('vat','ΦΠΑ')):'')+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+(ST.plan!=='basic'?b('menu','🍽️ '+lbl('sMenuEng','Menu Engineering')):'')+'</div></div></div>';
   if(sub==='price')h+=priceDbView();
   else if(sub==='purchased')h+=purchasedView();
   else if(sub==='expenses')h+='<div id="exp-mount"></div>';
   else if(sub==='payroll')h+='<div id="payroll-mount"></div>';
   else if(sub==='cashflow')h+='<div id="cashflow-mount"></div>';
+  else if(sub==='vat')h+='<div id="vat-mount"></div>';
   else if(sub==='profit')h+=profitView();
   else if(sub==='menu')h+=menuEngView();
   else h+=overviewHtml();
@@ -2096,6 +2103,7 @@ function renderStats(){
   if(sub==='expenses')renderExpenses();
   if(sub==='payroll')renderPayroll();
   if(sub==='cashflow')renderCashflow();
+  if(sub==='vat')renderVat();
   if(sub==='profit')loadProfit();
   if(sub==='menu')loadMenuEng();
 }
@@ -2413,12 +2421,17 @@ function pLabel(){
 }
 // Αγορές από τα τιμολόγια (αυτόματα, ανά τμήμα)
 function autoPurchases(start,end){
-  const out={food:0,bev:0,sup:0};
+  const out={food:0,bev:0,hot:0,sup:0};
   (ST.history||[]).forEach(r=>{
     const d=(r.date||'').slice(0,10); if(d<start||d>end)return;
     const p=(ST.products||[]).find(x=>x.id===r.product_id);
-    const kind=p?p.kind:'beverage';
     const val=(parseFloat(r.price)||0)*(parseFloat(r.quantity)||0);
+    const g=p&&p.cost_group;            // αν έχει οριστεί ρητά, υπερισχύει
+    if(g==='hot'){out.hot+=val;return;}
+    if(g==='bev'){out.bev+=val;return;}
+    if(g==='food'){out.food+=val;return;}
+    if(g==='sup'){out.sup+=val;return;}
+    const kind=p?p.kind:'beverage';
     if(kind==='food')out.food+=val; else if(kind==='supplies')out.sup+=val; else out.bev+=val;
   });
   return out;
@@ -2434,7 +2447,7 @@ async function loadProfit(){
 function pfNum(id){const el=document.getElementById(id);return el?(parseFloat(el.value)||0):0;}
 // ── Αυτόματη άντληση δεδομένων περιόδου για την Κερδοφορία ──
 async function loadProfitSources(start,end){
-  const out={sales:null,wages:0,social:0,opexList:[],opex:0,cashUnrec:0,delNet:0,hasData:false};
+  const out={sales:null,wages:0,social:0,opexList:[],opex:0,cashUnrec:0,delNet:0,tillTotal:0,hasData:false};
   const n=v=>(v!=null&&v!==''?(+v):0);
   const T=(el,en)=>L(el,en);
   try{
@@ -2452,8 +2465,9 @@ async function loadProfitSources(start,end){
     const {data:cls}=await sb.from('daily_close').select('*').eq('tenant_id',curTenant()).gte('close_date',start).lte('close_date',end);
     (cls||[]).forEach(cl=>{
       out.cashUnrec+=n(cl.off_envelope);
+      out.tillTotal+=n(cl.cash_income)+n(cl.card_income)+n(cl.off_envelope);
       let dd=[]; try{dd=(typeof cl.delivery_data==='string')?JSON.parse(cl.delivery_data):(cl.delivery_data||[]);}catch(e){}
-      dd.forEach(d=>{out.delNet+=(n(d.net_val)||(n(d.gross)-n(d.vat)));});
+      dd.forEach(d=>{const g=n(d.gross)||(n(d.net_val)+n(d.vat));out.delNet+=(n(d.net_val)||(g-n(d.vat)));out.tillTotal+=g;});
     });
     if(cls&&cls.length)out.hasData=true;
     // Μισθοδοσία: μικτά + εργοδοτικές εισφορές
@@ -2493,26 +2507,64 @@ function pfAutoSales(A,which,p){
   if(inclVat){ const rate=(which==='food')?vf:vb; net=net*(1+rate/100); }
   return net;
 }
+function profitCrossCheck(R,A,p){
+  const T=(el,en)=>L(el,en);
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const money2=x=>money(Math.round(x*100)/100);
+  const inclVat=(p.sales_incl_vat!==false);
+  // Τι έγραψε ο χρήστης (μικτά, όπως τα βάζει)
+  const typed=n(p.sales_bev)+n(p.sales_hot)+n(p.sales_hot_low)+n(p.sales_food);
+  if(typed<=0)return '';
+  // Τι ξέρει το σύστημα: Ζ (καθαρό + ΦΠΑ) ή Ταμείο
+  let zGross=0;
+  if(A&&A.sales){ Object.keys(A.sales).forEach(r=>{ zGross+=A.sales[r]*(1+(+r)/100); }); }
+  const tillGross=n(A&&A.tillTotal);
+  const ref=zGross>0?zGross:tillGross;
+  const src=zGross>0?T('Ζ','Z'):T('Ταμείο','Till');
+  if(ref<=0)return '';
+  const diff=typed-ref;
+  const ok=Math.abs(diff)<Math.max(1,ref*0.005);   // ανοχή 0,5%
+  const col=ok?'var(--ok)':'#B8860B';
+  const bg=ok?'var(--ok-bg,#E6F7EC)':'#FFF7E6';
+  return '<div style="background:'+bg+';border-radius:8px;padding:10px 12px;margin-top:10px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center">'+
+      '<span style="font-size:12px;color:'+col+'">'+(ok?('✓ '+T('Συμφωνεί με το','Matches')+' '+src):('⚠ '+T('Διαφορά από το','Differs from')+' '+src))+'</span>'+
+      '<span style="font-size:14px;font-weight:700;color:'+col+'">'+(ok?money2(0):((diff>0?'+':'−')+money2(Math.abs(diff))))+'</span>'+
+    '</div>'+
+    '<div style="display:flex;gap:14px;margin-top:5px;font-size:11px;color:var(--muted)">'+
+      '<span>'+T('Έγραψες','Entered')+' '+money2(typed)+'</span>'+
+      '<span>'+src+' '+money2(ref)+'</span>'+
+    '</div>'+
+  '</div>';
+}
 function calcProfit(p){
   const inclVat=!!p.sales_incl_vat;
   const vf=(parseFloat(p.vat_food)||13)/100, vb=(parseFloat(p.vat_bev)||24)/100;
+  const vh=(p.vat_hot!=null&&p.vat_hot!=='')?(parseFloat(p.vat_hot)/100):vb;
+  const vhl=(p.vat_hot_low!=null&&p.vat_hot_low!=='')?(parseFloat(p.vat_hot_low)/100):vf;
   const A=ST.pfAuto||{};
   const use=(manual,auto)=>((manual!=null&&manual!=='')?(parseFloat(manual)||0):(auto||0));
-  const sfRaw=use(p.sales_food,pfAutoSales(A,'food',p));
-  const sbRaw=use(p.sales_bev,pfAutoSales(A,'bev',p));
+  const sfRaw=parseFloat(p.sales_food)||0;      // Φαγητό 13%
+  const sbRaw=parseFloat(p.sales_bev)||0;       // Ποτά 24%
+  const shRaw=parseFloat(p.sales_hot)||0;       // Ροφήματα 24% (σερβιριζόμενα)
+  const shlRaw=parseFloat(p.sales_hot_low)||0;  // Ροφήματα 13% (πακέτο)
   const cashRaw=use(p.sales_cash_unrec,A.cashUnrec);
   // Καθαρές πωλήσεις (χωρίς ΦΠΑ)
   const sf=inclVat?sfRaw/(1+vf):sfRaw;
   const sb=inclVat?sbRaw/(1+vb):sbRaw;
+  const shSrv=inclVat?shRaw/(1+vh):shRaw;
+  const shPkg=inclVat?shlRaw/(1+vhl):shlRaw;
+  const sh=shSrv+shPkg;               // Ροφήματα: και οι δύο συντελεστές μαζί
   const cash=inclVat?cashRaw/(1+vb):cashRaw;   // μετρητά: υποθέτουμε συντελεστή ποτών
-  const salesDecl=sf+sb;              // δηλωμένες (καθαρές)
+  const salesDecl=sf+sb+sh;           // δηλωμένες (καθαρές)
   const salesReal=salesDecl+cash;     // πραγματικές (καθαρές)
   // Αγορές
   const auto=autoPurchases(p.period_start,p.period_end);
   const pFood=(p.purch_food_manual!=null&&p.purch_food_manual!=='')?parseFloat(p.purch_food_manual):auto.food;
   const pBev=(p.purch_bev_manual!=null&&p.purch_bev_manual!=='')?parseFloat(p.purch_bev_manual):auto.bev;
+  const pHot=(p.purch_hot_manual!=null&&p.purch_hot_manual!=='')?parseFloat(p.purch_hot_manual):auto.hot;
   const pSup=(p.purch_sup_manual!=null&&p.purch_sup_manual!=='')?parseFloat(p.purch_sup_manual):auto.sup;
-  const purchases=pFood+pBev+pSup;
+  const purchases=pFood+pBev+pHot+pSup;
   // Προσωπικό & λειτουργικά
   const labour=use(p.wages,A.wages)+use(p.social,A.social);
   const opex=(parseFloat(p.rent)||0)+(parseFloat(p.utilities)||0)+use(p.other_expenses,A.opex);
@@ -2529,11 +2581,12 @@ function calcProfit(p){
       opex, np, npPct:sales?np/sales*100:0,
       taxPct, tax, after, afterPct:sales?after/sales*100:0,
       prime:pc, primePct:sales?pc/sales*100:0,
-      foodPct:sf?pFood/(inclVat?sf:sf)*100:0,
-      bevPct:sb?pBev/(inclVat?sb:sb)*100:0
+      foodPct:sf?pFood/sf*100:0,
+      bevPct:sb?pBev/sb*100:0,
+      hotPct:sh?pHot/sh*100:0
     };
   };
-  return {decl:mk(salesDecl), real:mk(salesReal), sf, sb, cash, pFood, pBev, pSup, auto, hasCash:cash>0};
+  return {decl:mk(salesDecl), real:mk(salesReal), sf, sb, sh, shSrv, shPkg, cash, pFood, pBev, pHot, pSup, auto, hasCash:cash>0};
 }
 function profitResultsHtml(R){
   const D=R.decl, RE=R.real;
@@ -2561,8 +2614,9 @@ function profitResultsHtml(R){
   let h=cardP('📊 '+T('Δηλωμένη','Declared'),D,'');
   if(R.hasCash)h+=cardP('💵 '+T('Πραγματική (με μετρητά)','Real (incl. cash)'),RE,T('+ μετρητά','+ cash'));
   h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">📈 '+T('Δείκτες','Ratios')+'</h3>'+
-    '<div class="kv"><span class="k">Food Cost</span><span class="v" style="color:'+badge(D.foodPct,30,35)+'">'+pct(D.foodPct)+' <span style="font-size:11px;color:var(--muted)">(≤30%)</span></span></div>'+
-    '<div class="kv"><span class="k">Beverage Cost</span><span class="v" style="color:'+badge(D.bevPct,25,30)+'">'+pct(D.bevPct)+' <span style="font-size:11px;color:var(--muted)">(≤25%)</span></span></div>'+
+    '<div class="kv"><span class="k">🍸 '+T('Κόστος Ποτών','Drinks Cost')+'</span><span class="v" style="color:'+badge(D.bevPct,25,30)+'">'+pct(D.bevPct)+' <span style="font-size:11px;color:var(--muted)">(≤25%)</span></span></div>'+
+    '<div class="kv"><span class="k">☕ '+T('Κόστος Ροφημάτων','Beverages Cost')+'</span><span class="v" style="color:'+badge(D.hotPct,25,30)+'">'+pct(D.hotPct)+' <span style="font-size:11px;color:var(--muted)">(≤25%)</span></span></div>'+
+    '<div class="kv"><span class="k">🍽️ '+T('Κόστος Φαγητού','Food Cost')+'</span><span class="v" style="color:'+badge(D.foodPct,30,35)+'">'+pct(D.foodPct)+' <span style="font-size:11px;color:var(--muted)">(≤30%)</span></span></div>'+
     '<div class="kv"><span class="k">'+T('Προσωπικό','Labour')+'</span><span class="v" style="color:'+badge(D.labourPct,30,35)+'">'+pct(D.labourPct)+' <span style="font-size:11px;color:var(--muted)">(≤30%)</span></span></div>'+
   '</div>';
   return h;
@@ -2595,10 +2649,14 @@ function drawProfit(){
   h+='<div class="card" style="margin:0"><h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">✏️ '+T('Στοιχεία Περιόδου','Period Data')+'</h3>'+
     '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;cursor:pointer"><input type="checkbox" id="pf-vat" '+(p.sales_incl_vat!==false?'checked':'')+' onchange="pfLive()"> '+T('Οι πωλήσεις είναι ΜΕ ΦΠΑ','Sales include VAT')+'</label>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
-      fa('pf-sf',T('Πωλήσεις Φαγητό','Food Sales'),p.sales_food,pfAutoSales(A,'food',p),T('από Ζ','from Z'))+
-      fa('pf-sb',T('Πωλήσεις Ποτά','Beverage Sales'),p.sales_bev,pfAutoSales(A,'bev',p),T('από Ζ','from Z'))+
+      f('pf-sb','🍸 '+T('Ποτά','Drinks')+' '+(p.vat_bev!=null?p.vat_bev:24)+'%',p.sales_bev)+
+      f('pf-sf','🍽️ '+T('Φαγητό','Food')+' '+(p.vat_food!=null?p.vat_food:13)+'%',p.sales_food)+
+      f('pf-sh','☕ '+T('Ροφήματα Σερβιριζόμενα','Beverages Served')+' '+(p.vat_hot!=null?p.vat_hot:24)+'%',p.sales_hot)+
+      f('pf-shl','🥤 '+T('Ροφήματα σε Πακέτο','Beverages Takeaway')+' '+(p.vat_hot_low!=null?p.vat_hot_low:13)+'%',p.sales_hot_low)+
+      f('pf-vb','ΦΠΑ '+T('Ποτών','Drinks')+' %',p.vat_bev!=null?p.vat_bev:24)+
       f('pf-vf','ΦΠΑ '+T('Φαγητού','Food')+' %',p.vat_food!=null?p.vat_food:13)+
-      f('pf-vb','ΦΠΑ '+T('Ποτών','Beverage')+' %',p.vat_bev!=null?p.vat_bev:24)+
+      f('pf-vh','ΦΠΑ '+T('Ροφημάτων Σερβ.','Beverages Served')+' %',p.vat_hot!=null?p.vat_hot:24)+
+      f('pf-vhl','ΦΠΑ '+T('Ροφημάτων Πακέτο','Beverages Takeaway')+' %',p.vat_hot_low!=null?p.vat_hot_low:13)+
       fa('pf-w',T('Μισθοί','Wages'),p.wages,A.wages||0,T('από Μισθοδοσία','from Payroll'))+
       fa('pf-soc','ΙΚΑ / '+T('Εισφορές','Contributions'),p.social,A.social||0,T('από Μισθοδοσία','from Payroll'))+
       f('pf-rent',T('Ενοίκιο','Rent'),p.rent)+
@@ -2609,11 +2667,13 @@ function drawProfit(){
       f('pf-tax','🧾 '+T('Φόρος % (προαιρετικό)','Tax % (optional)'),p.tax_pct)+
     '</div>'+
     '<div style="font-size:11px;color:var(--muted);margin:10px 0 4px">'+T('Αγορές (Αυτόματα από Τιμολόγια + Χειροκίνητες Αγορές — άφησε κενό)','Purchases (Auto from Invoices + Manual Purchases — leave empty)')+':</div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
-      f('pf-pf',T('Φαγητό','Food'),p.purch_food_manual,money(R.auto.food))+
-      f('pf-pb',T('Ποτά','Beverage'),p.purch_bev_manual,money(R.auto.bev))+
-      f('pf-ps',T('Αναλώσιμα','Supplies'),p.purch_sup_manual,money(R.auto.sup))+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+      f('pf-pb','🍸 '+T('Ποτά','Drinks'),p.purch_bev_manual,money(R.auto.bev))+
+      f('pf-ph','☕ '+T('Ροφήματα','Beverages'),p.purch_hot_manual,money(R.auto.hot))+
+      f('pf-pf','🍽️ '+T('Φαγητό','Food'),p.purch_food_manual,money(R.auto.food))+
+      f('pf-ps','📦 '+T('Αναλώσιμα','Supplies'),p.purch_sup_manual,money(R.auto.sup))+
     '</div>'+
+    profitCrossCheck(R,A,p)+
     '<div onclick="pfToggleReal()" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px;margin-top:8px;border-top:1px solid var(--line);cursor:pointer">'+
       '<div><div style="font-size:12px">'+T('Μετρητά στον Τζίρο','Cash in Turnover')+'</div><div class="muted" style="font-size:10px">'+T('επηρεάζει το Prime Cost','affects Prime Cost')+'</div></div>'+
       '<div style="position:relative;width:46px;height:26px;background:'+(ST.pfUseReal!==false?'var(--accent)':'var(--line)')+';border-radius:26px;transition:.2s;flex:0 0 auto"><div style="position:absolute;height:20px;width:20px;left:'+(ST.pfUseReal!==false?'23px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>'+
@@ -2675,13 +2735,13 @@ async function delProfitPeriod(start,end){
 function pfLive(){
   const p=ST.pf||{};
   const cb=document.getElementById('pf-vat'); if(cb)p.sales_incl_vat=cb.checked;
-  p.sales_food=pfNum('pf-sf'); p.sales_bev=pfNum('pf-sb');
-  p.vat_food=pfNum('pf-vf')||13; p.vat_bev=pfNum('pf-vb')||24;
+  p.sales_food=pfNum('pf-sf'); p.sales_bev=pfNum('pf-sb'); p.sales_hot=pfNum('pf-sh'); p.sales_hot_low=pfNum('pf-shl');
+  p.vat_food=pfNum('pf-vf')||13; p.vat_bev=pfNum('pf-vb')||24; p.vat_hot=pfNum('pf-vh')||24; p.vat_hot_low=pfNum('pf-vhl')||13;
   p.wages=pfNum('pf-w'); p.social=pfNum('pf-soc');
   p.rent=pfNum('pf-rent'); p.utilities=pfNum('pf-util'); p.other_expenses=pfNum('pf-oth');
   p.sales_cash_unrec=pfNum('pf-cash'); p.tax_pct=pfNum('pf-tax');
   const gv=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?parseFloat(el.value):null;};
-  p.purch_food_manual=gv('pf-pf'); p.purch_bev_manual=gv('pf-pb'); p.purch_sup_manual=gv('pf-ps');
+  p.purch_food_manual=gv('pf-pf'); p.purch_bev_manual=gv('pf-pb'); p.purch_hot_manual=gv('pf-ph'); p.purch_sup_manual=gv('pf-ps');
   ST.pf=p; refreshProfitNumbers();   // ΜΟΝΟ τα νούμερα — δεν ξαναφτιάχνει την οθόνη
 }
 function refreshProfitNumbers(){
@@ -2693,10 +2753,10 @@ async function saveProfit(){
   pfLive(); const p=ST.pf;
   const {start,end}=pPeriodDates();
   const row={tenant_id:curTenant(),period_start:start,period_end:end,label:pLabel(),
-    sales_food:p.sales_food||0,sales_bev:p.sales_bev||0,sales_incl_vat:!!p.sales_incl_vat,
-    vat_food:p.vat_food||13,vat_bev:p.vat_bev||24,sales_cash_unrec:p.sales_cash_unrec||0,
+    sales_food:p.sales_food||0,sales_bev:p.sales_bev||0,sales_hot:p.sales_hot||0,sales_hot_low:p.sales_hot_low||0,sales_incl_vat:!!p.sales_incl_vat,
+    vat_food:p.vat_food||13,vat_bev:p.vat_bev||24,vat_hot:p.vat_hot||24,vat_hot_low:p.vat_hot_low||13,sales_cash_unrec:p.sales_cash_unrec||0,
     wages:p.wages||0,social:p.social||0,rent:p.rent||0,utilities:p.utilities||0,other_expenses:p.other_expenses||0,tax_pct:p.tax_pct||0,
-    purch_food_manual:p.purch_food_manual,purch_bev_manual:p.purch_bev_manual,purch_sup_manual:p.purch_sup_manual};
+    purch_food_manual:p.purch_food_manual,purch_bev_manual:p.purch_bev_manual,purch_hot_manual:p.purch_hot_manual,purch_sup_manual:p.purch_sup_manual};
   try{const {error}=await sb.from('profit_periods').upsert(row,{onConflict:'tenant_id,period_start,period_end'});
     if(error)throw error; toast('✅ '+L('Αποθηκεύτηκε','Saved'));
   }catch(e){toast('❌ '+(e.message||e));}
@@ -6382,7 +6442,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·253';
+const BUILD='v'+'2026.07.04·256';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
