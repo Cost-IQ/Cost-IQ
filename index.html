@@ -3788,7 +3788,7 @@ async function renderDaily(){
   // Όλα τα τιμολόγια (για σωστό υπολογισμό υπολοίπων)
   try{const {data:allInv}=await sb.from('invoices').select('*').eq('tenant_id',curTenant());ST.invoices=allInv||ST.invoices||[];}catch(e){}
   // Προσωπικό (εργαζόμενοι + ώρες ημέρας)
-  try{const {data:emps}=await sb.from('employees').select('*').eq('tenant_id',curTenant()).eq('active',true).order('name');ST.employees=emps||[];}catch(e){ST.employees=[];}
+  try{const {data:emps}=await sb.from('employees').select('*').eq('tenant_id',curTenant()).order('name');ST.employees=(emps||[]).filter(x=>x.active!==false);}catch(e){ST.employees=[];}
   try{const {data:wsh}=await sb.from('work_shifts').select('*').eq('tenant_id',curTenant()).eq('work_date',date);ST.dayShifts=wsh||[];}catch(e){ST.dayShifts=[];}
   try{const {data:tn}=await sb.from('tenants').select('contrib_setup').eq('id',curTenant()).single();
     let cs2=tn&&tn.contrib_setup; if(typeof cs2==='string')cs2=JSON.parse(cs2); ST.contribSetup=cs2||[];
@@ -4258,7 +4258,7 @@ async function saveEmployee(id){
     daily_wage:parseFloat(g('emp-wage'))||0,ot_mode:g('emp-otmode')||'amount',
     ot_value:parseFloat(g('emp-otval'))||0,tip_units:parseFloat(g('emp-units'))||1,
     contrib_class:g('emp-contrib')||null,
-    pay_type:g('emp-paytype')||'shift', hourly_rate:parseFloat(g('emp-hourly'))||0};
+    pay_type:g('emp-paytype')||'shift', hourly_rate:parseFloat(g('emp-hourly'))||0, active:true};
   try{
     if(id){const {error}=await sb.from('employees').update(row).eq('id',id); if(error)throw error;}
     else{row.created_by=ST.userEmail||''; const {error}=await sb.from('employees').insert(row); if(error)throw error;}
@@ -4728,6 +4728,11 @@ function drawDaily(){
 
   // ── ΠΡΟΣΩΠΙΚΟ ΗΜΕΡΑΣ ──
   const dayEmps=(ST.employees||[]); const dayShifts=(ST.dayShifts||[]);
+  if(!dayEmps.length){
+    h+='<div class="card" style="margin-top:14px"><h3 style="font-size:14px;margin:0 0 6px">👥 '+T('Προσωπικό Ημέρας','Today\'s Staff')+'</h3>'+
+      '<div class="muted" style="font-size:12px">'+T('Δεν έχεις εργαζόμενους ακόμα. Πρόσθεσέ τους από Στατιστικά → Μισθοδοσία → Εργαζόμενοι.','No employees yet. Add them from Stats → Payroll → Staff.')+'</div>'+
+    '</div>';
+  }
   if(dayEmps.length){
     const shTotal=dayShifts.reduce((s,x)=>s+n(x.total_amount),0);
     h+='<div class="card" style="margin-top:14px"><h3 style="font-size:14px;margin:0 0 2px">👥 '+T('Προσωπικό Ημέρας','Today\'s Staff')+'</h3>'+
@@ -5555,7 +5560,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·228';
+const BUILD='v'+'2026.07.04·229';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
