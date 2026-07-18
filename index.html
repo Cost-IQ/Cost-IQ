@@ -635,10 +635,13 @@ function brandTitle(){return 'Cost IQ'+(ST.shopName?' · '+ST.shopName:'');}
 function goList(){ST.view='list';ST.prod=null;document.getElementById('backBtn').style.display='none';document.getElementById('hTitle').textContent=brandTitle();renderSection();}
 function keepScroll(fn){
   const y=window.scrollY||window.pageYOffset||0;
+  if(!y){return fn();}
+  const restore=()=>{ if(Math.abs((window.scrollY||0)-y)>2)window.scrollTo(0,y); };
   const r=fn();
-  const restore=()=>{window.scrollTo(0,y);};
-  if(r&&typeof r.then==='function'){ r.then(()=>{requestAnimationFrame(restore);setTimeout(restore,120);}); }
-  else { requestAnimationFrame(restore); setTimeout(restore,120); }
+  // Επαναφορά σε πολλαπλά σημεία: το περιεχόμενο μπορεί να χτίζεται async
+  [0,60,150,300,600].forEach(ms=>setTimeout(restore,ms));
+  requestAnimationFrame(restore);
+  if(r&&typeof r.then==='function'){ r.then(()=>{requestAnimationFrame(restore);[60,150,300].forEach(ms=>setTimeout(restore,ms));}); }
   return r;
 }
 function goSection(s){ST.section=s;ST.navOpen=false;if(s==='recipes')ST.homeView=false;if(s==='daily'){ST.dailyDate=null;ST.view='list';}renderSection();window.scrollTo(0,0);}
@@ -1003,7 +1006,7 @@ async function saveCosting(pid){
   const btn=document.getElementById('co-save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{await sb.from('products').update({measure,retail_price:retail,waste_pct:waste}).eq('id',pid);
     const p=ST.products.find(x=>x.id===pid);if(p){p.measure=measure;p.retail_price=retail;p.waste_pct=waste;}ST.prod=p;
-    btn.disabled=false;toast('✅ Αποθηκεύτηκε');drawProd();
+    btn.disabled=false;toast('✅ Αποθηκεύτηκε');keepScroll(drawProd);
   }catch(e){btn.disabled=false;toast('❌ '+(e.message||e));}
 }
 async function saveCostingFood(pid){
@@ -1011,7 +1014,7 @@ async function saveCostingFood(pid){
   const btn=document.getElementById('co-save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{await sb.from('products').update({units}).eq('id',pid);
     const p=ST.products.find(x=>x.id===pid);if(p)p.units=units;ST.prod=p;
-    btn.disabled=false;toast('✅ Αποθηκεύτηκε');drawProd();
+    btn.disabled=false;toast('✅ Αποθηκεύτηκε');keepScroll(drawProd);
   }catch(e){btn.disabled=false;toast('❌ '+(e.message||e));}
 }
 
@@ -1080,7 +1083,7 @@ async function saveInfo(pid){
     ST.prod=p;_canon=null; if(upd.kind)ST.kind=upd.kind;
     btn.disabled=false;btn.textContent='Αποθήκευση';
     document.getElementById('hTitle').textContent=sku;
-    toast('✅ Αποθηκεύτηκε'+(upd.efk!=null?(' · ΕΦΚ €'+upd.efk.toFixed(2)):''));drawProd();
+    toast('✅ Αποθηκεύτηκε'+(upd.efk!=null?(' · ΕΦΚ €'+upd.efk.toFixed(2)):''));keepScroll(drawProd);
   }catch(e){btn.disabled=false;btn.textContent='Αποθήκευση';toast('❌ '+(e.message||e));}
 }
 async function delProduct(pid){
@@ -1237,7 +1240,7 @@ async function changeRecipeSub(rid,val){
   }
   try{await sb.from('recipes').update({sub_category:val||null}).eq('id',rid);
     if(r)r.sub_category=val||null; ST.recipe=r;
-    toast('✅ '+L('Αποθηκεύτηκε','Saved')); drawRecipe();
+    toast('✅ '+L('Αποθηκεύτηκε','Saved')); keepScroll(drawRecipe);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function drawRecipe(){persistNav();
@@ -1380,7 +1383,7 @@ async function saveRecipe(rid){
   const btn=document.getElementById('rc-save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{await sb.from('recipes').update(upd).eq('id',rid);
     if(r)Object.assign(r,upd);ST.recipe=r;
-    btn.disabled=false;toast('✅ '+L('Όλα αποθηκεύτηκαν','All saved'));drawRecipe();
+    btn.disabled=false;toast('✅ '+L('Όλα αποθηκεύτηκαν','All saved'));keepScroll(drawRecipe);
   }catch(e){btn.disabled=false;toast('❌ '+(e.message||e));}
 }
 async function newRecipe(isHome){
@@ -1514,7 +1517,7 @@ async function saveAgreementProduct(id){
   const upd={agreement_price:isNaN(price)?null:price,target:isNaN(target)?null:target,rebate:isNaN(rebate)?null:(rebate>1?rebate/100:rebate),marketing:isNaN(mkt)?null:mkt};
   try{await sb.from('agreements').update(upd).eq('id',id);
     const a=ST.agreements.find(x=>x.id===id);if(a)Object.assign(a,upd);
-    toast('✅ Αποθηκεύτηκε');renderAgreements();
+    toast('✅ Αποθηκεύτηκε');keepScroll(renderAgreements);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function addAgreementProduct(blockId){
@@ -1523,7 +1526,7 @@ async function addAgreementProduct(blockId){
   const pid=matchProduct(name.trim());const prod=pid?ST.products.find(x=>x.id===pid):null;
   const payload={tenant_id:tid,block_id:blockId,sku:name.trim(),excise_duty:prod?parseFloat(prod.efk)||null:null};
   try{const {data,error}=await sb.from('agreements').insert(payload).select().single();
-    if(error)throw error;ST.agreements.push(data);toast('✅ Προστέθηκε');renderAgreements();
+    if(error)throw error;ST.agreements.push(data);toast('✅ Προστέθηκε');keepScroll(renderAgreements);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function delAgreementProduct(id){
@@ -1546,7 +1549,7 @@ async function newBlock(){
   const tid=curTenant();
   const pos=(ST.agreementBlocks||[]).length;
   try{const {data,error}=await sb.from('agreement_blocks').insert({tenant_id:tid,name:name.trim(),fixed_marketing:0,position:pos}).select().single();
-    if(error)throw error;ST.agreementBlocks.push(data);toast('✅ Δημιουργήθηκε');renderAgreements();
+    if(error)throw error;ST.agreementBlocks.push(data);toast('✅ Δημιουργήθηκε');keepScroll(renderAgreements);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 
@@ -1593,7 +1596,7 @@ async function saveSupplier(id){
   const alRaw=(document.getElementById('su-al-'+id).value||'').trim();
   const aliases=alRaw?alRaw.split(',').map(x=>x.trim()).filter(Boolean):[];
   if(!name){toast('❌ Βάλε όνομα');return;}
-  try{await sb.from('suppliers').update({name,email:email||null,phone:phone||null,aliases}).eq('id',id);await reloadSuppliers();toast('✅ Αποθηκεύτηκε');renderSuppliers();}
+  try{await sb.from('suppliers').update({name,email:email||null,phone:phone||null,aliases}).eq('id',id);await reloadSuppliers();toast('✅ Αποθηκεύτηκε');keepScroll(renderSuppliers);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 async function addSupplier(){
@@ -1606,12 +1609,12 @@ async function addSupplier(){
     const payload={name,email:email||null,phone:phone||null,aliases:[]};
     if(tid) payload.tenant_id=tid;
     await sb.from('suppliers').insert(payload);
-    await reloadSuppliers();toast('✅ Προστέθηκε');renderSuppliers();
+    await reloadSuppliers();toast('✅ Προστέθηκε');keepScroll(renderSuppliers);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function delSupplier(id,name){
   if(!confirm('Διαγραφή προμηθευτή "'+name+'"; Θα διαγραφούν και οι τιμές του.'))return;
-  try{await sb.from('suppliers').delete().eq('id',id);await Promise.all([reloadSuppliers(),refreshPrices()]);toast('✅ Διαγράφηκε');renderSuppliers();}
+  try{await sb.from('suppliers').delete().eq('id',id);await Promise.all([reloadSuppliers(),refreshPrices()]);toast('✅ Διαγράφηκε');keepScroll(renderSuppliers);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 // Backfill: γεμίζει τιμές προμηθευτή από το ιστορικό (smart-match), όπως waBackfillSupplier_ του app
@@ -1642,7 +1645,7 @@ async function backfillSupplier(sid,sname){
   }
   await refreshPrices();
   toast('✅ Γέμισαν '+n+' τιμές για '+sname);
-  renderSuppliers();
+  keepScroll(renderSuppliers);
 }
 
 function setOKind(k){ST.okind=k;persistNav();renderOrders();}
@@ -1933,7 +1936,7 @@ async function ordAllArrived(id){
   const r=(ST.orderHistory||[]).find(x=>x.id===id); if(!r)return;
   try{await sb.from('order_history').update({status:'Delivered',qty_received:r.qty}).eq('id',id);
     r.status='Delivered'; r.qty_received=r.qty;
-    toast('✅ '+L('Ολοκληρώθηκε','Completed')); renderOrderHistory();
+    toast('✅ '+L('Ολοκληρώθηκε','Completed')); keepScroll(renderOrderHistory);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function delOrderHistory(id){
@@ -1973,7 +1976,7 @@ async function checkDeliveries(){
     }catch(e){toast('❌ '+(e.message||e));return;}
   }
   if(!n){toast('Καμία νέα παραλαβή');return;}
-  toast('✅ '+n+' Delivered · ενημερώθηκε απόθεμα');renderOrderHistory();
+  toast('✅ '+n+' Delivered · ενημερώθηκε απόθεμα');keepScroll(renderOrderHistory);
 }
 function setMKind(k){ST.mkind=k;renderInvoices();}
 function dashHtml(){
@@ -2513,7 +2516,7 @@ async function openProfitPeriod(start,end){
 }
 async function delProfitPeriod(start,end){
   if(!confirm(L('Διαγραφή περιόδου;','Delete period?')))return;
-  try{await sb.from('profit_periods').delete().eq('tenant_id',curTenant()).eq('period_start',start).eq('period_end',end);toast('✅ '+L('Διαγράφηκε','Deleted'));loadProfitList();}
+  try{await sb.from('profit_periods').delete().eq('tenant_id',curTenant()).eq('period_start',start).eq('period_end',end);toast('✅ '+L('Διαγράφηκε','Deleted'));keepScroll(loadProfitList);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 function pfLive(){
@@ -3088,7 +3091,7 @@ async function saveManual(){
     }
     const _th=curTenant();let _hq=sb.from('price_history').select('*');if(_th)_hq=_hq.eq('tenant_id',_th);const {data:hist}=await _hq.order('date',{ascending:false}).limit(400);
     ST.history=hist||[];
-    btn.disabled=false;toast('✅ Καταγράφηκε');renderInvoices();
+    btn.disabled=false;toast('✅ Καταγράφηκε');keepScroll(renderInvoices);
   }catch(e){btn.disabled=false;toast('❌ '+(e.message||e));}
 }
 // Τελευταία ΧΡΕΩΜΕΝΗ αγορά προϊόντος από τον ΙΔΙΟ προμηθευτή (τελευταίες 45 μέρες)
@@ -3421,7 +3424,7 @@ async function ocrAddSupplier(){
     if(error)throw error;
     await reloadSuppliers();
     ST.ocr.supplierId=data.id;
-    toast('✅ Προστέθηκε');renderOcr();
+    toast('✅ Προστέθηκε');keepScroll(renderOcr);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function ocrSet(i,k,v){ST.ocr.lines[i][k]=v;}
@@ -5902,7 +5905,7 @@ async function refreshPrices(){
 }
 async function editPrice(id,val){
   let price=parseFloat(val);if(isNaN(price)){toast('❌ Μη έγκυρη τιμή');return;}price=Math.round(price*100)/100;
-  try{await sb.from('product_prices').update({price,updated_at:new Date().toISOString()}).eq('id',id);await refreshPrices();toast('✅ Αποθηκεύτηκε');drawProd();}
+  try{await sb.from('product_prices').update({price,updated_at:new Date().toISOString()}).eq('id',id);await refreshPrices();toast('✅ Αποθηκεύτηκε');keepScroll(drawProd);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 async function addPrice(pid){
@@ -5912,26 +5915,26 @@ async function addPrice(pid){
   if(isNaN(price)||price<=0){toast('❌ Βάλε τιμή');return;}
   price=Math.round(price*100)/100;
   const p=ST.products.find(x=>x.id===pid);
-  try{await sb.from('product_prices').upsert({tenant_id:p.tenant_id,product_id:pid,supplier_id:sid,price,is_override:false},{onConflict:'product_id,supplier_id'});await refreshPrices();toast('✅ Προστέθηκε');drawProd();}
+  try{await sb.from('product_prices').upsert({tenant_id:p.tenant_id,product_id:pid,supplier_id:sid,price,is_override:false},{onConflict:'product_id,supplier_id'});await refreshPrices();toast('✅ Προστέθηκε');keepScroll(drawProd);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 async function delPrice(id){
-  try{await sb.from('product_prices').delete().eq('id',id);await refreshPrices();toast('✅ Διαγράφηκε');drawProd();}
+  try{await sb.from('product_prices').delete().eq('id',id);await refreshPrices();toast('✅ Διαγράφηκε');keepScroll(drawProd);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 async function setOverride(pid,priceId){
   try{
     await sb.from('product_prices').update({is_override:false}).eq('product_id',pid);
     await sb.from('product_prices').update({is_override:true}).eq('id',priceId);
-    await refreshPrices();toast('✅ Επιλέχθηκε προμηθευτής');drawProd();
+    await refreshPrices();toast('✅ Επιλέχθηκε προμηθευτής');keepScroll(drawProd);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function clearOverride(pid){
-  try{await sb.from('product_prices').update({is_override:false}).eq('product_id',pid);await refreshPrices();toast('✅ '+lbl('pdAuto','Αυτόματο (φθηνότερος)'));drawProd();}
+  try{await sb.from('product_prices').update({is_override:false}).eq('product_id',pid);await refreshPrices();toast('✅ '+lbl('pdAuto','Αυτόματο (φθηνότερος)'));keepScroll(drawProd);}
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·236';
+const BUILD='v'+'2026.07.04·237';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
