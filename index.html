@@ -33,6 +33,7 @@
   .nav-mobile{display:none}
   @media(max-width:600px){.nav-desktop{display:none}.nav-mobile{display:block}}
   button{font-family:inherit}
+  input::placeholder,textarea::placeholder{color:var(--muted);opacity:.45}
   .btn{width:100%;padding:13px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-top:10px}
   .btn.ghost{background:var(--card);color:var(--accent);border:1.5px solid var(--accent)}
   .btn:disabled{opacity:.5}
@@ -4314,17 +4315,17 @@ async function saveAllDay(){
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function saveDailyClose(silent){
-  const g=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?(+el.value):0;};
+  const g=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?(+el.value):null;};
   const ptData={}; let totalCash=0,totalCard=0;
   document.querySelectorAll('[id^="pt-"][id$="-cash"]').forEach(el=>{
     const pkey=el.id.replace('pt-','').replace('-cash','');
-    const v=el.value!==''?(+el.value):0;
-    if(!ptData[pkey])ptData[pkey]={}; ptData[pkey].cash=v; totalCash+=v;
+    const empty=el.value===''; const v=empty?0:(+el.value);
+    if(!ptData[pkey])ptData[pkey]={}; ptData[pkey].cash=empty?null:v; totalCash+=v;
   });
   document.querySelectorAll('[id^="pt-"][id$="-card"]').forEach(el=>{
     const pkey=el.id.replace('pt-','').replace('-card','');
-    const v=el.value!==''?(+el.value):0;
-    if(!ptData[pkey])ptData[pkey]={}; ptData[pkey].card=v; totalCard+=v;
+    const empty=el.value===''; const v=empty?0:(+el.value);
+    if(!ptData[pkey])ptData[pkey]={}; ptData[pkey].card=empty?null:v; totalCard+=v;
   });
   const row={tenant_id:curTenant(),close_date:dailyDate(),
     cash_income:totalCash,card_income:totalCard,
@@ -4380,7 +4381,7 @@ function saveZState(){
   ST.dailyZ.pay_cash=g('z-cash'); ST.dailyZ.pay_card=g('z-card'); ST.dailyZ.voids=g('z-voids');
 }
 async function saveZClosing(silent){
-  const g=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?(+el.value):0;};
+  const g=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?(+el.value):null;};
   const gt=id=>{const el=document.getElementById(id);return el?el.value:'';};
   const lines=zCollectLines().map(ln=>({rate:ln.rate,net:ln.net}));
   let tnet=0,tvat=0; lines.forEach(ln=>{tnet+=ln.net;tvat+=ln.net*ln.rate/100;});
@@ -4924,7 +4925,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·213';
+const BUILD='v'+'2026.07.04·214';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
