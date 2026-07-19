@@ -929,7 +929,128 @@ async function bizSaveBalance(){
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function bizLoadPayroll(){ bizSoon('👥 '+L('Μισθοδοσία','Payroll')); }
-function bizDrawVat(){ bizSoon('🧾 '+L('ΦΠΑ','VAT')); }
+// ═══════════ 🧾 ΦΠΑ ΕΠΙΧΕΙΡΗΣΗΣ ═══════════
+function bizVatRange(off){
+  off=off||0; const now=new Date(); const p=ST.bizVatPeriod||'quarter';
+  let from,to;
+  if(p==='month'){ from=new Date(now.getFullYear(),now.getMonth()+off,1); to=new Date(now.getFullYear(),now.getMonth()+off+1,0); }
+  else if(p==='year'){ from=new Date(now.getFullYear()+off,0,1); to=new Date(now.getFullYear()+off,11,31); }
+  else { const q=Math.floor(now.getMonth()/3)+off; from=new Date(now.getFullYear(),q*3,1); to=new Date(now.getFullYear(),q*3+3,0); }
+  const f=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
+  return {from:f(from),to:f(to)};
+}
+function bizVatLabel(off){
+  const r=bizVatRange(off); const d=new Date(r.from+'T12:00:00'); const p=ST.bizVatPeriod||'quarter';
+  if(p==='month')return monthNamesFull()[d.getMonth()]+' '+d.getFullYear();
+  if(p==='year')return ''+d.getFullYear();
+  return (Math.floor(d.getMonth()/3)+1)+'ο '+L('Τρίμηνο','Quarter')+' '+d.getFullYear();
+}
+function bizVatCalc(off){
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const r=bizVatRange(off||ST.bizVatOffset||0);
+  const inR=d=>d&&String(d)>=r.from&&String(d)<=r.to;
+  // Εκροές
+  let subNet=0,subVat=0,setNet=0,setVat=0,chNet=0,chVat=0;
+  (ST.revPayments||[]).forEach(p=>{
+    if(p.official===false||!inR(p.pay_date))return;
+    subNet+=(p.amount_net!=null?n(p.amount_net):n(p.amount)); subVat+=n(p.vat_amount);
+  });
+  (ST.revCharges||[]).forEach(x=>{
+    if(x.official===false||!inR(x.charge_date))return;
+    const net=(x.amount_net!=null?n(x.amount_net):n(x.amount)), vat=n(x.vat_amount);
+    if((x.label||'').toLowerCase().indexOf('setup')>=0){setNet+=net;setVat+=vat;} else {chNet+=net;chVat+=vat;}
+  });
+  const out=[];
+  if(subVat>0)out.push({label:L('Συνδρομές','Subscriptions'),net:subNet,vat:subVat});
+  if(setVat>0)out.push({label:'Setup Fees',net:setNet,vat:setVat});
+  if(chVat>0)out.push({label:L('Έξτρα Χρεώσεις','Extra Charges'),net:chNet,vat:chVat});
+  const outVat=subVat+setVat+chVat;
+  // Εισροές
+  const inMap={};
+  (ST.bizExpenses||[]).forEach(x=>{
+    if(!inR(x.exp_date))return;
+    const k=x.category||'other';
+    if(!inMap[k])inMap[k]={vat:0,ded:0,hasNonDed:false};
+    inMap[k].vat+=n(x.vat_amount);
+    if(x.vat_deductible!==false)inMap[k].ded+=n(x.vat_amount); else inMap[k].hasNonDed=true;
+  });
+  const inArr=Object.keys(inMap).map(k=>Object.assign({key:k},inMap[k])).sort((a,b)=>b.ded-a.ded);
+  const inVat=inArr.reduce((s,x)=>s+x.ded,0);
+  return {range:r,out:out,outVat:outVat,in:inArr,inVat:inVat,due:outVat-inVat};
+}
+async function bizLoadVat(){
+  ST.bizTab='vat'; persistNav();
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  if(!ST.bizExpenses){try{const {data}=await sb.from('biz_expenses').select('*');ST.bizExpenses=data||[];}catch(e){ST.bizExpenses=[];}}
+  if(!ST.revPayments){try{const {data}=await sb.from('payments').select('*');ST.revPayments=data||[];}catch(e){ST.revPayments=[];}}
+  if(!ST.revCharges){try{const {data}=await sb.from('shop_charges').select('*');ST.revCharges=data||[];}catch(e){ST.revCharges=[];}}
+  bizDrawVat();
+}
+function bizDrawVat(){ ST.bizTab='vat'; persistNav();
+  const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
+  const m2=x=>money(Math.round((x||0)*100)/100);
+  if(!ST.bizVatPeriod)ST.bizVatPeriod='quarter';
+  if(ST.bizVatOffset==null)ST.bizVatOffset=0;
+  const R=bizVatCalc();
+  const credit=R.due<0;
+  let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:760px;margin:0 auto">';
+  h+=bizTabs();
+  h+='<div style="display:flex;gap:6px;margin-bottom:8px">'+
+    [['month',T('Μήνας','Month')],['quarter',T('Τρίμηνο','Quarter')],['year',T('Έτος','Year')]].map(function(p){
+      const on=(ST.bizVatPeriod)===p[0];
+      return '<div onclick="ST.bizVatPeriod=\''+p[0]+'\';ST.bizVatOffset=0;bizDrawVat()" style="flex:1;text-align:center;padding:7px;border-radius:20px;cursor:pointer;font-size:12px;'+(on?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+p[1]+'</div>';
+    }).join('')+'</div>';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:12px">'+
+    '<span onclick="ST.bizVatOffset=(ST.bizVatOffset||0)-1;bizDrawVat()" style="cursor:pointer;font-size:18px;padding:0 8px">‹</span>'+
+    '<span style="font-size:14px;font-weight:700">'+bizVatLabel(ST.bizVatOffset)+'</span>'+
+    '<span onclick="ST.bizVatOffset=(ST.bizVatOffset||0)+1;bizDrawVat()" style="cursor:pointer;font-size:18px;padding:0 8px">›</span>'+
+  '</div>';
+  const bg=credit?'var(--accent-bg)':'#FFF7E6', col=credit?'var(--accent)':'#B8860B';
+  h+='<div style="background:'+bg+';border-radius:12px;padding:16px;text-align:center;margin-bottom:12px">'+
+    '<div style="font-size:12px;color:'+col+'">'+(credit?T('Πιστωτικό Υπόλοιπο','Credit Balance'):T('Προς Απόδοση','Payable'))+'</div>'+
+    '<div style="font-size:30px;font-weight:800;color:'+col+';margin-top:2px">'+m2(Math.abs(R.due))+'</div>'+
+    '<div style="font-size:11px;color:'+col+';margin-top:3px">'+T('Εκροές','Output')+' '+m2(R.outVat)+' − '+T('Εισροές','Input')+' '+m2(R.inVat)+'</div></div>';
+  h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+T('ΦΠΑ Εκροών · Έσοδα','Output VAT · Revenue')+'</div>'+
+    '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">';
+  if(!R.out.length)h+='<div class="muted" style="text-align:center;padding:14px;font-size:13px">—</div>';
+  R.out.forEach(function(x){
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)">'+
+      '<div><div style="font-size:13px">'+esc(x.label)+'</div><div class="muted" style="font-size:11px">'+T('καθαρή αξία','net value')+' '+m2(x.net)+'</div></div>'+
+      '<span style="font-size:14px;font-weight:600">'+m2(x.vat)+'</span></div>';
+  });
+  if(R.out.length)h+='<div style="display:flex;justify-content:space-between;padding:11px 14px;background:var(--bg);font-size:13px;font-weight:700"><span>'+T('Σύνολο Εκροών','Total Output')+'</span><span>'+m2(R.outVat)+'</span></div>';
+  h+='</div>';
+  h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+T('ΦΠΑ Εισροών · Έξοδα','Input VAT · Expenses')+'</div>'+
+    '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">';
+  if(!R.in.length)h+='<div class="muted" style="text-align:center;padding:14px;font-size:13px">—</div>';
+  R.in.forEach(function(x){
+    const nd=(x.ded<=0.005&&x.hasNonDed);
+    h+='<div '+(nd?'style="opacity:.55;':'onclick="bizExpDetail(\''+encodeURIComponent(x.key)+'\')" style="cursor:pointer;')+'display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)">'+
+      '<div><div style="font-size:13px'+(nd?'':';color:var(--accent)')+'">'+bizCatLabel(x.key)+(nd?'':' ›')+'</div>'+
+      (nd?'<div class="muted" style="font-size:11px">'+T('δεν εκπίπτει','not deductible')+'</div>':'')+'</div>'+
+      '<span style="font-size:14px;font-weight:600'+(nd?';color:var(--muted)':';color:var(--ok)')+'">'+(nd?'':'− ')+m2(x.ded)+'</span></div>';
+  });
+  if(R.in.length)h+='<div style="display:flex;justify-content:space-between;padding:11px 14px;background:var(--bg);font-size:13px;font-weight:700"><span>'+T('Σύνολο Εισροών','Total Input')+'</span><span>'+m2(R.inVat)+'</span></div>';
+  h+='</div>';
+  // Ιστορικό
+  h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+T('Ιστορικό','History')+'</div>'+
+    '<div class="card" style="padding:0;overflow:hidden">';
+  let any=false;
+  for(let i=1;i<=6;i++){
+    const off=(ST.bizVatOffset||0)-i;
+    const D=bizVatCalc(off);
+    if(D.outVat===0&&D.inVat===0)continue;
+    any=true;
+    h+='<div onclick="ST.bizVatOffset=(ST.bizVatOffset||0)-'+i+';bizDrawVat()" style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer">'+
+      '<span>'+bizVatLabel(off)+'</span><span class="muted">'+m2(Math.abs(D.due))+(D.due<0?(' ('+T('πιστωτικό','credit')+')'):'')+'</span></div>';
+  }
+  if(!any)h+='<div class="muted" style="text-align:center;padding:14px;font-size:13px">—</div>';
+  h+='</div>';
+  h+='<div class="muted" style="font-size:11px;text-align:center;margin-top:10px">'+T('Ενδεικτικό — ο τελικός λογαριασμός βγαίνει από τον λογιστή','Indicative — final figure comes from your accountant')+'</div>';
+  h+='</div></div>';
+  c.innerHTML=h;
+}
 function bizDrawProfit(){ bizSoon('💹 '+L('Κερδοφορία','Profit')); }
 function bizSoon(title){
   persistNav();
@@ -956,7 +1077,7 @@ function bizGo(tab){
   if(tab==='expenses')return bizLoadExpenses();
   if(tab==='payroll')return bizLoadPayroll();
   if(tab==='cashflow')return bizLoadCashflow();
-  if(tab==='vat')return bizDrawVat();
+  if(tab==='vat')return bizLoadVat();
   if(tab==='profit')return bizDrawProfit();
   drawRevenue();
 }
@@ -7531,7 +7652,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·285';
+const BUILD='v'+'2026.07.19·286';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
