@@ -1529,6 +1529,132 @@ function bizDrawProfit(){ ST.bizTab='profit'; persistNav();
   h+='</div></div>';
   c.innerHTML=h;
 }
+// ═══════════ 🏪 ΚΟΣΤΟΣ ΑΝΑ ΠΕΛΑΤΗ ═══════════
+async function bizLoadClients(){
+  ST.bizTab='clients'; persistNav();
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  if(!ST.revTenants){try{const {data}=await sb.from('tenants').select('id,name,plan,paid_until,vat_pct');ST.revTenants=data||[];}catch(e){ST.revTenants=[];}}
+  if(!ST.revFinance){try{const {data}=await sb.from('shop_finance').select('*');ST.revFinance=data||[];}catch(e){ST.revFinance=[];}}
+  try{const {data}=await sb.from('usage_log').select('*');ST.usageLog=data||[];}catch(e){ST.usageLog=[];}
+  try{const {data}=await sb.from('cost_settings').select('*').eq('id',1).maybeSingle();ST.costSettings=data||{cost_per_ocr:0.03,monthly_fixed:0,cost_per_gb:0.02};}catch(e){ST.costSettings={cost_per_ocr:0.03,monthly_fixed:0,cost_per_gb:0.02};}
+  ST.revUsers=ST.revUsers||{};
+  if(!Object.keys(ST.revUsers).length){
+    try{
+      const {data:profs}=await sb.from('profiles').select('tenant_id');
+      (profs||[]).forEach(p=>{if(p.tenant_id)ST.revUsers[p.tenant_id]=(ST.revUsers[p.tenant_id]||0)+1;});
+      const {data:os}=await sb.from('owner_shops').select('tenant_id');
+      (os||[]).forEach(o=>{ST.revUsers[o.tenant_id]=(ST.revUsers[o.tenant_id]||0)+1;});
+    }catch(e){}
+  }
+  if(!ST.bizPeriod)ST.bizPeriod='month';
+  if(ST.bizOffset==null)ST.bizOffset=0;
+  bizDrawClients();
+}
+function bizClientsCalc(){
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const r=bizRange();
+  const cs=ST.costSettings||{};
+  const perOcr=n(cs.cost_per_ocr), fixedTotal=n(cs.monthly_fixed);
+  const inR=d=>{const dd=String(d||'').slice(0,10);return dd>=r.from&&dd<=r.to;};
+  // Χρήση ανά μαγαζί
+  const use={}; let totalOcr=0;
+  (ST.usageLog||[]).forEach(u=>{
+    if(!inR(u.created_at))return;
+    if(!use[u.tenant_id])use[u.tenant_id]={ocr:0,z:0};
+    const units=n(u.units)||1;
+    if(u.kind==='ocr_z'){use[u.tenant_id].z+=units;} else {use[u.tenant_id].ocr+=units;}
+    totalOcr+=units;
+  });
+  const tenants=ST.revTenants||[];
+  const shopCount=tenants.length||1;
+  // Το πάγιο μοιράζεται: μισό ισομερώς (κάθε μαγαζί κρατά χώρο),
+  // μισό αναλογικά με τη χρήση (όποιος σκανάρει πολλά, κοστίζει πιο πολύ)
+  const fixedEven=fixedTotal/2/shopCount;
+  const fixedByUse=fixedTotal/2;
+  const rows=tenants.map(function(t){
+    const u=use[t.id]||{ocr:0,z:0};
+    const scans=u.ocr+u.z;
+    const m=shopMonthly(t);
+    const revenue=(ST.bizPeriod==='year')?m.net*12:m.net;
+    const varCost=scans*perOcr;
+    const share=totalOcr>0?(scans/totalOcr):(1/shopCount);
+    const fixCost=(fixedEven+fixedByUse*share)*((ST.bizPeriod==='year')?12:1);
+    const cost=varCost+fixCost;
+    const profit=revenue-cost;
+    return {id:t.id,name:t.name,plan:t.plan||'advanced',scans:scans,ocr:u.ocr,z:u.z,
+      revenue:revenue,varCost:varCost,fixCost:fixCost,cost:cost,profit:profit,
+      margin:revenue>0?profit/revenue*100:0,users:(ST.revUsers||{})[t.id]||0};
+  }).sort((a,b)=>b.cost-a.cost);
+  const tRev=rows.reduce((s,x)=>s+x.revenue,0);
+  const tCost=rows.reduce((s,x)=>s+x.cost,0);
+  return {rows:rows,totalScans:totalOcr,revenue:tRev,cost:tCost,profit:tRev-tCost,
+    margin:tRev>0?(tRev-tCost)/tRev*100:0,perOcr:perOcr,fixedTotal:fixedTotal};
+}
+function bizDrawClients(){ ST.bizTab='clients'; persistNav();
+  const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
+  const m2=x=>money(Math.round((x||0)*100)/100);
+  const R=bizClientsCalc();
+  let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:760px;margin:0 auto">';
+  h+=bizTabs()+bizNav();
+  h+='<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:12px">'+
+    '<div class="card" style="padding:12px;margin:0"><div class="muted" style="font-size:11px">'+T('Έσοδα','Revenue')+'</div>'+
+      '<div style="font-size:21px;font-weight:800;margin-top:2px">'+m2(R.revenue)+'</div></div>'+
+    '<div class="card" style="padding:12px;margin:0"><div class="muted" style="font-size:11px">'+T('Κόστος Λειτουργίας','Running Cost')+'</div>'+
+      '<div style="font-size:21px;font-weight:800;margin-top:2px;color:var(--bad)">'+m2(R.cost)+'</div>'+
+      (R.revenue>0?'<div class="muted" style="font-size:10px;margin-top:2px">'+(R.cost/R.revenue*100).toFixed(1)+'% '+T('Των Εσόδων','Of Revenue')+'</div>':'')+'</div>'+
+  '</div>';
+  h+='<div class="card" style="text-align:center;margin-bottom:12px;background:var(--accent-bg);border-color:var(--accent)">'+
+    '<div style="font-size:12px;color:var(--accent)">'+T('Μικτό Περιθώριο','Gross Margin')+'</div>'+
+    '<div style="font-size:26px;font-weight:800;color:var(--accent);margin-top:2px">'+(R.revenue>0?R.margin.toFixed(1)+'%':'—')+'</div>'+
+    '<div style="font-size:11px;color:var(--accent);margin-top:2px">'+m2(R.profit)+' · '+R.totalScans+' '+T('Σκαναρίσματα','Scans')+'</div></div>';
+  h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+T('Ανά Πελάτη','Per Client')+'</div>'+
+    '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">';
+  if(!R.rows.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Κανένα Μαγαζί','No Shops')+'</div>';
+  R.rows.forEach(function(x){
+    const col=x.margin>=70?'var(--ok)':(x.margin>=40?'#B8860B':'var(--bad)');
+    h+='<div style="padding:11px 14px;border-bottom:1px solid var(--line)">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'+
+        '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(x.name||'—')+'</div>'+
+        '<div class="muted" style="font-size:11px">'+x.plan.toUpperCase()+' · '+x.scans+' '+T('Σκαναρίσματα','Scans')+' · '+x.users+' '+T('Χρήστες','Users')+'</div></div>'+
+        '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:'+col+'">'+x.margin.toFixed(0)+'%</div>'+
+        '<div class="muted" style="font-size:10px">'+T('Περιθώριο','Margin')+'</div></div></div>'+
+      '<div style="display:flex;gap:14px;margin-top:6px;font-size:11px;color:var(--muted)">'+
+        '<span>'+T('Πληρώνει','Pays')+' <b style="color:var(--fg)">'+m2(x.revenue)+'</b></span>'+
+        '<span>'+T('Κοστίζει','Costs')+' <b style="color:var(--fg)">'+m2(x.cost)+'</b></span>'+
+        '<span>'+T('Κέρδος','Profit')+' <b style="color:'+col+'">'+m2(x.profit)+'</b></span>'+
+      '</div></div>';
+  });
+  h+='</div>';
+  h+='<div class="card" style="margin-bottom:12px">'+
+    '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Κόστος Ανά Σκανάρισμα','Cost Per Scan')+'</span><span>'+money(R.perOcr)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Μηνιαίο Πάγιο Υποδομής','Monthly Infrastructure')+'</span><span>'+m2(R.fixedTotal)+'</span></div>'+
+    '<div class="muted" style="font-size:10px;margin-top:6px">'+T('Το πάγιο μοιράζεται: μισό ισομερώς σε όλα τα μαγαζιά, μισό αναλογικά με τη χρήση.','Fixed cost split: half evenly across shops, half by usage.')+'</div>'+
+  '</div>';
+  h+='<button class="btn ghost" style="width:100%" onclick="bizCostSettings()">⚙️ '+T('Ρύθμιση Κόστους','Cost Settings')+'</button>';
+  h+='</div></div>';
+  c.innerHTML=h;
+}
+function bizCostSettings(){
+  const T=(el,en)=>L(el,en);
+  const cs=ST.costSettings||{};
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div class="muted" style="font-size:12px">'+T('Πόσο σου κοστίζει η υποδομή. Χρησιμοποιείται για να υπολογιστεί το περιθώριο ανά πελάτη.','What your infrastructure costs. Used to calculate margin per client.')+'</div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Κόστος Ανά Σκανάρισμα','Cost Per Scan')+'</label><input id="cs-ocr" type="number" step="0.001" value="'+(cs.cost_per_ocr!=null?cs.cost_per_ocr:0.03)+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px">'+
+      '<div class="muted" style="font-size:11px;margin-top:4px">'+T('Τι πληρώνεις στο Claude ανά τιμολόγιο ή Ζ','What you pay Claude per invoice or Z')+'</div></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Μηνιαίο Πάγιο Υποδομής','Monthly Infrastructure')+'</label><input id="cs-fixed" type="number" step="0.01" value="'+(cs.monthly_fixed!=null?cs.monthly_fixed:0)+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px">'+
+      '<div class="muted" style="font-size:11px;margin-top:4px">'+T('Supabase, domain και ό,τι πληρώνεις ανεξάρτητα από πελάτες','Supabase, domain and anything you pay regardless of clients')+'</div></div>'+
+  '</div>';
+  showModal('⚙️ '+T('Ρύθμιση Κόστους','Cost Settings'),html,T('Αποθήκευση','Save'),bizSaveCostSettings);
+}
+async function bizSaveCostSettings(){
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  try{const {error}=await sb.from('cost_settings').upsert({id:1,
+      cost_per_ocr:parseFloat(g('cs-ocr'))||0,monthly_fixed:parseFloat(g('cs-fixed'))||0,
+      updated_at:new Date().toISOString()},{onConflict:'id'});
+    if(error)throw error; closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved')); bizLoadClients();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
 function bizSoon(title){
   persistNav();
   const c=document.getElementById('content');
@@ -1542,7 +1668,8 @@ function bizTabs(){
   const cur=ST.bizTab||'revenue';
   const items=[['revenue','💰 '+T('Έσοδα','Revenue')],['expenses','📉 '+T('Έξοδα','Expenses')],
     ['payroll','👥 '+T('Μισθοδοσία','Payroll')],['cashflow','🏦 '+T('Ταμείο','Cash')],
-    ['vat','🧾 '+T('ΦΠΑ','VAT')],['profit','💹 '+T('Κερδοφορία','Profit')]];
+    ['vat','🧾 '+T('ΦΠΑ','VAT')],['profit','💹 '+T('Κερδοφορία','Profit')],
+    ['clients','🏪 '+T('Πελάτες','Clients')]];
   return '<div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;margin-bottom:10px">'+
     items.map(function(it){const on=cur===it[0];
       return '<div onclick="bizGo(\''+it[0]+'\')" style="flex:0 0 auto;padding:8px 14px;border-radius:20px;cursor:pointer;font-size:13px;white-space:nowrap;'+(on?'background:var(--accent);color:#fff;font-weight:600':'border:1px solid var(--line);color:var(--muted)')+'">'+it[1]+'</div>';
@@ -1556,6 +1683,7 @@ function bizGo(tab){
   if(tab==='cashflow')return bizLoadCashflow();
   if(tab==='vat')return bizLoadVat();
   if(tab==='profit')return bizLoadProfit();
+  if(tab==='clients')return bizLoadClients();
   drawRevenue();
 }
 function drawRevenue(){ persistNav(); ST.bizTab='revenue';
@@ -5097,6 +5225,10 @@ function onOcrFileOLD(inp){
   };
   rd.readAsDataURL(f);
 }
+// Καταγραφή χρήσης (για υπολογισμό κόστους ανά πελάτη)
+async function logUsage(kind,units){
+  try{await sb.from('usage_log').insert({tenant_id:curTenant(),kind:kind,units:units||1,created_by:ST.userEmail||null});}catch(e){}
+}
 async function doOcr(){
   if(!window._ocrImg){toast('❌ Ανέβασε εικόνα');return;}
   const st=document.getElementById('ocr-status');st.innerHTML='<div class="card" style="text-align:center"><span class="spin"></span> '+L('Διαβάζω το τιμολόγιο…','Reading the invoice…')+'</div>';
@@ -5106,6 +5238,7 @@ async function doOcr(){
     const data=await r.json();
     if(data.error){st.innerHTML='<div class="err">❌ '+esc(data.error)+'</div>';return;}
     const lines=(data.lines||[]).map(l=>({raw:l.product||'',qty:l.quantity,price:l.price,unit:l.unit||'',vintage:(l.vintage!=null?l.vintage:''),conf:(l.confidence||'high'),lineTotal:l.line_total,productId:matchProduct(l.product||'')}));
+    logUsage('ocr_invoice',1);
     ST.ocr={supplierRaw:data.supplier||'',supplierId:matchSupplier(data.supplier||''),date:data.date||new Date().toISOString().slice(0,10),invoiceNo:data.invoice_no||'',netTotal:data.net_total,vatTotal:data.vat_total,grandTotal:data.grand_total,prevBalance:data.prev_balance,newBalance:data.new_balance,lines};
     renderOcr();
   }catch(e){st.innerHTML='<div class="err">❌ '+esc(e.message||e)+'<br><span style="font-size:11px">Έλεγξε ότι έγινε deploy η function smart-worker.</span></div>';}
@@ -7570,6 +7703,7 @@ async function scanZ(input){
     const r=await fetch(OCR_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({imageBase64:b64,mediaType:file.type,mode:'zreport'})});
     const data=await r.json();
     if(data.error){toast('❌ '+data.error);return;}
+    logUsage('ocr_z',1);
     // Γέμισμα πεδίων Ζ από το αποτέλεσμα
     ST.dailyZ=ST.dailyZ||{};
     if(data.z_number!=null)ST.dailyZ.z_number=data.z_number;
@@ -7578,7 +7712,14 @@ async function scanZ(input){
     if(data.pay_card!=null)ST.dailyZ.pay_card=data.pay_card;
     if(data.voids!=null)ST.dailyZ.voids=data.voids;
     if(data.vat_lines&&data.vat_lines.length)ST.dailyZ.vat_lines=data.vat_lines;
-    toast('✅ '+L('Το Ζ διαβάστηκε — έλεγξε τα πεδία','Z read — check the fields'));
+    // Αν το Ζ έχει δική του ημερομηνία και διαφέρει, ρώτα
+    if(data.z_date&&/^\d{4}-\d{2}-\d{2}$/.test(data.z_date)&&data.z_date!==dailyDate()){
+      if(confirm(L('Το Ζ γράφει ημερομηνία','The Z shows date')+' '+dGRs(data.z_date)+'.\n'+L('Να αλλάξω την ημέρα;','Switch to that day?'))){
+        ST.dailyDate=data.z_date; return renderDaily();
+      }
+    }
+    const nL=(data.vat_lines||[]).length;
+    toast('✅ '+L('Το Ζ διαβάστηκε','Z read')+(nL?(' · '+nL+' '+L('συντελεστές','rates')):'')+(data.total_gross?(' · '+money(data.total_gross)):''));
     keepScroll(drawDaily);
   }catch(e){toast('❌ '+(e.message||e)+' — '+L('έλεγξε το smart-worker','check smart-worker'));}
 }
@@ -8163,7 +8304,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·292';
+const BUILD='v'+'2026.07.19·293';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
