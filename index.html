@@ -9,9 +9,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Cost Control">
+<meta name="apple-mobile-web-app-title" content="CostIQ">
 <meta name="theme-color" content="#1a5276">
-<title>Cost Control · Cloud</title>
+<title>CostIQ · Cloud</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@800&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   :root{--bg:#f4f5f7;--card:#fff;--ink:#1a1a2e;--muted:#6b7280;--line:#e5e7eb;
@@ -19,7 +24,9 @@
   html{overflow-x:hidden}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;padding-bottom:30px;overflow-x:hidden}
   .wrap{max-width:720px;margin:0 auto;padding:0 14px}
-  .brandbar{background:#154766;color:#fff;text-align:center;padding:12px 0;font-size:26px;font-weight:800;letter-spacing:1.5px;line-height:1;position:sticky;top:0;z-index:11}
+  .brandbar{background:#154766;color:#fff;text-align:center;padding:12px 0;font-size:26px;font-weight:800;letter-spacing:.5px;line-height:1;position:sticky;top:0;z-index:11;display:flex;align-items:center;justify-content:center;gap:9px;font-family:'Raleway',-apple-system,'Segoe UI',Roboto,sans-serif}
+  .brandbar svg{width:26px;height:26px;flex:0 0 auto}
+  .brandbar i{font-style:normal;color:#2ecc71}
   .header{background:var(--accent);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:50px;z-index:10}
   .header .back{background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:0;line-height:1;display:none}
   .header h1{font-size:16px;font-weight:600;flex:1}
@@ -64,6 +71,17 @@
   .spin{width:16px;height:16px;border:2px solid var(--muted);border-top-color:transparent;border-radius:50%;display:inline-block;animation:s .7s linear infinite;vertical-align:middle}
   @keyframes s{to{transform:rotate(360deg)}}
   .logo{font-size:34px;text-align:center;margin-bottom:6px}
+  /* ── Οθόνη σύνδεσης: navy φόντο, λευκό/πράσινο λογότυπο ── */
+  #loginView{background:#154766;max-width:none;margin:0;min-height:100vh}
+  #loginView .lbrand{font-family:'Raleway',-apple-system,'Segoe UI',Roboto,sans-serif;font-weight:800;font-size:34px;color:#fff;letter-spacing:.5px}
+  #loginView .field label{color:#b8d6ec}
+  #loginView .field input{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff}
+  #loginView input::placeholder{color:#b8d6ec;opacity:.55}
+  #loginView .btn{background:#2ecc71;color:#0d3320}
+  #loginView a{color:#8fe6b5!important}
+  #loginView .muted,#loginView .small{color:#b8d6ec}
+  #loginView #loginVer{color:#b8d6ec}
+  #loginView #pwEye{border-color:rgba(255,255,255,.25)!important;color:#fff}
   .small{font-size:12px;color:var(--muted);text-align:center;margin-top:14px}
   .suprow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
   .suprow:last-child{border-bottom:none}
@@ -90,9 +108,10 @@
 
 <div id="loginView" class="wrap center">
   <div style="width:100%;max-width:360px">
-    <div class="logo">📊</div>
-    <h1 style="text-align:center;margin:0 0 4px">Cost IQ</h1>
-    <div id="loginShop" style="text-align:center;font-weight:700;color:var(--accent);font-size:15px;margin:0 0 2px"></div>
+    <div style="text-align:center;margin-bottom:12px"><svg width="84" height="84" viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="24" fill="none" stroke="#ffffff" stroke-width="5"/><polyline points="24,45 33,36 40,40 52,26" fill="none" stroke="#2ecc71" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <h1 class="lbrand" style="text-align:center;margin:0 0 2px">Cost<span style="color:#2ecc71">IQ</span></h1>
+    <div style="text-align:center;font-size:11px;color:#b8d6ec;letter-spacing:2px;margin:0 0 6px">SMART COST CONTROL</div>
+    <div id="loginShop" style="text-align:center;font-weight:700;color:#2ecc71;font-size:15px;margin:0 0 2px"></div>
     <p class="muted" id="loginSubtitle" style="text-align:center;margin:0 0 20px;font-size:13px">Σύνδεση στο cloud</p>
     <div class="field"><label>Email</label><input id="email" type="email" autocomplete="username" placeholder="email"></div>
     <div class="field"><label id="loginPwLbl">Password</label><div style="display:flex;gap:6px;align-items:center"><input id="password" type="password" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="password" style="flex:1"><button type="button" onclick="togglePw()" id="pwEye" style="background:none;border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px">👁</button></div></div>
@@ -105,7 +124,7 @@
 </div>
 
 <div id="appView" style="display:none">
-  <div class="brandbar">Cost IQ</div>
+  <div class="brandbar"><svg viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="24" fill="none" stroke="#ffffff" stroke-width="5"/><polyline points="24,45 33,36 40,40 52,26" fill="none" stroke="#2ecc71" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Cost<i>IQ</i></span></div>
   <div class="header">
     <button class="back" id="backBtn" onclick="goList()">‹</button>
     <div class="htwrap" style="flex:1"><h1 id="hTitle">—</h1><div class="who" id="whoami">—</div></div>
@@ -428,15 +447,15 @@ async function enterShop(){
 }
 function termsGate(){
   ST.view='terms';
-  document.getElementById('hTitle').textContent='Cost IQ';
+  document.getElementById('hTitle').textContent='CostIQ';
   const nav=document.getElementById('nav');if(nav)nav.innerHTML='';
   const c=document.getElementById('content');
   c.innerHTML='<div class="card" style="margin-top:20px;max-width:640px;margin-left:auto;margin-right:auto">'+
     '<h2 style="font-size:22px;margin:0 0 6px;color:var(--accent)">📄 '+L('Όροι Χρήσης & Απόρρητο','Terms of Service & Privacy')+'</h2>'+
     '<p style="font-size:13px;color:var(--muted);margin:0 0 14px">'+L('Πριν ξεκινήσεις, διάβασε και αποδέξου τους όρους.','Before you start, please read and accept the terms.')+'</p>'+
     '<div style="max-height:38vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:14px;font-size:13px;line-height:1.6;background:var(--bg)">'+
-      '<p><b>1. '+L('Τι είναι','What it is')+'</b><br>'+L('Το Cost IQ είναι βοηθητικό εργαλείο διαχείρισης κόστους για μαγαζιά εστίασης.','Cost IQ is an assistive cost-management tool for hospitality businesses.')+'</p>'+
-      '<p><b>2. '+L('Ακρίβεια — ΣΗΜΑΝΤΙΚΟ','Accuracy — IMPORTANT')+'</b><br>'+L('Η ανάγνωση τιμολογίων γίνεται με τεχνητή νοημοσύνη και <b>μπορεί να έχει λάθη</b>. Οφείλεις να ελέγχεις τα αποτελέσματα πριν τα εγκρίνεις. Το Cost IQ <b>δεν υποκαθιστά λογιστή</b>.','Invoice reading uses AI and <b>may contain errors</b>. You must verify results before approving. Cost IQ <b>does not replace an accountant</b>.')+'</p>'+
+      '<p><b>1. '+L('Τι είναι','What it is')+'</b><br>'+L('Το CostIQ είναι βοηθητικό εργαλείο διαχείρισης κόστους για μαγαζιά εστίασης.','CostIQ is an assistive cost-management tool for hospitality businesses.')+'</p>'+
+      '<p><b>2. '+L('Ακρίβεια — ΣΗΜΑΝΤΙΚΟ','Accuracy — IMPORTANT')+'</b><br>'+L('Η ανάγνωση τιμολογίων γίνεται με τεχνητή νοημοσύνη και <b>μπορεί να έχει λάθη</b>. Οφείλεις να ελέγχεις τα αποτελέσματα πριν τα εγκρίνεις. Το CostIQ <b>δεν υποκαθιστά λογιστή</b>.','Invoice reading uses AI and <b>may contain errors</b>. You must verify results before approving. CostIQ <b>does not replace an accountant</b>.')+'</p>'+
       '<p><b>3. '+L('Συνδρομή','Subscription')+'</b><br>'+L('Η υπηρεσία παρέχεται με μηνιαία συνδρομή ανά μαγαζί. Αν δεν ανανεωθεί, η πρόσβαση αναστέλλεται μέχρι την τακτοποίηση.','Monthly subscription per shop. If not renewed, access is suspended until settled.')+'</p>'+
       '<p><b>4. '+L('Δεδομένα','Data')+'</b><br>'+L('Τα δεδομένα σου παραμένουν δικά σου. Κάθε μαγαζί βλέπει μόνο τα δικά του. Οι φωτογραφίες τιμολογίων διαγράφονται μετά από εύλογο διάστημα.','Your data remains yours. Each shop sees only its own. Invoice photos are deleted after a reasonable period.')+'</p>'+
       '<p><b>5. '+L('Gmail (προαιρετικό)','Gmail (optional)')+'</b><br>'+L('Αν συνδέσεις Gmail, ζητάμε πρόσβαση ΜΟΝΟ ανάγνωσης, αποκλειστικά για εύρεση τιμολογίων. Δεν αποθηκεύουμε email.','If you connect Gmail, we request READ-ONLY access, solely to find invoices. We do not store emails.')+'</p>'+
@@ -497,11 +516,11 @@ function runModalAction(){if(_modalAction)_modalAction();}
 function openTermsFull(){
   const T=(el,en)=>L(el,en);
   legalModal('📄 '+T('Όροι Χρήσης','Terms of Service'),
-    '<h3 style="font-size:14px;color:var(--accent);margin:0 0 6px">1. '+T('Αποδοχή','Acceptance')+'</h3><p>'+T('Χρησιμοποιώντας το Cost IQ αποδέχεστε τους παρόντες Όρους και την Πολιτική Απορρήτου. Η χρήση από το προσωπικό σας σημαίνει ότι αποδέχεστε τους Όρους και εκ μέρους τους.','By using Cost IQ you accept these Terms and the Privacy Policy. Use by your staff means you accept on their behalf too.')+'</p>'+
+    '<h3 style="font-size:14px;color:var(--accent);margin:0 0 6px">1. '+T('Αποδοχή','Acceptance')+'</h3><p>'+T('Χρησιμοποιώντας το CostIQ αποδέχεστε τους παρόντες Όρους και την Πολιτική Απορρήτου. Η χρήση από το προσωπικό σας σημαίνει ότι αποδέχεστε τους Όρους και εκ μέρους τους.','By using CostIQ you accept these Terms and the Privacy Policy. Use by your staff means you accept on their behalf too.')+'</p>'+
     '<h3 style="font-size:14px;color:var(--accent);margin:14px 0 6px">2. '+T('Η Υπηρεσία','The Service')+'</h3><p>'+T('Εργαλεία διαχείρισης κόστους για εστίαση: προϊόντα, προμηθευτές, ανάγνωση τιμολογίων με AI (OCR), παρακολούθηση τιμών, κοστολόγηση συνταγών, απογραφή, παραγγελίες, εκδηλώσεις, κερδοφορία.','Cost management tools for hospitality: products, suppliers, AI invoice reading (OCR), price tracking, recipe costing, stock take, orders, events, profitability.')+'</p>'+
     '<h3 style="font-size:14px;color:var(--accent);margin:14px 0 6px">3. '+T('Λογαριασμοί & Ρόλοι','Accounts & Roles')+'</h3><p>'+T('Κάθε χρήστης συνδέεται με προσωπικά διαπιστευτήρια και ευθύνεται για την ασφάλειά τους. Οι ρόλοι (owner/manager/staff) ορίζονται από τον ιδιοκτήτη. Απαγορεύεται η κοινή χρήση λογαριασμού ή η μεταπώληση πρόσβασης.','Each user signs in with personal credentials and is responsible for their security. Roles (owner/manager/staff) are set by the owner. Account sharing or reselling access is prohibited.')+'</p>'+
     '<h3 style="font-size:14px;color:var(--accent);margin:14px 0 6px">4. '+T('Συνδρομή & Πληρωμές','Subscription & Payments')+'</h3><p>'+T('Μηνιαία συνδρομή ανά μαγαζί. Διαφορετικά πακέτα με διαφορετικές δυνατότητες. Κάθε πακέτο περιλαμβάνει αριθμό χρηστών· επιπλέον χρήστες χρεώνονται. Οι τιμές μπορεί να αναπροσαρμοστούν με προειδοποίηση 30 ημερών. Αν η συνδρομή δεν ανανεωθεί, η πρόσβαση ΑΝΑΣΤΕΛΛΕΤΑΙ μέχρι την τακτοποίηση. Δεν επιστρέφονται χρήματα για τον τρέχοντα μήνα.','Monthly subscription per shop. Different plans, different features. Each plan includes a number of users; extra users are charged. Prices may change with 30 days notice. If not renewed, access is SUSPENDED until settled. No refunds for the current month.')+'</p>'+
-    '<div style="background:#FFF7E6;border:1px solid #e0a800;border-radius:8px;padding:10px;margin:14px 0"><b>⚠️ 5. '+T('ΑΚΡΙΒΕΙΑ ΔΕΔΟΜΕΝΩΝ','DATA ACCURACY')+'</b><p style="margin:6px 0 0">'+T('Το Cost IQ είναι <b>βοηθητικό εργαλείο, όχι λογιστής</b>. Η ανάγνωση τιμολογίων γίνεται με τεχνητή νοημοσύνη και <b>ΜΠΟΡΕΙ ΝΑ ΠΕΡΙΕΧΕΙ ΛΑΘΗ</b>. Οφείλετε να ΕΛΕΓΧΕΤΕ τα αποτελέσματα πριν τα εγκρίνετε. Οι υπολογισμοί (ΕΦΚ, κόστος, περιθώρια) είναι ενδεικτικοί. ΔΕΝ φέρουμε ευθύνη για αποφάσεις βασισμένες σε μη ελεγμένα δεδομένα. Το Cost IQ <b>ΔΕΝ υποκαθιστά λογιστή</b> ή επίσημα βιβλία.','Cost IQ is an <b>assistive tool, not an accountant</b>. Invoice reading uses AI and <b>MAY CONTAIN ERRORS</b>. You must VERIFY results before approving. Calculations (excise duty, cost, margins) are indicative. We are NOT liable for decisions based on unverified data. Cost IQ <b>does NOT replace an accountant</b> or official books.')+'</p></div>'+
+    '<div style="background:#FFF7E6;border:1px solid #e0a800;border-radius:8px;padding:10px;margin:14px 0"><b>⚠️ 5. '+T('ΑΚΡΙΒΕΙΑ ΔΕΔΟΜΕΝΩΝ','DATA ACCURACY')+'</b><p style="margin:6px 0 0">'+T('Το CostIQ είναι <b>βοηθητικό εργαλείο, όχι λογιστής</b>. Η ανάγνωση τιμολογίων γίνεται με τεχνητή νοημοσύνη και <b>ΜΠΟΡΕΙ ΝΑ ΠΕΡΙΕΧΕΙ ΛΑΘΗ</b>. Οφείλετε να ΕΛΕΓΧΕΤΕ τα αποτελέσματα πριν τα εγκρίνετε. Οι υπολογισμοί (ΕΦΚ, κόστος, περιθώρια) είναι ενδεικτικοί. ΔΕΝ φέρουμε ευθύνη για αποφάσεις βασισμένες σε μη ελεγμένα δεδομένα. Το CostIQ <b>ΔΕΝ υποκαθιστά λογιστή</b> ή επίσημα βιβλία.','CostIQ is an <b>assistive tool, not an accountant</b>. Invoice reading uses AI and <b>MAY CONTAIN ERRORS</b>. You must VERIFY results before approving. Calculations (excise duty, cost, margins) are indicative. We are NOT liable for decisions based on unverified data. CostIQ <b>does NOT replace an accountant</b> or official books.')+'</p></div>'+
     '<h3 style="font-size:14px;color:var(--accent);margin:14px 0 6px">6. Gmail ('+T('προαιρετικό','optional')+')</h3><p>'+T('Η σύνδεση Gmail είναι προαιρετική, με ρητή συγκατάθεσή σας. Ζητάμε πρόσβαση ΜΟΝΟ ΑΝΑΓΝΩΣΗΣ (gmail.readonly), αποκλειστικά για εύρεση τιμολογίων. Δεν αποθηκεύουμε το περιεχόμενο των email σας. Δεν στέλνουμε, τροποποιούμε ή διαγράφουμε email. Μπορείτε να ανακαλέσετε την πρόσβαση οποτεδήποτε από τον Google λογαριασμό σας.','Gmail connection is optional, with your explicit consent. We request READ-ONLY access (gmail.readonly), solely to find invoices. We do not store your email content. We do not send, modify or delete emails. You may revoke access anytime from your Google account.')+'</p>'+
     '<h3 style="font-size:14px;color:var(--accent);margin:14px 0 6px">7. '+T('Δεδομένα & Ιδιοκτησία','Data & Ownership')+'</h3><p>'+T('Τα δεδομένα σας παραμένουν δικά σας. Κάθε μαγαζί βλέπει ΜΟΝΟ τα δικά του (απομόνωση). Μπορείτε να ζητήσετε εξαγωγή ή διαγραφή. Οι φωτογραφίες τιμολογίων διαγράφονται αυτόματα μετά από εύλογο διάστημα.','Your data remains yours. Each shop sees ONLY its own (isolation). You may request export or deletion. Invoice photos are auto-deleted after a reasonable period.')+'</p>'+
     '<h3 style="font-size:14px;color:var(--accent);margin:14px 0 6px">8. '+T('Αποδεκτή Χρήση','Acceptable Use')+'</h3><p>'+T('Απαγορεύεται: κακόβουλη χρήση, απόπειρα παραβίασης, αντίστροφη μηχανική, μαζική εξαγωγή δεδομένων, παράνομοι σκοποί, αναπαραγωγή ή μεταπώληση της υπηρεσίας.','Prohibited: malicious use, breach attempts, reverse engineering, bulk data extraction, unlawful purposes, reproducing or reselling the service.')+'</p>'+
@@ -514,7 +533,7 @@ function openTermsFull(){
 function openPrivacyFull(){
   const T=(el,en)=>L(el,en);
   legalModal('🔒 '+T('Πολιτική Απορρήτου','Privacy Policy'),
-    '<h3 style="font-size:14px;color:var(--accent);margin:0 0 6px">1. '+T('Ποιοι είμαστε','Who we are')+'</h3><p>'+T('Το Cost IQ είναι εργαλείο κοστολόγησης για επιχειρήσεις εστίασης. Επικοινωνία: getcostiq@gmail.com','Cost IQ is a costing tool for hospitality businesses. Contact: getcostiq@gmail.com')+'</p>'+
+    '<h3 style="font-size:14px;color:var(--accent);margin:0 0 6px">1. '+T('Ποιοι είμαστε','Who we are')+'</h3><p>'+T('Το CostIQ είναι εργαλείο κοστολόγησης για επιχειρήσεις εστίασης. Επικοινωνία: getcostiq@gmail.com','CostIQ is a costing tool for hospitality businesses. Contact: getcostiq@gmail.com')+'</p>'+
     '<h3 style="font-size:14px;color:var(--accent);margin:14px 0 6px">2. '+T('Ποια δεδομένα επεξεργαζόμαστε','What data we process')+'</h3><p>'+T('Μόνο όσα εισάγετε εσείς ή το προσωπικό σας: προϊόντα, προμηθευτές, τιμές, τιμολόγια (και φωτογραφίες), παραγγελίες, συνταγές, εκδηλώσεις, καθώς και email/όνομα για τη σύνδεση. <b>Κάθε μαγαζί βλέπει μόνο τα δικά του δεδομένα.</b>','Only what you or your staff enter: products, suppliers, prices, invoices (and photos), orders, recipes, events, plus login email/name. <b>Each shop sees only its own data.</b>')+'</p>'+
     '<div style="background:var(--accent-bg);border:1px solid var(--accent);border-radius:8px;padding:10px;margin:14px 0"><b>3. Gmail ('+T('προαιρετικό','optional')+')</b><p style="margin:6px 0 0">'+T('Αν συνδέσετε Gmail, ζητάμε <b>ΜΟΝΟ ΑΝΑΓΝΩΣΗ</b> (gmail.readonly), αποκλειστικά για να σας δείχνουμε τα email με συνημμένα τιμολόγια.','If you connect Gmail, we request <b>READ-ONLY</b> access (gmail.readonly), solely to show you emails with invoice attachments.')+'</p><ul style="margin:6px 0 0;padding-left:18px"><li>'+T('Διαβάζουμε <b>μόνο</b> όταν το ζητάτε ρητά','We read <b>only</b> when you explicitly request')+'</li><li>'+T('<b>Δεν</b> αποθηκεύουμε το περιεχόμενο των email','We do <b>not</b> store email content')+'</li><li>'+T('<b>Δεν</b> στέλνουμε, τροποποιούμε ή διαγράφουμε email','We do <b>not</b> send, modify or delete emails')+'</li><li>'+T('Ανακαλείτε την πρόσβαση οποτεδήποτε από τον Google λογαριασμό σας','You may revoke access anytime from your Google account')+'</li></ul><p style="margin:8px 0 0;font-size:11px;color:var(--muted)">'+T('Η χρήση δεδομένων Google API συμμορφώνεται με την Google API Services User Data Policy, συμπεριλαμβανομένων των απαιτήσεων Limited Use.','Use of Google API data complies with the Google API Services User Data Policy, including Limited Use requirements.')+'</p></div>'+
     '<h3 style="font-size:14px;color:var(--accent);margin:14px 0 6px">4. '+T('Πώς φυλάσσονται','How data is stored')+'</h3><p>'+T('Με ασφάλεια σε cloud υποδομή, με απομόνωση ανά επιχείρηση και έλεγχο πρόσβασης. Οι φωτογραφίες τιμολογίων διαγράφονται αυτόματα μετά από εύλογο διάστημα.','Securely on cloud infrastructure, with per-business isolation and access control. Invoice photos are auto-deleted after a reasonable period.')+'</p>'+
@@ -568,7 +587,7 @@ function subActive(){ if(!ST.paidUntil)return true; return new Date(ST.paidUntil
 function subDaysLeft(){ if(!ST.paidUntil)return 999; return Math.ceil((new Date(ST.paidUntil)-new Date(new Date().toDateString()))/86400000); }
 function lockScreen(){
   const c=document.getElementById('content');
-  document.getElementById('hTitle').textContent='Cost IQ';
+  document.getElementById('hTitle').textContent='CostIQ';
   c.innerHTML='<div class="card" style="margin-top:40px;text-align:center;border:2px solid var(--bad);background:#FFF0F0;padding:30px">'+
     '<div style="font-size:44px">🔒</div>'+
     '<h2 style="color:var(--bad);margin:10px 0">'+L('Λήξη συνδρομής','Subscription expired')+'</h2>'+
@@ -665,7 +684,7 @@ function setupBanner(){
 function supName(id){const s=ST.suppliers.find(x=>x.id===id);return s?s.name:'—';}
 function pricesFor(pid){return ST.prices.filter(p=>p.product_id===pid);}
 
-function brandTitle(){return ST.shopName||'Cost IQ';}
+function brandTitle(){return ST.shopName||'CostIQ';}
 function goList(){
   const y=ST._listScroll||0;
   ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;
@@ -6632,7 +6651,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·269';
+const BUILD='v'+'2026.07.19·270';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -6786,7 +6805,7 @@ async function markGmailDone(){
 async function chooseShop(){
   ST.view='shops';persistNav();
   const c=document.getElementById('content');
-  document.getElementById('hTitle').textContent='Cost IQ';
+  document.getElementById('hTitle').textContent='CostIQ';
   const bb=document.getElementById('backBtn');if(bb)bb.style.display='none';
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
   const {data}=await sb.from('tenants').select('*').order('name');
