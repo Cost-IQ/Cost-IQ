@@ -28,7 +28,7 @@
   .brandbar svg{width:26px;height:26px;flex:0 0 auto}
   .brandbar i{font-style:normal;color:#2ecc71}
   .header{background:var(--accent);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:50px;z-index:10}
-  .header .back{background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:0;line-height:1;display:none}
+  .header .back{background:rgba(255,255,255,.18);border:none;color:#fff;font-size:26px;cursor:pointer;padding:0;line-height:1;width:38px;height:38px;border-radius:12px;flex:0 0 auto;display:none;align-items:center;justify-content:center}
   .header h1{font-size:16px;font-weight:600;flex:1}
   .header .who{font-size:11px;opacity:.85}
   .header .out{background:rgba(255,255,255,.18);border:none;color:#fff;font-size:16px;font-weight:600;padding:9px 14px;border-radius:16px;cursor:pointer;line-height:1}
@@ -269,14 +269,14 @@ function _rerenderCurrent(){
   if(ST.view==='summary')return orderSummary();
   if(ST.section==='products'&&ST.view==='detail'&&ST.prod){
     ST.prod=ST.products.find(p=>p.id===ST.prod.id)||ST.prod;
-    const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
+    const bb=document.getElementById('backBtn');if(bb)bb.style.display='flex';
     const _w=document.getElementById('whoami');if(_w)_w.style.display='none';
     const ht=document.getElementById('hTitle');if(ht)ht.textContent=ST.prod.sku||brandTitle();
     return drawProd();
   }
   if(ST.section==='recipes'&&ST.view==='detail'&&ST.recipe){
     ST.recipe=ST.recipes.find(r=>r.id===ST.recipe.id)||ST.recipe;
-    const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
+    const bb=document.getElementById('backBtn');if(bb)bb.style.display='flex';
     const _w=document.getElementById('whoami');if(_w)_w.style.display='none';
     const ht=document.getElementById('hTitle');if(ht)ht.textContent=ST.recipe.name||brandTitle();
     return drawRecipe();
@@ -814,7 +814,7 @@ const LABEL_KEYS=[
   ['p9m','9 Μήνες'],['pCustom','Επιλογή'],['wUnitWord','μονάδα'],['rcSetYield','βάλε παραγωγή'],['wAll','Όλες'],['wAllM','Όλοι'],['rcSaveAll','Αποθήκευση όλων']
 ];
 function openLabelEditor(){
-  ST.view='labels';persistNav();document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='⚙️ '+L('Ονόματα καρτελών','Tab & label names');
+  ST.view='labels';persistNav();document.getElementById('backBtn').style.display='flex';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='⚙️ '+L('Ονόματα καρτελών','Tab & label names');
   const c=document.getElementById('content');
   const cur=ST.lang;const m=(ST.labels&&ST.labels[cur])||{};
   const langName=cur==='en'?L('Αγγλικά (EN)','English (EN)'):L('Ελληνικά (ΕΛ)','Greek (EL)');
@@ -936,7 +936,7 @@ function openProd(pid){
   const p=ST.products.find(x=>x.id===pid);if(!p)return;
   ST._listScroll=window.scrollY||window.pageYOffset||0;   // θυμόμαστε πού ήμασταν στη λίστα
   ST.prod=p;ST.section='products';ST.view='detail';persistNav();
-  document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}
+  document.getElementById('backBtn').style.display='flex';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}
   document.getElementById('hTitle').textContent=p.sku;
   drawProd();
 }
@@ -1352,7 +1352,7 @@ function openRecipe(rid){
   const r=(ST.recipes||[]).find(x=>x.id===rid);if(!r)return;
   ST._listScroll=window.scrollY||window.pageYOffset||0;
   ST.recipe=r;ST.view='detail';persistNav();
-  document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}
+  document.getElementById('backBtn').style.display='flex';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}
   document.getElementById('hTitle').textContent=r.name;
   drawRecipe();
 }
@@ -1914,7 +1914,7 @@ async function saveStockTake(){
 }
 async function stockTakeHistory(){
   if(ST.plan==='basic'){toast('🔒 '+L('Το αρχείο απογραφών είναι στο πακέτο ADVANCED','Stock-take archive is an ADVANCED feature'));return;}
-  ST.view='stakes';const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
+  ST.view='stakes';const bb=document.getElementById('backBtn');if(bb)bb.style.display='flex';
   document.getElementById('hTitle').textContent='📚 '+L('Απογραφές','Stock-takes');
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
@@ -1935,7 +1935,7 @@ async function stockTakeHistory(){
   h+='</div>';c.innerHTML=h;
 }
 async function openStockTake(id){
-  ST.view='stakeDetail';const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','stockTakeHistory()');}
+  ST.view='stakeDetail';const bb=document.getElementById('backBtn');if(bb){bb.style.display='flex';bb.setAttribute('onclick','stockTakeHistory()');}
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
   let head=null,lines=[];
@@ -1992,7 +1992,7 @@ async function saveOrder(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 function orderSummary(){
-  ST.view='summary';persistNav();document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='📋 '+lbl('oSummaryTitle','Σύνοψη');
+  ST.view='summary';persistNav();document.getElementById('backBtn').style.display='flex';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='📋 '+lbl('oSummaryTitle','Σύνοψη');
   const c=document.getElementById('content');
   // group products with order_qty>0 by best supplier
   const bySup={};
@@ -2051,7 +2051,7 @@ async function logOrder(supName){
   }catch(e){toast('❌ '+(e.message||e));}
 }
 function renderOrderHistory(){ST.view='ohist';persistNav();
-  ST.view='ohist';document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🕘 '+lbl('oHistTitle','Ιστορικό Παραγγελιών');
+  ST.view='ohist';document.getElementById('backBtn').style.display='flex';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🕘 '+lbl('oHistTitle','Ιστορικό Παραγγελιών');
   const c=document.getElementById('content');
   // ΜΟΝΟ εκκρεμείς: Pending (περιμένω) + Partial (ήρθαν λιγότερα). Τα Delivered φεύγουν.
   const all=(ST.orderHistory||[]).slice();
@@ -2368,7 +2368,7 @@ async function saveMenuAnalysis(){
   }catch(e){toast('❌ '+(e.message||e)+' — '+L('έτρεξες το SQL menu engineering;','did you run the menu engineering SQL?'));}
 }
 async function menuAnalysisHistory(){
-  ST.view='menuArch';const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','ST.repsub=\'menu\';ST.view=\'list\';goSection(\'history\')');}
+  ST.view='menuArch';const bb=document.getElementById('backBtn');if(bb){bb.style.display='flex';bb.setAttribute('onclick','ST.repsub=\'menu\';ST.view=\'list\';goSection(\'history\')');}
   document.getElementById('hTitle').textContent='📚 '+L('Αρχείο Αναλύσεων','Analysis Archive');
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
@@ -2387,7 +2387,7 @@ async function menuAnalysisHistory(){
   h+='</div>';c.innerHTML=h;
 }
 async function openMenuAnalysis(id){
-  ST.view='menuArchDetail';const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','menuAnalysisHistory()');}
+  ST.view='menuArchDetail';const bb=document.getElementById('backBtn');if(bb){bb.style.display='flex';bb.setAttribute('onclick','menuAnalysisHistory()');}
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
   let head=null,lines=[];
@@ -2924,7 +2924,7 @@ function evCalc(){
 }
 function drawEvent(){
   const e=ST.event; const R=evCalc();
-  const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','closeEvent()');}
+  const bb=document.getElementById('backBtn');if(bb){bb.style.display='flex';bb.setAttribute('onclick','closeEvent()');}
   document.getElementById('hTitle').textContent=e.name||'—';
   const c=document.getElementById('content');
   const m2=v=>money(Math.round((v||0)*100)/100);
@@ -4044,7 +4044,7 @@ function priceDbView(){
 function openInvoice(id){
   const v=ST.invoices.find(x=>x.id===id);if(!v)return;
   ST._listScroll=window.scrollY||window.pageYOffset||0;
-  ST.inv=v;ST.section='invoices';ST.view='detail';persistNav();document.getElementById('backBtn').style.display='block';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🧾 '+(v.supplier_name||lbl('oScanTitle','Τιμολόγιο'));
+  ST.inv=v;ST.section='invoices';ST.view='detail';persistNav();document.getElementById('backBtn').style.display='flex';{var _w=document.getElementById('whoami');if(_w)_w.style.display='none';}document.getElementById('hTitle').textContent='🧾 '+(v.supplier_name||lbl('oScanTitle','Τιμολόγιο'));
   const c=document.getElementById('content');
   const lines=ST.history.filter(r=> r.invoice_id===id || ((r.supplier_name&&v.supplier_name&&normStr(r.supplier_name)===normStr(v.supplier_name))&&r.date===v.date) );
   let h='<div class="card"><h3 style="font-size:14px;margin-bottom:10px">🧾 '+esc(v.supplier_name||supName(v.supplier_id))+'</h3>'+
@@ -6276,7 +6276,7 @@ async function supplierLedger(sid){
   persistNav(); ST.view='supLedger'; ST._ledgerSid=sid;
   const T=(el,en)=>L(el,en);
   const c=document.getElementById('content');
-  const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','backFromLedger()');}
+  const bb=document.getElementById('backBtn');if(bb){bb.style.display='flex';bb.setAttribute('onclick','backFromLedger()');}
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
   const s=(ST.suppliers||[]).find(x=>x.id===sid); if(!s){c.innerHTML='<div class="card muted">—</div>';return;}
   document.getElementById('hTitle').textContent='🏢 '+s.name;
@@ -6343,7 +6343,7 @@ async function deliveryLedger(encName){
   persistNav(); ST.view='delLedger'; ST._delLedgerName=name;
   const T=(el,en)=>L(el,en);
   const c=document.getElementById('content');
-  const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','backToDaily()');}
+  const bb=document.getElementById('backBtn');if(bb){bb.style.display='flex';bb.setAttribute('onclick','backToDaily()');}
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
   document.getElementById('hTitle').textContent='📒 '+name;
   const n=v=>(v!=null&&v!==''?(+v):0); const money2=x=>money(Math.round(x*100)/100);
@@ -6472,7 +6472,7 @@ async function delDayPay(id){
 async function dailyArchive(){
   persistNav(); ST.view='dailyArch';
   const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
-  const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','backToDaily()');}
+  const bb=document.getElementById('backBtn');if(bb){bb.style.display='flex';bb.setAttribute('onclick','backToDaily()');}
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
   // Φόρτωση όλων των κλεισμένων ημερών + εξόδων + πληρωμών
   let closes=[],exps=[],pays=[];
@@ -6559,7 +6559,7 @@ function daySetupScreen(){
   ST.view='daySetup'; persistNav();
   const T=(el,en)=>L(el,en);
   const c=document.getElementById('content');
-  const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','backToDaily()');}
+  const bb=document.getElementById('backBtn');if(bb){bb.style.display='flex';bb.setAttribute('onclick','backToDaily()');}
   document.getElementById('hTitle').textContent='⚙️ '+T('Ρύθμιση Ημέρας','Day Setup');
   const s=ST.daySetup||defaultDaySetup();
   const pts=s.points||[];
@@ -6726,7 +6726,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·278';
+const BUILD='v'+'2026.07.19·279';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -6816,7 +6816,7 @@ async function gmailDisconnect(){
   toast('✅ '+L('Αποσυνδέθηκε','Disconnected')); gmailList();
 }
 async function gmailList(){
-  ST.view='gmail'; const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
+  ST.view='gmail'; const bb=document.getElementById('backBtn');if(bb)bb.style.display='flex';
   document.getElementById('hTitle').textContent='📧 '+L('Από Email','From Email');
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span> '+L('Φόρτωση email…','Loading emails…')+'</div>';
@@ -7036,7 +7036,7 @@ async function openMembers(){
     toast('🔒 '+L('Μόνο ο ιδιοκτήτης','Owner only'));
     return goHome();
   }
-  ST.view='members';persistNav(); const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
+  ST.view='members';persistNav(); const bb=document.getElementById('backBtn');if(bb)bb.style.display='flex';
   document.getElementById('hTitle').textContent='👥 '+L('Μέλη','Members');
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
@@ -7173,7 +7173,7 @@ async function openShopAdmin(id){
   ST._adminShopPlan=(t.plan||'advanced');
   ST._adminShopPaid=t.paid_until||null;
   ST.view='shopAdmin';persistNav();
-  const bb=document.getElementById('backBtn');if(bb){bb.style.display='block';bb.setAttribute('onclick','chooseShop()');}
+  const bb=document.getElementById('backBtn');if(bb){bb.style.display='flex';bb.setAttribute('onclick','chooseShop()');}
   document.getElementById('hTitle').textContent='🏪 '+esc(t.name||'—');
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
