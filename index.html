@@ -26,10 +26,12 @@
   .header .who{font-size:11px;opacity:.85}
   .header .out{background:rgba(255,255,255,.18);border:none;color:#fff;font-size:16px;font-weight:600;padding:9px 14px;border-radius:16px;cursor:pointer;line-height:1}
   .header #logoutBtn{font-size:14px;padding:10px 15px}
+  .header .hbtns{display:flex;align-items:center}
   @media(max-width:480px){
     .brandbar{padding:10px 0;font-size:26px}
-    .header{padding:8px 12px 10px;gap:6px;top:46px;flex-wrap:wrap}
-    .header .htwrap{flex:1 1 calc(100% - 34px)}
+    .header{padding:8px 12px 10px;gap:4px 6px;top:46px;flex-wrap:wrap}
+    .header .htwrap{flex:1 1 auto}
+    .header .hbtns{flex:1 1 100%;display:flex;align-items:center}
     .header h1{font-size:17px;font-weight:700}
     .header .who{font-size:10px}
     .header .out{padding:7px 10px;font-size:15px;border-radius:14px}
@@ -107,6 +109,7 @@
   <div class="header">
     <button class="back" id="backBtn" onclick="goList()">‹</button>
     <div class="htwrap" style="flex:1"><h1 id="hTitle">—</h1><div class="who" id="whoami">—</div></div>
+    <div class="hbtns">
     <button class="out" onclick="goHome()" style="margin-right:6px" title="Αρχική">🏠</button>
     <button class="out" id="shopsBtn" onclick="chooseShop()" style="margin-right:6px;display:none" title="Τα μαγαζιά μου">🏪</button>
     <button class="out" id="shopBtn" onclick="openMembers()" style="margin-right:6px;display:none" title="Μαγαζί & Μέλη">👥</button>
@@ -114,6 +117,7 @@
     <button class="out" id="fsBtn" onclick="toggleFullscreen()" style="margin-right:6px" title="Πλήρης οθόνη">⛶</button>
     <button class="out" id="langBtn" onclick="toggleLang()" style="margin-right:6px"><img src="https://flagcdn.com/28x21/gb.png" alt="EN" style="height:15px;vertical-align:middle;border-radius:2px"></button>
     <button class="out" id="logoutBtn" onclick="doLogout()">Έξοδος</button>
+    </div>
   </div>
   <div class="wrap" id="content"></div>
 </div>
@@ -6628,7 +6632,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·266';
+const BUILD='v'+'2026.07.19·268';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -6841,7 +6845,7 @@ async function chooseShop(){
     h+='<div class="row" style="border-left:4px solid '+s.col+'">'+
       '<div style="flex:1;min-width:0'+(isAdmin?';cursor:pointer':'')+'" '+(isAdmin?'onclick="openShopAdmin(\''+t.id+'\')"':'onclick="pickShop(\''+t.id+'\')"')+'><div class="name">'+s.emo+' '+esc(t.name||'—')+'</div>'+
       '<div style="font-size:12px;color:var(--muted)"><b>'+plan+'</b> · '+s.txt+'</div>'+valTxt+'</div>'+
-      '<button class="pick" style="margin:0;white-space:nowrap" onclick="pickShop(\''+t.id+'\')">🚪 '+L('Μπες','Enter')+'</button></div>';
+      '<button class="pick" style="margin:0;white-space:nowrap" onclick="pickShop(\''+t.id+'\')">🚪 '+L('Είσοδος','Enter')+'</button></div>';
   });
   if(!ST.tenants.length)h+='<div class="card muted" style="text-align:center">'+L('Κανένα μαγαζί ακόμα','No shops yet')+'</div>';
   if(ST.role==='admin')h+='<button class="btn" style="margin-top:14px" onclick="newShop()">➕ '+L('Νέο μαγαζί','New shop')+'</button></div></div>';
@@ -7088,7 +7092,7 @@ async function loadShopFinance(forceTid){
     '<div class="card" style="background:var(--accent-bg);border-color:var(--accent);display:flex;justify-content:space-between;align-items:center">'+
       '<div><div style="font-size:17px;font-weight:700;color:var(--accent)">🏪 '+esc(ST._adminShopName||'—')+'</div>'+
       '<div style="font-size:12px;color:var(--muted)"><b>'+plan+'</b>'+(ST._adminShopPaid?(' · '+L('λήγει','expires')+' '+dGRs(ST._adminShopPaid)):'')+'</div></div>'+
-      '<button class="btn" style="width:auto;margin:0" onclick="pickShop(\''+tid+'\')">🚪 '+T('Μπες','Enter')+'</button>'+
+      '<button class="btn" style="width:auto;margin:0" onclick="pickShop(\''+tid+'\')">🚪 '+T('Είσοδος','Enter')+'</button>'+
     '</div>'+
     '<div class="card" style="border:1.5px solid var(--accent)">'+
     '<h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">💰 '+T('Οικονομικά','Financials')+'</h3>'+
