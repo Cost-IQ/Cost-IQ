@@ -78,7 +78,7 @@
   #loginView .field input{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff}
   #loginView input::placeholder{color:#b8d6ec;opacity:.55}
   #loginView .btn{background:#2ecc71;color:#0d3320}
-  #loginView a{color:#8fe6b5!important}
+  #loginView a{color:#ffffff!important}
   #loginView .muted,#loginView .small{color:#b8d6ec}
   #loginView #loginVer{color:#b8d6ec}
   #loginView #pwEye{border-color:rgba(255,255,255,.25)!important;color:#fff}
@@ -6651,7 +6651,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·270';
+const BUILD='v'+'2026.07.19·274';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -7316,7 +7316,6 @@ async function editShop(){
   try{await sb.from('settings').upsert({tenant_id:tid,key:'shop_name',value:name.trim()},{onConflict:'tenant_id,key'});
     ST.shopName=name.trim(); try{localStorage.setItem('ciq_shop',ST.shopName);}catch(e){}
     document.getElementById('hTitle').textContent=brandTitle();
-    const le=document.getElementById('loginShop'); if(le)le.textContent=ST.shopName;
     toast('✅ '+L('Αποθηκεύτηκε','Saved'));
   }catch(e){toast('❌ '+(e.message||e));}
 }
@@ -7328,7 +7327,6 @@ async function editShop(){
     if(st('loginLock'))st('loginLock').textContent=L('🔒 Τα δεδομένα προστατεύονται ανά μαγαζί','🔒 Data is protected per shop');
     if(st('logoutBtn'))st('logoutBtn').textContent=L('Έξοδος','Logout');
   }catch(e){}
-  try{const s=localStorage.getItem('ciq_shop');const el=document.getElementById('loginShop');if(s&&el)el.textContent=s;}catch(e){}
   try{const lv=document.getElementById('loginVer');if(lv)lv.textContent=BUILD;}catch(e){}
   try{const tt=localStorage.getItem('ciq_tenant');if(tt)ST.tenant=tt;}catch(e){}
   const {data:{session}}=await sb.auth.getSession();if(session)await enterApp();})();
