@@ -580,6 +580,7 @@ function revCalc(){
 }
 // ═══════════ 📉 ΕΞΟΔΑ ΕΠΙΧΕΙΡΗΣΗΣ ═══════════
 const BIZ_CATS=[['hosting','☁️','Hosting / Supabase','Hosting / Supabase'],
+  ['claude','🤖','Claude AI','Claude AI'],
   ['api','🔑','API Keys','API Keys'],
   ['domain','🌐','Domain','Domain'],
   ['accountant','📊','Λογιστής','Accountant'],
@@ -662,6 +663,7 @@ function bizDrawExpenses(){ persistNav();
   });
   h+='</div>';
   h+='<button class="btn" onclick="bizAddExpense()">➕ '+T('Νέο Έξοδο','New Expense')+'</button>';
+  if(ST.bizPeriod!=='year')h+='<button class="btn ghost" style="width:100%;margin-top:8px" onclick="bizCopyRecurring()">🔄 '+T('Αντιγραφή Πάγιων Από Προηγούμενο Μήνα','Copy Recurring From Previous Month')+'</button>';
   h+='</div></div>';
   c.innerHTML=h;
 }
@@ -781,6 +783,39 @@ async function bizSaveExpense(){
       official:g('be-off')==='1', recurring:g('be-rec')==='1', created_by:ST.userEmail||null});
     if(error)throw error;
     closeModal(); toast('✅ '+L('Καταχωρήθηκε','Recorded')); bizLoadExpenses();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+// Αντιγράφει τα πάγια έξοδα του προηγούμενου μήνα στον τρέχοντα
+async function bizCopyRecurring(){
+  const T=(el,en)=>L(el,en);
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const cur=bizRange();
+  const sv=ST.bizOffset; ST.bizOffset=(ST.bizOffset||0)-1; const prev=bizRange(); ST.bizOffset=sv;
+  const src=(ST.bizExpenses||[]).filter(x=>x.recurring&&x.exp_date>=prev.from&&x.exp_date<=prev.to);
+  if(!src.length){toast('ℹ️ '+T('Κανένα πάγιο τον προηγούμενο μήνα','No recurring expenses last month'));return;}
+  // Όσα υπάρχουν ήδη σε αυτόν τον μήνα, δεν ξαναμπαίνουν
+  const existing=(ST.bizExpenses||[]).filter(x=>x.exp_date>=cur.from&&x.exp_date<=cur.to);
+  const key=x=>(x.category||'')+'|'+(x.label||'');
+  const have={}; existing.forEach(x=>{have[key(x)]=true;});
+  const todo=src.filter(x=>!have[key(x)]);
+  if(!todo.length){toast('ℹ️ '+T('Έχουν ήδη καταχωρηθεί όλα','All already recorded'));return;}
+  const total=todo.reduce((s2,x)=>s2+n(x.amount_net)+n(x.vat_amount),0);
+  const lines=todo.map(x=>'• '+(x.label||bizCatLabel(x.category).replace(/^[^ ]+ /,''))+' — '+money(Math.round((n(x.amount_net)+n(x.vat_amount))*100)/100)).join('\n');
+  if(!confirm(T('Αντιγραφή','Copy')+' '+todo.length+' '+T('πάγιων εξόδων στον','recurring expenses to')+' '+bizLabel()+';\n\n'+lines+'\n\n'+T('Σύνολο','Total')+': '+money(Math.round(total*100)/100)))return;
+  // Ίδια ημέρα του μήνα με το πρωτότυπο
+  const rows=todo.map(function(x){
+    const d=new Date(x.exp_date+'T12:00:00');
+    const tgt=new Date(cur.from+'T12:00:00');
+    const last=new Date(tgt.getFullYear(),tgt.getMonth()+1,0).getDate();
+    const day=Math.min(d.getDate(),last);
+    const iso=tgt.getFullYear()+'-'+String(tgt.getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    return {exp_date:iso,category:x.category,label:x.label,amount_net:n(x.amount_net),
+      vat_pct:n(x.vat_pct),vat_amount:n(x.vat_amount),vat_deductible:x.vat_deductible!==false,
+      payment_method:x.payment_method||'transfer',official:x.official!==false,recurring:true,
+      created_by:ST.userEmail||null};
+  });
+  try{const {error}=await sb.from('biz_expenses').insert(rows); if(error)throw error;
+    toast('✅ '+rows.length+' '+T('πάγια αντιγράφηκαν','recurring copied')); bizLoadExpenses();
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function bizDelExpense(id,encKey){
@@ -8128,7 +8163,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·290';
+const BUILD='v'+'2026.07.19·292';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
