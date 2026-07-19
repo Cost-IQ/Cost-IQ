@@ -344,7 +344,7 @@ async function checkIdle(){
 // ═══════════ 💰 ΤΑ ΕΣΟΔΑ ΜΟΥ (μόνο ιδιοκτήτης συστήματος) ═══════════
 // Κλειδωμένο με PIN 6 ψηφίων — ζητείται κάθε φορά.
 async function openRevenue(){
-  if(!ST.sysOwner){toast('🔒 '+L('Δεν έχεις πρόσβαση','No access'));return goHome();}
+  if(!ST.sysOwner){toast('🔒 '+L('Δεν Έχεις Πρόσβαση','No Access'));return goHome();}
   ST.view='revenue'; persistNav();
   const bb=document.getElementById('backBtn');if(bb){bb.setAttribute('onclick','goHome()');bb.style.display='flex';}
   document.getElementById('hTitle').textContent='💰 '+L('Τα Έσοδά μου','My Revenue');
@@ -653,11 +653,11 @@ function bizDrawExpenses(){ persistNav();
     '<div class="muted" style="font-size:11px;margin-top:3px">'+T('Καθαρά','Net')+' '+m2(R.net)+' · '+T('ΦΠΑ','VAT')+' '+m2(R.vat)+'</div></div>';
   h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+T('Ανά Κατηγορία','By Category')+'</div>'+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">';
-  if(!R.groups.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Κανένα έξοδο σε αυτή την περίοδο','No expenses in this period')+'</div>';
+  if(!R.groups.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Κανένα Έξοδο Σε Αυτή Την Περίοδο','No Expenses In This Period')+'</div>';
   R.groups.forEach(function(g){
     h+='<div onclick="bizExpDetail(\''+encodeURIComponent(g.key)+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer">'+
       '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600;color:var(--accent)">'+bizCatLabel(g.key)+' ›</div>'+
-      '<div class="muted" style="font-size:11px">'+g.cnt+' '+T('κινήσεις','entries')+(g.recurring?(' · '+T('πάγιο','recurring')):'')+'</div></div>'+
+      '<div class="muted" style="font-size:11px">'+g.cnt+' '+T('Κινήσεις','Entries')+(g.recurring?(' · '+T('Πάγιο','Recurring')):'')+'</div></div>'+
       '<span style="font-size:14px;font-weight:700">'+m2(g.net+g.vat)+'</span></div>';
   });
   h+='</div>';
@@ -677,11 +677,11 @@ function bizExpDetail(encKey){
   h+='<div style="display:flex;align-items:center;gap:10px;margin:0 2px 12px"><span onclick="bizDrawExpenses()" style="cursor:pointer;font-size:18px">‹</span><div style="font-size:16px;font-weight:700">'+bizCatLabel(key)+'</div></div>';
   h+='<div class="card" style="text-align:center;margin-bottom:12px"><div class="muted" style="font-size:12px">'+bizLabel()+'</div><div style="font-size:26px;font-weight:800">'+m2(tot)+'</div></div>';
   h+='<div class="card" style="padding:0;overflow:hidden">';
-  if(!list.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Καμία κίνηση','No entries')+'</div>';
+  if(!list.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Καμία Κίνηση','No Entries')+'</div>';
   list.forEach(function(x){
     h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)">'+
-      '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(x.label||bizCatLabel(x.category))+(x.official===false?' <span style="font-size:10px;color:var(--muted)">('+T('Χωρίς παραστατικό','No receipt')+')</span>':'')+'</div>'+
-      '<div class="muted" style="font-size:11px">'+fmtDate(x.exp_date)+' · '+revMethodLabel(x.payment_method||'transfer')+(x.recurring?(' · '+T('πάγιο','recurring')):'')+'</div></div>'+
+      '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(x.label||bizCatLabel(x.category))+(x.official===false?' <span style="font-size:10px;color:var(--muted)">('+T('Χωρίς Παραστατικό','No Receipt')+')</span>':'')+'</div>'+
+      '<div class="muted" style="font-size:11px">'+fmtDate(x.exp_date)+' · '+revMethodLabel(x.payment_method||'transfer')+(x.recurring?(' · '+T('Πάγιο','Recurring')):'')+'</div></div>'+
       '<div style="display:flex;align-items:center;gap:10px"><div style="text-align:right"><div style="font-size:14px;font-weight:700">'+m2(n(x.amount_net)+n(x.vat_amount))+'</div>'+
       (n(x.vat_amount)>0?'<div class="muted" style="font-size:10px">'+T('ΦΠΑ','VAT')+' '+m2(x.vat_amount)+'</div>':'')+'</div>'+
       '<span onclick="bizDelExpense(\''+x.id+'\',\''+encKey+'\')" style="cursor:pointer;color:var(--bad);font-size:15px">🗑</span></div></div>';
@@ -718,8 +718,8 @@ function bizAddExpense(){
       '<div><label style="font-size:12px;color:var(--muted)">'+T('Τρόπος','Method')+'</label><select id="be-method" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)">'+
         '<option value="transfer">🏦 '+T('Τραπεζικό','Bank')+'</option><option value="card">💳 '+T('Κάρτα','Card')+'</option><option value="cash">💵 '+T('Μετρητά','Cash')+'</option></select></div>'+
     '</div>'+
-    bizSwitch('be-rec',T('Πάγιο (κάθε μήνα)','Recurring (monthly)'),'',false)+
-    bizSwitch('be-ded',T('ΦΠΑ Εκπίπτει','VAT Deductible'),T('μειώνει τον ΦΠΑ που πληρώνεις','reduces the VAT you pay'),true)+
+    bizSwitch('be-rec',T('Πάγιο (Κάθε Μήνα)','Recurring (Monthly)'),'',false)+
+    bizSwitch('be-ded',T('ΦΠΑ Εκπίπτει','VAT Deductible'),T('Μειώνει Τον ΦΠΑ Που Πληρώνεις','Reduces The VAT You Pay'),true)+
     bizSwitch('be-off',T('Με Παραστατικό','With Receipt'),'',true)+
   '</div>';
   showModal('➕ '+T('Νέο Έξοδο','New Expense'),html,T('Αποθήκευση','Save'),bizSaveExpense);
@@ -870,10 +870,10 @@ function bizDrawCashflow(){ persistNav();
   h+='<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:12px">'+
     '<div class="card" style="padding:12px;margin:0"><div class="muted" style="font-size:11px">🏦 '+T('Τράπεζα','Bank')+'</div>'+
       '<div style="font-size:21px;font-weight:800;margin-top:2px">'+m2(R.bank)+'</div>'+
-      (R.hasOpening?'<div class="muted" style="font-size:10px;margin-top:2px">'+T('από','from')+' '+m2(R.openBank)+'</div>':'')+'</div>'+
+      (R.hasOpening?'<div class="muted" style="font-size:10px;margin-top:2px">'+T('Από','From')+' '+m2(R.openBank)+'</div>':'')+'</div>'+
     '<div class="card" style="padding:12px;margin:0"><div class="muted" style="font-size:11px">💵 '+T('Μετρητά','Cash')+'</div>'+
       '<div style="font-size:21px;font-weight:800;margin-top:2px">'+m2(R.till)+'</div>'+
-      (R.hasOpening?'<div class="muted" style="font-size:10px;margin-top:2px">'+T('από','from')+' '+m2(R.openTill)+'</div>':'')+'</div>'+
+      (R.hasOpening?'<div class="muted" style="font-size:10px;margin-top:2px">'+T('Από','From')+' '+m2(R.openTill)+'</div>':'')+'</div>'+
   '</div>';
   h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+T('Εισροές','Inflows')+'</div>'+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">';
@@ -897,7 +897,7 @@ function bizDrawCashflow(){ persistNav();
   if(R.vatDue>0.5){
     h+='<div style="background:#FFF7E6;border-radius:12px;padding:11px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">'+
       '<div><div style="font-size:12px;color:#B8860B;font-weight:600">'+T('ΦΠΑ προς Απόδοση','VAT Payable')+'</div>'+
-      '<div style="font-size:10px;color:#B8860B">'+T('δεσμευμένο, δεν είναι δικό σου','reserved, not yours')+'</div></div>'+
+      '<div style="font-size:10px;color:#B8860B">'+T('Δεσμευμένο, Δεν Είναι Δικό Σου','Reserved, Not Yours')+'</div></div>'+
       '<span style="font-size:16px;font-weight:700;color:#B8860B">− '+m2(R.vatDue)+'</span></div>';
   }
   h+='<div class="card">'+
@@ -928,7 +928,261 @@ async function bizSaveBalance(){
     if(error)throw error; closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved')); bizLoadCashflow();
   }catch(e){toast('❌ '+(e.message||e));}
 }
-function bizLoadPayroll(){ bizSoon('👥 '+L('Μισθοδοσία','Payroll')); }
+// ═══════════ 👥 ΜΙΣΘΟΔΟΣΙΑ ΕΠΙΧΕΙΡΗΣΗΣ ═══════════
+async function bizLoadPayroll(){
+  ST.bizTab='payroll'; persistNav();
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  try{const {data}=await sb.from('biz_employees').select('*').order('name');ST.bizEmployees=data||[];}catch(e){ST.bizEmployees=[];}
+  try{const {data}=await sb.from('biz_payroll').select('*');ST.bizPayroll=data||[];}catch(e){ST.bizPayroll=[];}
+  try{const {data}=await sb.from('biz_contrib_setup').select('*').order('name');ST.bizContrib=data||[];}catch(e){ST.bizContrib=[];}
+  if(!ST.bizPeriod)ST.bizPeriod='month';
+  if(ST.bizOffset==null)ST.bizOffset=0;
+  if(!ST.bizPayView)ST.bizPayView='summary';
+  bizDrawPayroll();
+}
+// Υπολογισμός μισθοδοσίας ενός εργαζομένου για την περίοδο
+function bizEmpCalc(e){
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const cls=(ST.bizContrib||[]).find(x=>x.name===e.contrib_class);
+  const empPct=cls?n(cls.emp_pct):0, emprPct=cls?n(cls.empr_pct):0;
+  const isNet=(e.wage_basis==='net')&&empPct>0&&empPct<100;
+  let base=0;
+  if(e.pay_type==='monthly')base=n(e.monthly_wage);
+  else if(e.pay_type==='daily')base=n(e.daily_wage)*22;      // ενδεικτικά 22 εργάσιμες
+  else base=n(e.hourly_rate)*160;                             // ενδεικτικά 160 ώρες
+  const gross=isNet?(base/(1-empPct/100)):base;
+  const empC=gross*empPct/100, emprC=gross*emprPct/100;
+  return {gross:gross,empC:empC,emprC:emprC,net:gross-empC,cost:gross+emprC,isNet:isNet,cls:cls};
+}
+function bizPaidFor(empId,kind){
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const r=bizRange();
+  const list=(ST.bizPayroll||[]).filter(p=>p.employee_id===empId&&(p.kind||'wage')===kind&&p.period_from===r.from&&p.period_to===r.to);
+  const bank=list.reduce((s,p)=>s+n(p.amount_bank),0), cash=list.reduce((s,p)=>s+n(p.amount_cash),0);
+  return {bank:bank,cash:cash,total:bank+cash};
+}
+function bizDrawPayroll(){ ST.bizTab='payroll'; persistNav();
+  const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
+  const m2=x=>money(Math.round((x||0)*100)/100);
+  const view=ST.bizPayView||'summary';
+  let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:760px;margin:0 auto">';
+  h+=bizTabs();
+  const vp=(id,lbl)=>'<div onclick="ST.bizPayView=\''+id+'\';bizDrawPayroll()" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(view===id?'background:var(--accent);color:#fff;font-weight:600':'border:1px solid var(--line);color:var(--muted)')+'">'+lbl+'</div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:12px">'+vp('summary','📊 '+T('Σύνοψη','Summary'))+vp('staff','👤 '+T('Εργαζόμενοι','Staff'))+vp('setup','⚙️ '+T('Ρύθμιση','Setup'))+'</div>';
+
+  if(view==='staff'){
+    h+='<button class="btn ghost" style="width:100%;margin-bottom:12px" onclick="bizAddEmployee()">➕ '+T('Νέος Εργαζόμενος','New Employee')+'</button>';
+    h+='<div class="card" style="padding:0;overflow:hidden">';
+    const emps=ST.bizEmployees||[];
+    if(!emps.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Κανένας Εργαζόμενος','No Employees')+'</div>';
+    emps.forEach(function(e){
+      const n=v=>(v!=null&&v!==''?(+v):0);
+      const rate=e.pay_type==='monthly'?(m2(n(e.monthly_wage))+'/'+T('Μήνα','Month')):(e.pay_type==='daily'?(m2(n(e.daily_wage))+'/'+T('Ημέρα','Day')):(m2(n(e.hourly_rate))+'/'+T('Ώρα','Hour')));
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)">'+
+        '<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600">'+esc(e.name)+(e.active===false?' <span class="muted" style="font-size:11px">('+T('Ανενεργός','Inactive')+')</span>':'')+'</div>'+
+        '<div class="muted" style="font-size:11px">'+esc(e.position||'—')+' · '+rate+' '+(e.wage_basis==='net'?T('Καθαρό','Net'):T('Μικτό','Gross'))+'</div>'+
+        (e.contrib_class?'<div class="muted" style="font-size:11px">🏛️ '+esc(e.contrib_class)+'</div>':'<div style="font-size:11px;color:var(--bad)">⚠ '+T('Χωρίς Κατηγορία Εισφορών','No Contribution Class')+'</div>')+'</div>'+
+        '<div style="display:flex;gap:8px"><span onclick="bizEditEmployee(\''+e.id+'\')" style="cursor:pointer;color:var(--accent);font-size:15px">✏️</span>'+
+        '<span onclick="bizDelEmployee(\''+e.id+'\')" style="cursor:pointer;color:var(--bad);font-size:15px">🗑</span></div></div>';
+    });
+    h+='</div></div></div>'; c.innerHTML=h; return;
+  }
+
+  if(view==='setup'){
+    const cs=ST.bizContrib||[];
+    h+='<div class="muted" style="font-size:12px;margin:0 2px 10px">'+T('Κατηγορίες εισφορών. Ορίζεις μία φορά και ισχύουν παντού.','Contribution classes. Set once, applies everywhere.')+'</div>';
+    h+='<div class="card">';
+    if(!cs.length)h+='<div class="muted" style="font-size:13px;text-align:center;padding:8px">'+T('Καμία Κατηγορία','No Classes')+'</div>';
+    cs.forEach(function(x){
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)">'+
+        '<div><div style="font-size:13px;font-weight:600">'+esc(x.name)+'</div>'+
+        '<div class="muted" style="font-size:11px">'+T('Εργαζομένου','Employee')+' '+x.emp_pct+'% · '+T('Εργοδότη','Employer')+' '+x.empr_pct+'%</div></div>'+
+        '<span onclick="bizDelContrib(\''+x.id+'\')" style="cursor:pointer;color:var(--bad);font-size:15px">🗑</span></div>';
+    });
+    h+='<button class="btn ghost" style="width:100%;margin-top:10px" onclick="bizAddContrib()">➕ '+T('Νέα Κατηγορία','New Class')+'</button>'+
+      (cs.length?'':'<button class="btn ghost" style="width:100%;margin-top:6px" onclick="bizPresetGR()">🇬🇷 '+T('Προτεινόμενες Ελλάδας','Greek Presets')+'</button>')+
+    '</div></div></div>'; c.innerHTML=h; return;
+  }
+
+  // ── ΣΥΝΟΨΗ ──
+  h+=bizNav();
+  const emps=(ST.bizEmployees||[]).filter(e=>e.active!==false);
+  let tGross=0,tEmpC=0,tEmprC=0,tCost=0;
+  h+='<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">';
+  if(!emps.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Κανένας Εργαζόμενος — Πρόσθεσε Από Την Καρτέλα Εργαζόμενοι','No Employees — Add From The Staff Tab')+'</div>';
+  emps.forEach(function(e){
+    const R=bizEmpCalc(e);
+    tGross+=R.gross; tEmpC+=R.empC; tEmprC+=R.emprC; tCost+=R.cost;
+    const paid=bizPaidFor(e.id,'wage');
+    const due=R.net-paid.total;
+    const n=v=>(v!=null&&v!==''?(+v):0);
+    const rate=e.pay_type==='monthly'?(m2(n(e.monthly_wage))+'/'+T('Μήνα','Month')):(e.pay_type==='daily'?(m2(n(e.daily_wage))+'/'+T('Ημέρα','Day')):(m2(n(e.hourly_rate))+'/'+T('Ώρα','Hour')));
+    h+='<div style="padding:11px 14px;border-bottom:1px solid var(--line)">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'+
+        '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(e.name)+'</div>'+
+        '<div class="muted" style="font-size:11px">'+esc(e.position||'—')+' · '+rate+' '+(R.isNet?T('Καθαρό','Net'):T('Μικτό','Gross'))+'</div></div>'+
+        '<span style="font-size:14px;font-weight:700">'+m2(R.cost)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:7px">'+
+        '<div style="font-size:11px;flex:1">'+(paid.total>0?('<span style="color:var(--ok)">✓ '+T('Πληρώθηκε','Paid')+' '+m2(paid.total)+'</span>'+(due>0.005?(' <span style="color:var(--bad)">· '+T('Απομένουν','Remaining')+' '+m2(due)+'</span>'):'')):('<span class="muted">'+T('Εκκρεμεί','Pending')+'</span>'))+'</div>'+
+        '<button class="btn ghost" style="padding:5px 12px;font-size:12px;width:auto;margin:0" onclick="bizPayWage(\''+e.id+'\','+(due>0?due.toFixed(2):0)+')">💰 '+T('Πληρωμή','Pay')+'</button>'+
+      '</div></div>';
+  });
+  h+='</div>';
+  if(emps.length){
+    h+='<div class="card" style="margin-bottom:12px">'+
+      '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Μικτές Αποδοχές','Gross Wages')+'</span><span>'+m2(tGross)+'</span></div>'+
+      (tEmpC>0?'<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Εισφορές Εργαζομένων','Employee Contributions')+'</span><span style="color:var(--bad)">− '+m2(tEmpC)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Καθαρά Πληρωτέα','Net Payable')+'</span><span style="font-weight:600">'+m2(tGross-tEmpC)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Εισφορές Εργοδότη','Employer Contributions')+'</span><span>'+m2(tEmprC)+'</span></div>':'')+
+      '<div style="display:flex;justify-content:space-between;padding:8px 0 3px;margin-top:3px;border-top:1px solid var(--line);font-size:15px;font-weight:700"><span>'+T('Πραγματικό Κόστος','Real Cost')+'</span><span style="color:var(--accent)">'+m2(tCost)+'</span></div>'+
+    '</div>';
+    if(tEmpC+tEmprC>0)h+='<button class="btn ghost" style="width:100%" onclick="bizPayEfka('+(tEmpC+tEmprC).toFixed(2)+')">🏛️ '+T('Πληρωμή Εισφορών','Pay Contributions')+'</button>';
+  }
+  h+='</div></div>';
+  c.innerHTML=h;
+}
+function bizAddEmployee(){ bizEmpForm({}); }
+function bizEditEmployee(id){
+  const e=(ST.bizEmployees||[]).find(x=>x.id===id); if(!e)return;
+  bizEmpForm(e);
+}
+function bizEmpForm(e){
+  const T=(el,en)=>L(el,en);
+  const pt=e.pay_type||'monthly';
+  const isNet=e.wage_basis==='net';
+  const opts=(ST.bizContrib||[]).map(x=>'<option value="'+esc(x.name)+'"'+(e.contrib_class===x.name?' selected':'')+'>'+esc(x.name)+' ('+x.emp_pct+'% / '+x.empr_pct+'%)</option>').join('');
+  const ptBtn=(k,lbl)=>'<div id="bp-'+k+'" onclick="bizSetPayType(\''+k+'\')" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(pt===k?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+lbl+'</div>';
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<input type="hidden" id="bemp-id" value="'+(e.id||'')+'">'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα','Name')+'</label><input id="bemp-name" type="text" value="'+esc(e.name||'')+'" placeholder="'+T('π.χ. Γιώργος Δημητρίου','e.g. John Smith')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Θέση','Position')+'</label><input id="bemp-pos" type="text" value="'+esc(e.position||'')+'" placeholder="'+T('π.χ. Developer','e.g. Developer')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Τύπος Αμοιβής','Pay Type')+'</label>'+
+      '<div style="display:flex;gap:6px;margin:6px 0 8px">'+ptBtn('monthly',T('Μηνιαίος','Monthly'))+ptBtn('daily',T('Ημερήσιος','Daily'))+ptBtn('hourly',T('Ωρομίσθιο','Hourly'))+'</div>'+
+      '<input type="hidden" id="bemp-paytype" value="'+pt+'">'+
+      '<div id="bemp-w-monthly" style="'+(pt!=='monthly'?'display:none':'')+'"><label style="font-size:11px;color:var(--muted)">'+T('Μηνιαίος Μισθός','Monthly Wage')+'</label><input id="bemp-monthly" type="number" step="0.01" value="'+(e.monthly_wage||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div id="bemp-w-daily" style="'+(pt!=='daily'?'display:none':'')+'"><label style="font-size:11px;color:var(--muted)">'+T('Ημερομίσθιο','Daily Wage')+'</label><input id="bemp-daily" type="number" step="0.01" value="'+(e.daily_wage||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div id="bemp-w-hourly" style="'+(pt!=='hourly'?'display:none':'')+'"><label style="font-size:11px;color:var(--muted)">'+T('Ωρομίσθιο','Hourly Rate')+'</label><input id="bemp-hourly" type="number" step="0.01" value="'+(e.hourly_rate||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '</div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Το Συμφωνηθέν Ποσό Είναι','The Agreed Amount Is')+'</label>'+
+      '<div style="display:flex;gap:6px;margin:6px 0 0">'+
+        '<div id="bwb-gross" onclick="bizSetWageBasis(\'gross\')" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(!isNet?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+T('Μικτό','Gross')+'</div>'+
+        '<div id="bwb-net" onclick="bizSetWageBasis(\'net\')" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(isNet?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+T('Καθαρό','Net')+'</div>'+
+      '</div><input type="hidden" id="bemp-basis" value="'+(e.wage_basis||'gross')+'"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Κατηγορία Εισφορών','Contribution Class')+'</label><select id="bemp-contrib" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)"><option value="">'+T('— Καμία —','— None —')+'</option>'+opts+'</select></div>'+
+  '</div>';
+  showModal((e.id?'✏️ '+T('Επεξεργασία Εργαζομένου','Edit Employee'):'➕ '+T('Νέος Εργαζόμενος','New Employee')),html,T('Αποθήκευση','Save'),bizSaveEmployee);
+}
+function bizSetPayType(k){
+  const hid=document.getElementById('bemp-paytype'); if(hid)hid.value=k;
+  const on='background:var(--accent);color:#fff', off='border:1px solid var(--line);color:var(--muted)';
+  ['monthly','daily','hourly'].forEach(function(x){
+    const el=document.getElementById('bp-'+x);
+    if(el)el.style.cssText='flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(x===k?on:off);
+    const w=document.getElementById('bemp-w-'+x); if(w)w.style.display=(x===k)?'':'none';
+  });
+}
+function bizSetWageBasis(k){
+  const hid=document.getElementById('bemp-basis'); if(hid)hid.value=k;
+  const on='background:var(--accent);color:#fff', off='border:1px solid var(--line);color:var(--muted)';
+  const g=document.getElementById('bwb-gross'), n2=document.getElementById('bwb-net');
+  if(g)g.style.cssText='flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(k==='gross'?on:off);
+  if(n2)n2.style.cssText='flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(k==='net'?on:off);
+}
+async function bizSaveEmployee(){
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  const name=g('bemp-name').trim();
+  if(!name){toast('❌ '+L('Βάλε όνομα','Enter a name'));return;}
+  const row={name:name,position:g('bemp-pos').trim()||null,pay_type:g('bemp-paytype')||'monthly',
+    monthly_wage:parseFloat(g('bemp-monthly'))||0,daily_wage:parseFloat(g('bemp-daily'))||0,
+    hourly_rate:parseFloat(g('bemp-hourly'))||0,wage_basis:g('bemp-basis')||'gross',
+    contrib_class:g('bemp-contrib')||null,active:true};
+  const id=g('bemp-id');
+  try{
+    if(id){const {error}=await sb.from('biz_employees').update(row).eq('id',id); if(error)throw error;}
+    else{const {error}=await sb.from('biz_employees').insert(row); if(error)throw error;}
+    closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved')); bizLoadPayroll();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function bizDelEmployee(id){
+  if(!confirm(L('Διαγραφή εργαζομένου;','Delete employee?')))return;
+  try{await sb.from('biz_employees').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));bizLoadPayroll();}
+  catch(e){toast('❌ '+(e.message||e));}
+}
+function bizAddContrib(){
+  const T=(el,en)=>L(el,en);
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα Κατηγορίας','Class Name')+'</label><input id="bc-name" type="text" placeholder="'+T('π.χ. Κοινά','e.g. Standard')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('% Εργαζομένου','% Employee')+'</label><input id="bc-emp" type="number" step="0.01" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('% Εργοδότη','% Employer')+'</label><input id="bc-empr" type="number" step="0.01" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '</div></div>';
+  showModal('➕ '+T('Νέα Κατηγορία','New Class'),html,T('Αποθήκευση','Save'),bizSaveContrib);
+}
+async function bizSaveContrib(){
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  const nm=g('bc-name').trim();
+  if(!nm){toast('❌ '+L('Βάλε όνομα','Enter a name'));return;}
+  try{const {error}=await sb.from('biz_contrib_setup').insert({name:nm,emp_pct:parseFloat(g('bc-emp'))||0,empr_pct:parseFloat(g('bc-empr'))||0});
+    if(error)throw error; closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved')); bizLoadPayroll();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function bizDelContrib(id){
+  if(!confirm(L('Διαγραφή κατηγορίας;','Delete class?')))return;
+  try{await sb.from('biz_contrib_setup').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));bizLoadPayroll();}
+  catch(e){toast('❌ '+(e.message||e));}
+}
+async function bizPresetGR(){
+  const rows=[{name:'Κοινά',emp_pct:12.11,empr_pct:24.05},{name:'Βαρέα (ΒΑΕ)',emp_pct:16.41,empr_pct:26.85}];
+  try{const {error}=await sb.from('biz_contrib_setup').insert(rows); if(error)throw error;
+    toast('ℹ️ '+L('Έλεγξε τα ποσοστά με τον λογιστή σου','Verify the rates with your accountant')); bizLoadPayroll();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+function bizPayWage(empId,suggested){
+  const e=(ST.bizEmployees||[]).find(x=>x.id===empId); if(!e)return;
+  const T=(el,en)=>L(el,en);
+  const sug=(+suggested)||0;
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div class="muted" style="font-size:13px">'+esc(e.name)+' · '+bizLabel()+'</div>'+
+    '<div style="background:var(--accent-bg);border-radius:8px;padding:10px;font-size:12px;color:var(--accent)">'+T('Καθαρά Πληρωτέα','Net Payable')+': <b>'+money(Math.round(sug*100)/100)+'</b></div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
+      '<div><label style="font-size:12px;color:var(--muted)">🏦 '+T('Τράπεζα','Bank')+'</label><input id="bpw-bank" type="number" step="0.01" value="'+(sug?sug.toFixed(2):'')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">💵 '+T('Μετρητά','Cash')+'</label><input id="bpw-cash" type="number" step="0.01" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '</div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημερομηνία','Date')+'</label><input id="bpw-date" type="date" value="'+todayISO()+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+  '</div>';
+  showModal('💰 '+T('Πληρωμή Μισθού','Wage Payment'),html,T('Καταχώρηση','Record'),function(){bizSavePay(empId,'wage');});
+}
+function bizPayEfka(amount){
+  const T=(el,en)=>L(el,en);
+  const sug=(+amount)||0;
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div class="muted" style="font-size:13px">'+bizLabel()+'</div>'+
+    '<div style="background:var(--accent-bg);border-radius:8px;padding:10px;font-size:12px;color:var(--accent)">'+T('Σύνολο Εισφορών','Total Contributions')+': <b>'+money(Math.round(sug*100)/100)+'</b></div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
+      '<div><label style="font-size:12px;color:var(--muted)">🏦 '+T('Τράπεζα','Bank')+'</label><input id="bpw-bank" type="number" step="0.01" value="'+(sug?sug.toFixed(2):'')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">💵 '+T('Μετρητά','Cash')+'</label><input id="bpw-cash" type="number" step="0.01" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '</div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημερομηνία','Date')+'</label><input id="bpw-date" type="date" value="'+todayISO()+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+  '</div>';
+  showModal('🏛️ '+T('Πληρωμή Εισφορών','Contributions Payment'),html,T('Καταχώρηση','Record'),function(){bizSavePay(null,'efka');});
+}
+async function bizSavePay(empId,kind){
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  const bank=parseFloat(g('bpw-bank'))||0, cash=parseFloat(g('bpw-cash'))||0;
+  if(bank+cash<=0){toast('❌ '+L('Βάλε ποσό','Enter an amount'));return;}
+  const r=bizRange();
+  const e=empId?(ST.bizEmployees||[]).find(x=>x.id===empId):null;
+  const R=e?bizEmpCalc(e):null;
+  try{
+    const {error}=await sb.from('biz_payroll').insert({employee_id:empId||null,employee_name:e?e.name:null,
+      period_from:r.from,period_to:r.to,kind:kind||'wage',
+      gross:R?R.gross:0,emp_contrib:R?R.empC:0,empr_contrib:R?R.emprC:0,
+      amount_bank:bank,amount_cash:cash,pay_date:g('bpw-date')||todayISO(),created_by:ST.userEmail||null});
+    if(error)throw error;
+    closeModal(); toast('✅ '+L('Καταχωρήθηκε','Recorded')); bizLoadPayroll();
+  }catch(err){toast('❌ '+(err.message||err));}
+}
 // ═══════════ 🧾 ΦΠΑ ΕΠΙΧΕΙΡΗΣΗΣ ═══════════
 function bizVatRange(off){
   off=off||0; const now=new Date(); const p=ST.bizVatPeriod||'quarter';
@@ -1016,7 +1270,7 @@ function bizDrawVat(){ ST.bizTab='vat'; persistNav();
   if(!R.out.length)h+='<div class="muted" style="text-align:center;padding:14px;font-size:13px">—</div>';
   R.out.forEach(function(x){
     h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)">'+
-      '<div><div style="font-size:13px">'+esc(x.label)+'</div><div class="muted" style="font-size:11px">'+T('καθαρή αξία','net value')+' '+m2(x.net)+'</div></div>'+
+      '<div><div style="font-size:13px">'+esc(x.label)+'</div><div class="muted" style="font-size:11px">'+T('Καθαρή Αξία','Net Value')+' '+m2(x.net)+'</div></div>'+
       '<span style="font-size:14px;font-weight:600">'+m2(x.vat)+'</span></div>';
   });
   if(R.out.length)h+='<div style="display:flex;justify-content:space-between;padding:11px 14px;background:var(--bg);font-size:13px;font-weight:700"><span>'+T('Σύνολο Εκροών','Total Output')+'</span><span>'+m2(R.outVat)+'</span></div>';
@@ -1028,7 +1282,7 @@ function bizDrawVat(){ ST.bizTab='vat'; persistNav();
     const nd=(x.ded<=0.005&&x.hasNonDed);
     h+='<div '+(nd?'style="opacity:.55;':'onclick="bizExpDetail(\''+encodeURIComponent(x.key)+'\')" style="cursor:pointer;')+'display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)">'+
       '<div><div style="font-size:13px'+(nd?'':';color:var(--accent)')+'">'+bizCatLabel(x.key)+(nd?'':' ›')+'</div>'+
-      (nd?'<div class="muted" style="font-size:11px">'+T('δεν εκπίπτει','not deductible')+'</div>':'')+'</div>'+
+      (nd?'<div class="muted" style="font-size:11px">'+T('Δεν Εκπίπτει','Not Deductible')+'</div>':'')+'</div>'+
       '<span style="font-size:14px;font-weight:600'+(nd?';color:var(--muted)':';color:var(--ok)')+'">'+(nd?'':'− ')+m2(x.ded)+'</span></div>';
   });
   if(R.in.length)h+='<div style="display:flex;justify-content:space-between;padding:11px 14px;background:var(--bg);font-size:13px;font-weight:700"><span>'+T('Σύνολο Εισροών','Total Input')+'</span><span>'+m2(R.inVat)+'</span></div>';
@@ -1043,7 +1297,7 @@ function bizDrawVat(){ ST.bizTab='vat'; persistNav();
     if(D.outVat===0&&D.inVat===0)continue;
     any=true;
     h+='<div onclick="ST.bizVatOffset=(ST.bizVatOffset||0)-'+i+';bizDrawVat()" style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer">'+
-      '<span>'+bizVatLabel(off)+'</span><span class="muted">'+m2(Math.abs(D.due))+(D.due<0?(' ('+T('πιστωτικό','credit')+')'):'')+'</span></div>';
+      '<span>'+bizVatLabel(off)+'</span><span class="muted">'+m2(Math.abs(D.due))+(D.due<0?(' ('+T('Πιστωτικό','Credit')+')'):'')+'</span></div>';
   }
   if(!any)h+='<div class="muted" style="text-align:center;padding:14px;font-size:13px">—</div>';
   h+='</div>';
@@ -1118,9 +1372,9 @@ function bizDrawProfit(){ ST.bizTab='profit'; persistNav();
   h+='<div class="card" style="text-align:center;margin-bottom:12px;border:1.5px solid '+col+'">'+
     '<div class="muted" style="font-size:12px">'+T('Καθαρό Κέρδος','Net Profit')+'</div>'+
     '<div style="font-size:30px;font-weight:800;color:'+col+';margin-top:2px">'+(pos?'':'− ')+m2(Math.abs(R.profit))+'</div>'+
-    (R.revenue>0?'<div style="font-size:12px;color:'+col+';margin-top:2px">'+T('περιθώριο','margin')+' '+R.margin.toFixed(1)+'%</div>':'')+'</div>';
+    (R.revenue>0?'<div style="font-size:12px;color:'+col+';margin-top:2px">'+T('Περιθώριο','Margin')+' '+R.margin.toFixed(1)+'%</div>':'')+'</div>';
   h+='<div class="card" style="margin-bottom:12px">'+
-    '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span class="muted">'+T('Έσοδα (καθαρά)','Revenue (net)')+'</span><span>'+m2(R.revenue)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span class="muted">'+T('Έσοδα (Καθαρά)','Revenue (Net)')+'</span><span>'+m2(R.revenue)+'</span></div>'+
     '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span class="muted">'+T('Έξοδα Λειτουργίας','Operating Expenses')+'</span><span style="color:var(--bad)">− '+m2(R.opex)+'</span></div>'+
     '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span class="muted">'+T('Μισθοδοσία','Payroll')+'</span><span style="color:var(--bad)">− '+m2(R.payroll)+'</span></div>'+
     '<div style="display:flex;justify-content:space-between;padding:9px 0 4px;margin-top:4px;border-top:1px solid var(--line);font-size:16px;font-weight:700"><span>'+T('Καθαρό Κέρδος','Net Profit')+'</span><span style="color:'+col+'">'+(pos?'':'− ')+m2(Math.abs(R.profit))+'</span></div>'+
@@ -1128,8 +1382,8 @@ function bizDrawProfit(){ ST.bizTab='profit'; persistNav();
   if(R.revenue>0){
     h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+T('Ανάλυση Εσόδων','Revenue Breakdown')+'</div>'+
       '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">'+
-      '<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px"><span>'+T('Συνδρομές','Subscriptions')+' <span class="muted" style="font-size:11px">'+T('σταθερά','recurring')+'</span></span><span>'+m2(R.sub)+'</span></div>'+
-      (R.oneOff>0?'<div style="display:flex;justify-content:space-between;padding:10px 14px;font-size:13px"><span>'+T('Εφάπαξ','One-Off')+' <span class="muted" style="font-size:11px">setup, '+T('έξτρα','extra')+'</span></span><span>'+m2(R.oneOff)+'</span></div>':'')+
+      '<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px"><span>'+T('Συνδρομές','Subscriptions')+' <span class="muted" style="font-size:11px">'+T('Σταθερά','Recurring')+'</span></span><span>'+m2(R.sub)+'</span></div>'+
+      (R.oneOff>0?'<div style="display:flex;justify-content:space-between;padding:10px 14px;font-size:13px"><span>'+T('Εφάπαξ','One-Off')+' <span class="muted" style="font-size:11px">setup, '+T('Έξτρα','Extra')+'</span></span><span>'+m2(R.oneOff)+'</span></div>':'')+
       '</div>';
   }
   if(R.cats.length){
@@ -1147,7 +1401,7 @@ function bizDrawProfit(){ ST.bizTab='profit'; persistNav();
     '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span class="muted">'+T('Κόστος ανά Μαγαζί','Cost per Shop')+'</span><span>'+m2(R.costPerShop)+'</span></div>'+
     '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span class="muted">'+T('Κέρδος ανά Μαγαζί','Profit per Shop')+'</span><span style="color:'+col+'">'+m2(R.profitPerShop)+'</span></div>'+
     '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span class="muted">'+T('Πάγια Κόστη / Μήνα','Fixed Costs / Month')+'</span><span>'+m2(R.fixed)+'</span></div>'+
-    (R.breakEven>0?'<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span class="muted">'+T('Νεκρό Σημείο','Break Even')+'</span><span style="font-weight:600">'+R.breakEven+' '+T('μαγαζιά','shops')+'</span></div>':'')+
+    (R.breakEven>0?'<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span class="muted">'+T('Νεκρό Σημείο','Break Even')+'</span><span style="font-weight:600">'+R.breakEven+' '+T('Μαγαζιά','Shops')+'</span></div>':'')+
   '</div>';
   // Τελευταίοι μήνες
   h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+(ST.bizPeriod==='year'?T('Προηγούμενα Έτη','Previous Years'):T('Τελευταίοι Μήνες','Recent Months'))+'</div>'+
@@ -1220,7 +1474,7 @@ function drawRevenue(){ persistNav(); ST.bizTab='revenue';
     '<div style="position:relative;width:46px;height:26px;background:'+(on?'var(--accent)':'var(--line)')+';border-radius:26px;transition:.2s;flex:0 0 auto"><div style="position:absolute;height:20px;width:20px;left:'+(on?'23px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div></div>';
   h+='<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:12px">'+
     sw('o','ST.revOfficial=!ST.revOfficial;drawRevenue()',!!ST.revOfficial,ST.revOfficial?T('Μόνο Δηλωμένα','Declared Only'):T('Όλα','All'),T('Προβολή','View'))+
-    sw('s','ST.revSpread=!ST.revSpread;drawRevenue()',!!ST.revSpread,ST.revSpread?T('Κατανομή','Spread'):T('Ταμείο','Cash Basis'),ST.revSpread?T('Ανά μήνα κάλυψης','Per covered month'):T('Στον μήνα είσπραξης','On collection month'))+
+    sw('s','ST.revSpread=!ST.revSpread;drawRevenue()',!!ST.revSpread,ST.revSpread?T('Κατανομή','Spread'):T('Ταμείο','Cash Basis'),ST.revSpread?T('Ανά Μήνα Κάλυψης','Per Covered Month'):T('Στον Μήνα Είσπραξης','On Collection Month'))+
   '</div>';
   const dc=diff>=0?'var(--ok)':'var(--bad)';
   h+='<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:10px">'+
@@ -1231,17 +1485,17 @@ function drawRevenue(){ persistNav(); ST.bizTab='revenue';
     '<div class="card" style="padding:12px;margin:0"><div class="muted" style="font-size:11px">'+T('Εισπραχθέν','Collected')+'</div>'+
       '<div style="font-size:22px;font-weight:800;margin-top:2px;color:var(--ok)">'+m2(R.collected)+'</div>'+
       '<div class="muted" style="font-size:10px;margin-top:1px">+'+m2(R.collectedVat)+' '+T('ΦΠΑ','VAT')+'</div>'+
-      (R.target>0?'<div class="muted" style="font-size:11px;margin-top:2px">'+Math.round(R.collected/R.target*100)+'% '+T('του στόχου','of target')+'</div>':'')+'</div>'+
+      (R.target>0?'<div class="muted" style="font-size:11px;margin-top:2px">'+Math.round(R.collected/R.target*100)+'% '+T('Του Στόχου','Of Target')+'</div>':'')+'</div>'+
   '</div>';
   // ΦΠΑ προς απόδοση
   if(R.collectedVat>0.5){
     h+='<div style="background:#FFF7E6;border-radius:12px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">'+
       '<div><div style="font-size:12px;color:#B8860B;font-weight:600">'+T('ΦΠΑ προς Απόδοση','VAT Payable')+'</div>'+
-      '<div style="font-size:11px;color:#B8860B">'+T('Δεν είναι δικά σου','Not yours to keep')+'</div></div>'+
+      '<div style="font-size:11px;color:#B8860B">'+T('Δεν Είναι Δικά Σου','Not Yours To Keep')+'</div></div>'+
       '<span style="font-size:19px;font-weight:800;color:#B8860B">'+m2(R.collectedVat)+'</span></div>';
   }
   h+='<div class="card" style="padding:11px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;background:var(--accent-bg);border-color:var(--accent)">'+
-    '<span style="font-size:13px;color:var(--accent)">'+T('Σύνολο με ΦΠΑ (εισπράχθηκε)','Total incl. VAT (collected)')+'</span>'+
+    '<span style="font-size:13px;color:var(--accent)">'+T('Σύνολο Με ΦΠΑ (Εισπράχθηκε)','Total Incl. VAT (Collected)')+'</span>'+
     '<span style="font-size:18px;font-weight:800;color:var(--accent)">'+m2(R.collectedGross)+'</span></div>';
   if(R.pending>0.5){
     h+='<div style="background:#FFF0F0;border-radius:12px;padding:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">'+
@@ -1272,7 +1526,7 @@ function drawRevenue(){ persistNav(); ST.bizTab='revenue';
     h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+T('Εφάπαξ Έσοδα','One-Off Revenue')+'</div>'+
       '<div onclick="revCharges()" class="card" style="padding:12px 14px;margin-bottom:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">'+
         '<div><div style="font-size:13px;color:var(--accent);font-weight:600">'+T('Setup Fees & Έξτρα Χρεώσεις','Setup Fees & Extra Charges')+' ›</div>'+
-        '<div class="muted" style="font-size:11px">'+T('Δεν μετρούν στο MRR','Not counted in MRR')+'</div></div>'+
+        '<div class="muted" style="font-size:11px">'+T('Δεν Μετρούν Στο MRR','Not Counted In MRR')+'</div></div>'+
         '<div style="text-align:right"><div style="font-size:16px;font-weight:700">'+m2(R.oneOff)+'</div>'+
         (R.oneOffVat>0?'<div class="muted" style="font-size:10px">+'+m2(R.oneOffVat)+' '+T('ΦΠΑ','VAT')+'</div>':'')+'</div></div>';
   }
@@ -1306,12 +1560,12 @@ function drawRevenue(){ persistNav(); ST.bizTab='revenue';
       '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">';
     R.owing.forEach(function(o){
       const col=o.expired?'var(--bad)':'#B8860B';
-      const txt=o.expired?(T('Έληξε','Expired')+' '+dGRs(o.date)+' · '+Math.abs(o.days)+' '+T('μέρες','days')):(T('Λήγει','Expires')+' '+dGRs(o.date)+' · '+o.days+' '+T('μέρες','days'));
+      const txt=o.expired?(T('Έληξε','Expired')+' '+dGRs(o.date)+' · '+Math.abs(o.days)+' '+T('Μέρες','Days')):(T('Λήγει','Expires')+' '+dGRs(o.date)+' · '+o.days+' '+T('Μέρες','Days'));
       h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)">'+
         '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+(o.expired?'🔴':'🟡')+' '+esc(o.name||'—')+'</div>'+
         '<div class="muted" style="font-size:11px">'+txt+'</div></div>'+
         '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:'+col+'">'+m2(o.amt)+'</div>'+
-        '<div class="muted" style="font-size:10px">'+m2(o.amt+o.vat)+' '+T('με ΦΠΑ','incl. VAT')+'</div></div></div>';
+        '<div class="muted" style="font-size:10px">'+m2(o.amt+o.vat)+' '+T('Με ΦΠΑ','Incl. VAT')+'</div></div></div>';
     });
     h+='</div>';
   }
@@ -1323,7 +1577,7 @@ function drawRevenue(){ persistNav(); ST.bizTab='revenue';
     (R.oneOff>0.5?'<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Εφάπαξ Έσοδα','One-Off')+'</span><span>'+m2(R.oneOff)+'</span></div>':'')+
     '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Καθαρά Έσοδα','Net Revenue')+'</span><span style="font-weight:600">'+m2(R.grandNet)+'</span></div>'+
     '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('ΦΠΑ','VAT')+'</span><span>'+m2(R.grandVat)+'</span></div>'+
-    '<div style="display:flex;justify-content:space-between;padding:8px 0 3px;margin-top:3px;border-top:1px solid var(--line);font-size:15px;font-weight:700"><span>'+T('Σύνολο με ΦΠΑ','Total incl. VAT')+'</span><span style="color:var(--accent)">'+m2(R.grandNet+R.grandVat)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:8px 0 3px;margin-top:3px;border-top:1px solid var(--line);font-size:15px;font-weight:700"><span>'+T('Σύνολο Με ΦΠΑ','Total Incl. VAT')+'</span><span style="color:var(--accent)">'+m2(R.grandNet+R.grandVat)+'</span></div>'+
   '</div>';
   h+='<button class="btn ghost" style="width:100%;margin-top:12px" onclick="revPayments()">📋 '+T('Πληρωμές Περιόδου','Period Payments')+'</button>';
   h+='</div></div>';
@@ -1343,11 +1597,11 @@ function revPayments(){
   h+='<div class="card" style="text-align:center;margin-bottom:12px"><div class="muted" style="font-size:12px">'+T('Καθαρά','Net')+'</div><div style="font-size:26px;font-weight:800">'+m2(R.collected)+'</div>'+
     '<div class="muted" style="font-size:12px;margin-top:4px">'+T('ΦΠΑ','VAT')+' '+m2(R.collectedVat)+' · '+T('Σύνολο','Total')+' '+m2(R.collectedGross)+'</div></div>';
   h+='<div class="card" style="padding:0;overflow:hidden">';
-  if(!R.pays.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Καμία πληρωμή','No payments')+'</div>';
+  if(!R.pays.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Καμία Πληρωμή','No Payments')+'</div>';
   R.pays.slice().sort((a,b)=>String(b.pay_date).localeCompare(String(a.pay_date))).forEach(function(p){
     h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)">'+
-      '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(tName(p.tenant_id))+(p.official===false?' <span style="font-size:10px;color:var(--muted)">('+T('Μη δηλωμένη','Undeclared')+')</span>':'')+'</div>'+
-      '<div class="muted" style="font-size:11px">'+fmtDate(p.pay_date)+(p.months>1?(' · '+p.months+' '+T('μήνες','months')):'')+(p._part?(' · '+p._part):'')+(p.method?(' · '+revMethodLabel(p.method)):'')+'</div></div>'+
+      '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(tName(p.tenant_id))+(p.official===false?' <span style="font-size:10px;color:var(--muted)">('+T('Μη Δηλωμένη','Undeclared')+')</span>':'')+'</div>'+
+      '<div class="muted" style="font-size:11px">'+fmtDate(p.pay_date)+(p.months>1?(' · '+p.months+' '+T('Μήνες','Months')):'')+(p._part?(' · '+p._part):'')+(p.method?(' · '+revMethodLabel(p.method)):'')+'</div></div>'+
       '<div style="text-align:right"><div style="font-size:14px;font-weight:700">'+m2(p._net!=null?p._net:p.amount)+'</div>'+
       ((p._vat||0)>0?'<div class="muted" style="font-size:10px">+'+m2(p._vat)+' '+T('ΦΠΑ','VAT')+'</div>':'')+'</div></div>';
   });
@@ -1364,10 +1618,10 @@ function revCharges(){
   h+='<div class="card" style="text-align:center;margin-bottom:12px"><div class="muted" style="font-size:12px">'+T('Καθαρά','Net')+'</div><div style="font-size:26px;font-weight:800">'+m2(R.charges)+'</div>'+
     '<div class="muted" style="font-size:12px;margin-top:4px">'+T('ΦΠΑ','VAT')+' '+m2(R.chargesVat)+' · '+T('Σύνολο','Total')+' '+m2(R.charges+R.chargesVat)+'</div></div>';
   h+='<div class="card" style="padding:0;overflow:hidden">';
-  if(!R.chs.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Καμία χρέωση','No charges')+'</div>';
+  if(!R.chs.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Καμία Χρέωση','No Charges')+'</div>';
   R.chs.slice().sort((a,b)=>String(b.charge_date).localeCompare(String(a.charge_date))).forEach(function(x){
     h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)">'+
-      '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(tName(x.tenant_id))+(x.official===false?' <span style="font-size:10px;color:var(--muted)">('+T('Μη δηλωμένη','Undeclared')+')</span>':'')+'</div>'+
+      '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(tName(x.tenant_id))+(x.official===false?' <span style="font-size:10px;color:var(--muted)">('+T('Μη Δηλωμένη','Undeclared')+')</span>':'')+'</div>'+
       '<div class="muted" style="font-size:11px">'+fmtDate(x.charge_date)+(x.label?(' · '+esc(x.label)):'')+'</div></div>'+
       '<span style="font-size:14px;font-weight:700">'+m2(x.amount)+'</span></div>';
   });
@@ -5231,7 +5485,7 @@ function drawExpenses(){ persistNav();
   h+='<div class="card" style="text-align:center;margin-bottom:14px"><div class="muted" style="font-size:13px">'+T('Σύνολο Εξόδων','Total Expenses')+'</div><div style="font-size:30px;font-weight:800">'+money2(grand)+'</div></div>';
   // Λίστα κατηγοριών
   h+='<div class="card" style="padding:0;overflow:hidden">';
-  if(!catList.length)h+='<div class="muted" style="text-align:center;padding:20px;font-size:13px">'+T('Κανένα έξοδο σε αυτή την περίοδο','No expenses in this period')+'</div>';
+  if(!catList.length)h+='<div class="muted" style="text-align:center;padding:20px;font-size:13px">'+T('Κανένα Έξοδο Σε Αυτή Την Περίοδο','No Expenses In This Period')+'</div>';
   catList.forEach((cat,i)=>{
     const pct=grand>0?Math.round(cat.total/grand*100):0;
     h+='<div onclick="expDetail(\''+encodeURIComponent(cat.name)+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer">'+
@@ -6387,8 +6641,8 @@ function drawCashflow(){ persistNav();
   if(!d.hasOpening)h+='<div class="card" style="border:1px solid var(--warn);background:#FFF7E6;margin-bottom:12px"><div style="font-size:12px;color:var(--warn)">⚠ '+T('Δεν έχεις ορίσει αρχικά υπόλοιπα — τα νούμερα δείχνουν μόνο τις κινήσεις','No opening balances set — figures show movements only')+'</div></div>';
   // Υπόλοιπα
   h+='<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:16px">'+
-    '<div class="card" style="padding:12px"><div class="muted" style="font-size:11px">🏦 '+T('Τράπεζα','Bank')+'</div><div style="font-size:20px;font-weight:800;margin-top:2px">'+money2(d.bank)+'</div>'+(d.hasOpening?'<div class="muted" style="font-size:10px;margin-top:3px">'+T('από','from')+' '+money2(d.openBank)+'</div>':'')+'</div>'+
-    '<div class="card" style="padding:12px"><div class="muted" style="font-size:11px">💵 '+T('Ταμείο','Till')+'</div><div style="font-size:20px;font-weight:800;margin-top:2px">'+money2(d.till)+'</div>'+(d.hasOpening?'<div class="muted" style="font-size:10px;margin-top:3px">'+T('από','from')+' '+money2(d.openTill)+'</div>':'')+'</div>'+
+    '<div class="card" style="padding:12px"><div class="muted" style="font-size:11px">🏦 '+T('Τράπεζα','Bank')+'</div><div style="font-size:20px;font-weight:800;margin-top:2px">'+money2(d.bank)+'</div>'+(d.hasOpening?'<div class="muted" style="font-size:10px;margin-top:3px">'+T('Από','From')+' '+money2(d.openBank)+'</div>':'')+'</div>'+
+    '<div class="card" style="padding:12px"><div class="muted" style="font-size:11px">💵 '+T('Ταμείο','Till')+'</div><div style="font-size:20px;font-weight:800;margin-top:2px">'+money2(d.till)+'</div>'+(d.hasOpening?'<div class="muted" style="font-size:10px;margin-top:3px">'+T('Από','From')+' '+money2(d.openTill)+'</div>':'')+'</div>'+
   '</div>';
   // Εισροές
   h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 8px">'+T('Εισροές','Inflows')+'</div>';
@@ -6660,7 +6914,7 @@ function drawVat(){ persistNav();
   if(!d.outRows.length)h+='<div class="muted" style="text-align:center;padding:14px;font-size:13px">'+T('Δεν υπάρχουν καταχωρημένα Ζ','No Z reports recorded')+'</div>';
   d.outRows.forEach(r=>{
     h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)">'+
-      '<div><div style="font-size:13px">'+T('Συντελεστής','Rate')+' '+r.rate+'%</div><div class="muted" style="font-size:11px">'+T('καθαρή αξία','net value')+' '+money2(r.net)+'</div></div>'+
+      '<div><div style="font-size:13px">'+T('Συντελεστής','Rate')+' '+r.rate+'%</div><div class="muted" style="font-size:11px">'+T('Καθαρή Αξία','Net Value')+' '+money2(r.net)+'</div></div>'+
       '<span style="font-size:14px;font-weight:600">'+money2(r.vat)+'</span>'+
     '</div>';
   });
@@ -6694,7 +6948,7 @@ function drawVat(){ persistNav();
     if(dd.outVat===0&&dd.inVat===0)continue;
     any=true;
     h+='<div onclick="ST.vatOffset=(ST.vatOffset||0)-'+i+';drawVat()" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer">'+
-      '<span>'+vatLabel(period,rg)+'</span><span class="muted">'+money2(Math.abs(dd.due))+(dd.due<0?' ('+T('πιστωτικό','credit')+')':'')+'</span></div>';
+      '<span>'+vatLabel(period,rg)+'</span><span class="muted">'+money2(Math.abs(dd.due))+(dd.due<0?' ('+T('Πιστωτικό','Credit')+')':'')+'</span></div>';
   }
   if(!any)h+='<div class="muted" style="text-align:center;padding:14px;font-size:13px">—</div>';
   h+='</div>';
@@ -7767,7 +8021,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·287';
+const BUILD='v'+'2026.07.19·288';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -7873,7 +8127,7 @@ async function gmailList(){
     } else {
       c.innerHTML='<div class="card" style="text-align:center;margin-top:20px;padding:24px;border:1.5px solid #e0a800;background:#FFF7E6">'+
         '<div style="font-size:40px">🔒</div>'+
-        '<h3 style="margin:10px 0 6px">'+L('Δεν έχεις πρόσβαση','No access')+'</h3>'+
+        '<h3 style="margin:10px 0 6px">'+L('Δεν Έχεις Πρόσβαση','No Access')+'</h3>'+
         '<p style="font-size:13px;color:var(--muted)">'+L('Ζήτα από τον ιδιοκτήτη πρόσβαση στο Gmail του μαγαζιού (👥 Μέλη).','Ask the owner for access to the shop Gmail (👥 Members).')+'</p></div>';
     }
     return;
