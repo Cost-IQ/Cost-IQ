@@ -1045,10 +1045,6 @@ function drawProd(){persistNav();
       '<div class="field"><label>'+lbl('pdSku','Όνομα προϊόντος (SKU)')+'</label><input id="pi-sku" type="text" value="'+esc(p.sku)+'"></div>'+
       '<div class="field"><label>'+lbl('pdKind','Τμήμα')+'</label><select id="pi-kind" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
         ['beverage','food','supplies'].map(k=>'<option value="'+k+'"'+(p.kind===k?' selected':'')+'>'+(k==='beverage'?'🍺 '+lbl('kindBeverage','Ποτά'):(k==='food'?'🍽️ '+lbl('kindFood','Τρόφιμα'):'📦 '+lbl('kindSupplies','Αναλώσιμα')))+'</option>').join('')+'</select></div>'+
-      '<div class="field"><label>'+lbl('pdCostGroup','Κατηγορία Κοστολόγησης')+'</label><select id="pi-cg" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
-        [['','— '+L('Αυτόματα από Τμήμα','Auto from Section')+' —'],['bev','🍸 '+L('Ποτά','Drinks')],['hot','☕ '+L('Ροφήματα','Beverages')],['food','🍽️ '+L('Φαγητό','Food')],['sup','📦 '+L('Αναλώσιμα','Supplies')]]
-          .map(x=>'<option value="'+x[0]+'"'+((p.cost_group||'')===x[0]?' selected':'')+'>'+x[1]+'</option>').join('')+'</select>'+
-        '<div class="muted" style="font-size:11px;margin-top:4px">'+L('Πού μετράει στην Κερδοφορία','Where it counts in Profit')+'</div></div>'+
       '<div class="field"><label>'+lbl('wCategory','Κατηγορία')+'</label><input id="pi-cat" type="text" value="'+esc(p.category||'')+'" placeholder="'+lbl('phCat','δικές σου κατηγορίες')+'"></div>'+
       '<div class="field"><label>'+lbl('wSubcat','Υποκατηγορία')+'</label><input id="pi-sub" type="text" value="'+esc(p.sub_category||'')+'" placeholder="'+lbl('phSub','δικές σου υποκατηγορίες')+'"></div>'+
       '<div class="field"><label>'+lbl('pdInvName','Όνομα Τιμολογίου (για OCR)')+'</label><input id="pi-inv" type="text" value="'+esc(p.invoice_name||'')+'" placeholder="'+lbl('phInv','λέξεις όπως στο τιμολόγιο')+'"></div>'+
@@ -1118,7 +1114,6 @@ async function saveAllProduct(pid){
   const sizeV=g('pi-size'); upd.size_ml=sizeV===''?null:parseFloat(sizeV);
   const packEl=document.getElementById('pi-pack'); if(packEl)upd.packaging=(packEl.value||'').trim()||null;
   const kindEl=document.getElementById('pi-kind'); if(kindEl)upd.kind=kindEl.value;
-  const cgEl=document.getElementById('pi-cg'); if(cgEl)upd.cost_group=cgEl.value||null;
   const unitEl=document.getElementById('pi-unit'); if(unitEl)upd.measure_unit=unitEl.value||null;
   const alcEl=document.getElementById('pi-alc');
   if(alcEl){const av=alcEl.value;upd.alcohol_pct=av===''?null:parseFloat(av);const ev=g('pi-efk');upd.efk=ev===''?null:parseFloat(ev);}
@@ -1152,7 +1147,6 @@ async function saveInfo(pid){
   const upd={sku,category:cat||null,sub_category:sub||null,invoice_name:inv||null,size_ml:size,notes:(notesEl?(notesEl.value||'').trim():'')||null};
   const packEl=document.getElementById('pi-pack'); if(packEl)upd.packaging=(packEl.value||'').trim()||null;
   const kindEl=document.getElementById('pi-kind'); if(kindEl)upd.kind=kindEl.value;
-  const cgEl=document.getElementById('pi-cg'); if(cgEl)upd.cost_group=cgEl.value||null;
   const unitEl=document.getElementById('pi-unit'); if(unitEl)upd.measure_unit=unitEl.value||null;
   const alcEl=document.getElementById('pi-alc');
   if(alcEl){                                   // beverage: αλκοόλ + ΕΦΚ (χειροκίνητο ή αυτόματο)
@@ -6628,7 +6622,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·263';
+const BUILD='v'+'2026.07.04·264';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
