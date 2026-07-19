@@ -2442,16 +2442,11 @@ function pLabel(){
 }
 // Αγορές από τα τιμολόγια (αυτόματα, ανά τμήμα)
 function autoPurchases(start,end){
-  const out={food:0,bev:0,hot:0,sup:0};
+  const out={food:0,bev:0,sup:0};
   (ST.history||[]).forEach(r=>{
     const d=(r.date||'').slice(0,10); if(d<start||d>end)return;
     const p=(ST.products||[]).find(x=>x.id===r.product_id);
     const val=(parseFloat(r.price)||0)*(parseFloat(r.quantity)||0);
-    const g=p&&p.cost_group;            // αν έχει οριστεί ρητά, υπερισχύει
-    if(g==='hot'){out.hot+=val;return;}
-    if(g==='bev'){out.bev+=val;return;}
-    if(g==='food'){out.food+=val;return;}
-    if(g==='sup'){out.sup+=val;return;}
     const kind=p?p.kind:'beverage';
     if(kind==='food')out.food+=val; else if(kind==='supplies')out.sup+=val; else out.bev+=val;
   });
@@ -2584,9 +2579,8 @@ function calcProfit(p){
   const auto=autoPurchases(p.period_start,p.period_end);
   const pFood=(p.purch_food_manual!=null&&p.purch_food_manual!=='')?parseFloat(p.purch_food_manual):auto.food;
   const pBev=(p.purch_bev_manual!=null&&p.purch_bev_manual!=='')?parseFloat(p.purch_bev_manual):auto.bev;
-  const pHot=(p.purch_hot_manual!=null&&p.purch_hot_manual!=='')?parseFloat(p.purch_hot_manual):auto.hot;
   const pSup=(p.purch_sup_manual!=null&&p.purch_sup_manual!=='')?parseFloat(p.purch_sup_manual):auto.sup;
-  const purchases=pFood+pBev+pHot+pSup;
+  const purchases=pFood+pBev+pSup;
   // Προσωπικό & λειτουργικά
   const labour=use(p.wages,A.wages)+use(p.social,A.social);
   const opex=(parseFloat(p.rent)||0)+(parseFloat(p.utilities)||0)+use(p.other_expenses,A.opex);
@@ -2604,11 +2598,10 @@ function calcProfit(p){
       taxPct, tax, after, afterPct:sales?after/sales*100:0,
       prime:pc, primePct:sales?pc/sales*100:0,
       foodPct:sf?pFood/sf*100:0,
-      bevPct:sb?pBev/sb*100:0,
-      hotPct:sh?pHot/sh*100:0
+      bevPct:(sb+sh)?pBev/(sb+sh)*100:0
     };
   };
-  return {decl:mk(salesDecl), real:mk(salesReal), sf, sb, sh, shSrv, shPkg, cash, pFood, pBev, pHot, pSup, auto, hasCash:cash>0};
+  return {decl:mk(salesDecl), real:mk(salesReal), sf, sb, sh, shSrv, shPkg, cash, pFood, pBev, pSup, auto, hasCash:cash>0};
 }
 function profitResultsHtml(R){
   const D=R.decl, RE=R.real;
@@ -2633,13 +2626,16 @@ function profitResultsHtml(R){
       '</div>'+
     '</div>';
   };
-  let h=cardP('📊 '+T('Δηλωμένη','Declared'),D,'');
-  if(R.hasCash)h+=cardP('💵 '+T('Πραγματική (με μετρητά)','Real (incl. cash)'),RE,T('+ μετρητά','+ cash'));
+  // Ένας πίνακας — ακολουθεί τον διακόπτη «Μετρητά στον Τζίρο»
+  const useReal=(ST.pfUseReal!==false)&&R.hasCash;
+  const M=useReal?RE:D;
+  const ttl=useReal?('💵 '+T('Πραγματική','Real')):('📊 '+T('Δηλωμένη','Declared'));
+  const note=useReal?T('με μετρητά','incl. cash'):(R.hasCash?T('χωρίς μετρητά','excl. cash'):'');
+  let h=cardP(ttl,M,note);
   h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">📈 '+T('Δείκτες','Ratios')+'</h3>'+
-    '<div class="kv"><span class="k">🍸 '+T('Κόστος Ποτών','Drinks Cost')+'</span><span class="v" style="color:'+badge(D.bevPct,25,30)+'">'+pct(D.bevPct)+' <span style="font-size:11px;color:var(--muted)">(≤25%)</span></span></div>'+
-    '<div class="kv"><span class="k">☕ '+T('Κόστος Ροφημάτων','Beverages Cost')+'</span><span class="v" style="color:'+badge(D.hotPct,25,30)+'">'+pct(D.hotPct)+' <span style="font-size:11px;color:var(--muted)">(≤25%)</span></span></div>'+
-    '<div class="kv"><span class="k">🍽️ '+T('Κόστος Φαγητού','Food Cost')+'</span><span class="v" style="color:'+badge(D.foodPct,30,35)+'">'+pct(D.foodPct)+' <span style="font-size:11px;color:var(--muted)">(≤30%)</span></span></div>'+
-    '<div class="kv"><span class="k">'+T('Προσωπικό','Labour')+'</span><span class="v" style="color:'+badge(D.labourPct,30,35)+'">'+pct(D.labourPct)+' <span style="font-size:11px;color:var(--muted)">(≤30%)</span></span></div>'+
+    '<div class="kv"><span class="k">🍸 Beverage Cost</span><span class="v" style="color:'+badge(M.bevPct,25,30)+'">'+pct(M.bevPct)+' <span style="font-size:11px;color:var(--muted)">(≤25%)</span></span></div>'+
+    '<div class="kv"><span class="k">🍽️ Food Cost</span><span class="v" style="color:'+badge(M.foodPct,30,35)+'">'+pct(M.foodPct)+' <span style="font-size:11px;color:var(--muted)">(≤30%)</span></span></div>'+
+    '<div class="kv"><span class="k">'+T('Προσωπικό','Labour')+'</span><span class="v" style="color:'+badge(M.labourPct,30,35)+'">'+pct(M.labourPct)+' <span style="font-size:11px;color:var(--muted)">(≤30%)</span></span></div>'+
   '</div>';
   return h;
 }
@@ -2690,9 +2686,8 @@ function drawProfit(){
       f('pf-tax','🧾 '+T('Φόρος % (προαιρετικό)','Tax % (optional)'),p.tax_pct)+
     '</div>'+
     '<div style="font-size:11px;color:var(--muted);margin:10px 0 4px">'+T('Αγορές (Αυτόματα από Τιμολόγια + Χειροκίνητες Αγορές — άφησε κενό)','Purchases (Auto from Invoices + Manual Purchases — leave empty)')+':</div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
-      f('pf-pb','🍸 '+T('Ποτά','Drinks'),p.purch_bev_manual,money(R.auto.bev))+
-      f('pf-ph','☕ '+T('Ροφήματα','Beverages'),p.purch_hot_manual,money(R.auto.hot))+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
+      f('pf-pb','🍸 '+T('Ποτά','Beverage'),p.purch_bev_manual,money(R.auto.bev))+
       f('pf-pf','🍽️ '+T('Φαγητό','Food'),p.purch_food_manual,money(R.auto.food))+
       f('pf-ps','📦 '+T('Αναλώσιμα','Supplies'),p.purch_sup_manual,money(R.auto.sup))+
     '</div>'+
@@ -2765,7 +2760,7 @@ function pfLive(){
   p.rent=pfNum('pf-rent'); p.utilities=pfNum('pf-util'); p.other_expenses=pfNum('pf-oth');
   p.sales_cash_unrec=pfNum('pf-cash'); p.tax_pct=pfNum('pf-tax');
   const gv=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?parseFloat(el.value):null;};
-  p.purch_food_manual=gv('pf-pf'); p.purch_bev_manual=gv('pf-pb'); p.purch_hot_manual=gv('pf-ph'); p.purch_sup_manual=gv('pf-ps');
+  p.purch_food_manual=gv('pf-pf'); p.purch_bev_manual=gv('pf-pb'); p.purch_sup_manual=gv('pf-ps');
   ST.pf=p; refreshProfitNumbers();   // ΜΟΝΟ τα νούμερα — δεν ξαναφτιάχνει την οθόνη
 }
 function refreshProfitNumbers(){
@@ -2780,7 +2775,7 @@ async function saveProfit(){
     sales_food:p.sales_food||0,sales_bev:p.sales_bev||0,sales_hot:p.sales_hot||0,sales_hot_low:p.sales_hot_low||0,sales_incl_vat:!!p.sales_incl_vat,
     vat_food:p.vat_food||13,vat_bev:p.vat_bev||24,vat_hot:p.vat_hot||24,vat_hot_low:p.vat_hot_low||13,sales_cash_unrec:p.sales_cash_unrec||0,
     wages:p.wages||0,social:p.social||0,rent:p.rent||0,utilities:p.utilities||0,other_expenses:p.other_expenses||0,tax_pct:p.tax_pct||0,
-    purch_food_manual:p.purch_food_manual,purch_bev_manual:p.purch_bev_manual,purch_hot_manual:p.purch_hot_manual,purch_sup_manual:p.purch_sup_manual};
+    purch_food_manual:p.purch_food_manual,purch_bev_manual:p.purch_bev_manual,purch_sup_manual:p.purch_sup_manual};
   try{const {error}=await sb.from('profit_periods').upsert(row,{onConflict:'tenant_id,period_start,period_end'});
     if(error)throw error; toast('✅ '+L('Αποθηκεύτηκε','Saved'));
   }catch(e){toast('❌ '+(e.message||e));}
@@ -6629,7 +6624,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·260';
+const BUILD='v'+'2026.07.04·261';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
