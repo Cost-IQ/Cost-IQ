@@ -6726,7 +6726,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·277';
+const BUILD='v'+'2026.07.19·278';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -6879,6 +6879,13 @@ async function markGmailDone(){
   window._gmailCurrentMsg=null;
 }
 async function chooseShop(){
+  // Μόνο ο διαχειριστής και ο ιδιοκτήτης με πολλά μαγαζιά βλέπουν λίστα.
+  // Όλοι οι υπόλοιποι μπαίνουν κατευθείαν στο μαγαζί τους.
+  if(ST.role!=='admin'&&!ST.multiShop){
+    ST.view='list'; persistNav();
+    if(!ST.tenant)ST.tenant=ST.myTenant;
+    return enterShop();
+  }
   ST.view='shops';persistNav();
   const c=document.getElementById('content');
   document.getElementById('hTitle').textContent='CostIQ';
@@ -7003,7 +7010,7 @@ async function newShopOld(){
     toast('✅ '+L('Δημιουργήθηκε','Created')); await enterShop();
   }catch(e){toast('❌ '+(e.message||e));}
 }
-function switchShop(){ ST.tenant=''; try{localStorage.removeItem('ciq_tenant');}catch(e){} chooseShop(); }
+function switchShop(){ if(ST.role!=='admin'&&!ST.multiShop)return; ST.tenant=''; try{localStorage.removeItem('ciq_tenant');}catch(e){} chooseShop(); }
 async function deleteShop(){
   if(ST.role!=='admin'){toast(L('Μόνο ο διαχειριστής','Admin only'));return;}
   const tid=curTenant(); const t=(ST.tenants||[]).find(x=>x.id===tid); const nm=(t&&t.name)||ST.shopName||'';
