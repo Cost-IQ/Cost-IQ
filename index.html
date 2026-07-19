@@ -248,7 +248,7 @@ const EN_DEF={
 };
 function persistNav(){
   try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,repsub:ST.repsub,adminShop:ST._adminShop,homeView:ST.homeView,lang:ST.lang,
-    payView:ST.payView,expView:ST.expView,payPeriod:ST.payPeriod,payOffset:ST.payOffset,cfOffset:ST.cfOffset,pfUseReal:ST.pfUseReal,vatPeriod:ST.vatPeriod,vatOffset:ST.vatOffset,expPeriod:ST.expPeriod,ledgerSid:ST._ledgerSid,delLedgerName:ST._delLedgerName,revView:ST.revView,revOffset:ST.revOffset,revOfficial:ST.revOfficial}));}catch(e){}
+    payView:ST.payView,expView:ST.expView,payPeriod:ST.payPeriod,payOffset:ST.payOffset,cfOffset:ST.cfOffset,pfUseReal:ST.pfUseReal,vatPeriod:ST.vatPeriod,vatOffset:ST.vatOffset,expPeriod:ST.expPeriod,ledgerSid:ST._ledgerSid,delLedgerName:ST._delLedgerName,revView:ST.revView,revOffset:ST.revOffset,revOfficial:ST.revOfficial,revSpread:ST.revSpread,bizTab:ST.bizTab,bizPeriod:ST.bizPeriod,bizOffset:ST.bizOffset}));}catch(e){}
 }
 function rerenderCurrent(){ return keepScroll(_rerenderCurrent); }
 function _rerenderCurrent(){
@@ -427,6 +427,11 @@ async function revForgotPin(){
     revSetPinScreen();
   }catch(e){toast('❌ '+T('Λάθος κωδικός','Wrong password'));}
 }
+function bizRestore(){
+  const t=ST.bizTab||'revenue';
+  if(t!=='revenue')return bizGo(t);
+  drawRevenue();
+}
 async function revLoadData(){
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
@@ -445,7 +450,9 @@ async function revLoadData(){
   if(ST.revOffset==null)ST.revOffset=0;
   if(ST.revOfficial==null)ST.revOfficial=false;   // false = Όλα, true = μόνο Δηλωμένα
   if(ST.revSpread==null)ST.revSpread=false;       // false = Ταμείο, true = Κατανομή
-  drawRevenue();
+  if(!ST.bizPeriod)ST.bizPeriod='month';
+  if(ST.bizOffset==null)ST.bizOffset=0;
+  bizRestore();
 }
 function revRange(){
   const off=ST.revOffset||0; const now=new Date();
@@ -571,7 +578,252 @@ function revCalc(){
     pending:Math.max(0,targetNet-colNet),byPlan:byPlan,byMethod:byMethod,
     owing:owing.sort((a,b)=>a.days-b.days),activeShops:tenants.length,pays:paysShown,chs:chs};
 }
-function drawRevenue(){ persistNav();
+// ═══════════ 📉 ΕΞΟΔΑ ΕΠΙΧΕΙΡΗΣΗΣ ═══════════
+const BIZ_CATS=[['hosting','☁️','Hosting / Supabase','Hosting / Supabase'],
+  ['api','🔑','API Keys','API Keys'],
+  ['domain','🌐','Domain','Domain'],
+  ['accountant','📊','Λογιστής','Accountant'],
+  ['marketing','📣','Marketing','Marketing'],
+  ['equipment','💻','Εξοπλισμός','Equipment'],
+  ['travel','🚗','Μετακινήσεις','Travel']];
+function bizCatLabel(k){
+  const f=BIZ_CATS.find(x=>x[0]===k);
+  if(f)return f[1]+' '+L(f[2],f[3]);
+  return '📌 '+esc(k||L('Λοιπά','Other'));
+}
+function bizRange(){
+  const off=ST.bizOffset||0; const now=new Date();
+  let from,to;
+  if(ST.bizPeriod==='year'){ from=new Date(now.getFullYear()+off,0,1); to=new Date(now.getFullYear()+off,11,31); }
+  else { from=new Date(now.getFullYear(),now.getMonth()+off,1); to=new Date(now.getFullYear(),now.getMonth()+off+1,0); }
+  const f=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
+  return {from:f(from),to:f(to)};
+}
+function bizLabel(){
+  const r=bizRange(); const d=new Date(r.from+'T12:00:00');
+  if(ST.bizPeriod==='year')return ''+d.getFullYear();
+  return monthNamesFull()[d.getMonth()]+' '+d.getFullYear();
+}
+function bizNav(){
+  const T=(el,en)=>L(el,en);
+  return '<div style="display:flex;gap:6px;margin-bottom:8px">'+
+    ['month','year'].map(function(v){const on=(ST.bizPeriod||'month')===v;
+      return '<div onclick="ST.bizPeriod=\''+v+'\';ST.bizOffset=0;bizGo(ST.bizTab)" style="flex:1;text-align:center;padding:8px;border-radius:20px;cursor:pointer;font-size:13px;'+(on?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+(v==='month'?T('Μήνας','Month'):T('Έτος','Year'))+'</div>';
+    }).join('')+'</div>'+
+  '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:12px">'+
+    '<span onclick="ST.bizOffset=(ST.bizOffset||0)-1;bizGo(ST.bizTab)" style="cursor:pointer;font-size:18px;padding:0 8px">‹</span>'+
+    '<span style="font-size:14px;font-weight:700">'+bizLabel()+'</span>'+
+    '<span onclick="ST.bizOffset=(ST.bizOffset||0)+1;bizGo(ST.bizTab)" style="cursor:pointer;font-size:18px;padding:0 8px">›</span>'+
+  '</div>';
+}
+async function bizLoadExpenses(){
+  ST.bizTab='expenses'; persistNav();
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  try{const {data}=await sb.from('biz_expenses').select('*');ST.bizExpenses=data||[];}catch(e){ST.bizExpenses=[];}
+  if(!ST.bizPeriod)ST.bizPeriod='month';
+  if(ST.bizOffset==null)ST.bizOffset=0;
+  bizDrawExpenses();
+}
+function bizExpCalc(){
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const r=bizRange();
+  const list=(ST.bizExpenses||[]).filter(x=>x.exp_date&&x.exp_date>=r.from&&x.exp_date<=r.to);
+  const groups={};
+  let net=0,vat=0,vatDed=0;
+  list.forEach(x=>{
+    const k=x.category||'other';
+    if(!groups[k])groups[k]={net:0,vat:0,cnt:0,recurring:false};
+    groups[k].net+=n(x.amount_net); groups[k].vat+=n(x.vat_amount); groups[k].cnt++;
+    if(x.recurring)groups[k].recurring=true;
+    net+=n(x.amount_net); vat+=n(x.vat_amount);
+    if(x.vat_deductible!==false)vatDed+=n(x.vat_amount);
+  });
+  const arr=Object.keys(groups).map(k=>Object.assign({key:k},groups[k])).sort((a,b)=>(b.net+b.vat)-(a.net+a.vat));
+  return {list:list,groups:arr,net:net,vat:vat,vatDeductible:vatDed,total:net+vat};
+}
+function bizDrawExpenses(){ persistNav();
+  const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
+  const m2=x=>money(Math.round((x||0)*100)/100);
+  const R=bizExpCalc();
+  let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:760px;margin:0 auto">';
+  h+=bizTabs()+bizNav();
+  h+='<div class="card" style="text-align:center;margin-bottom:12px"><div class="muted" style="font-size:12px">'+T('Σύνολο Εξόδων','Total Expenses')+'</div>'+
+    '<div style="font-size:26px;font-weight:800;margin-top:2px">'+m2(R.total)+'</div>'+
+    '<div class="muted" style="font-size:11px;margin-top:3px">'+T('Καθαρά','Net')+' '+m2(R.net)+' · '+T('ΦΠΑ','VAT')+' '+m2(R.vat)+'</div></div>';
+  h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+T('Ανά Κατηγορία','By Category')+'</div>'+
+    '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">';
+  if(!R.groups.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Κανένα έξοδο σε αυτή την περίοδο','No expenses in this period')+'</div>';
+  R.groups.forEach(function(g){
+    h+='<div onclick="bizExpDetail(\''+encodeURIComponent(g.key)+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer">'+
+      '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600;color:var(--accent)">'+bizCatLabel(g.key)+' ›</div>'+
+      '<div class="muted" style="font-size:11px">'+g.cnt+' '+T('κινήσεις','entries')+(g.recurring?(' · '+T('πάγιο','recurring')):'')+'</div></div>'+
+      '<span style="font-size:14px;font-weight:700">'+m2(g.net+g.vat)+'</span></div>';
+  });
+  h+='</div>';
+  h+='<button class="btn" onclick="bizAddExpense()">➕ '+T('Νέο Έξοδο','New Expense')+'</button>';
+  h+='</div></div>';
+  c.innerHTML=h;
+}
+function bizExpDetail(encKey){
+  const key=decodeURIComponent(encKey);
+  const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const m2=x=>money(Math.round((x||0)*100)/100);
+  const R=bizExpCalc();
+  const list=R.list.filter(x=>(x.category||'other')===key).sort((a,b)=>String(b.exp_date).localeCompare(String(a.exp_date)));
+  const tot=list.reduce((s,x)=>s+n(x.amount_net)+n(x.vat_amount),0);
+  let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:760px;margin:0 auto">';
+  h+='<div style="display:flex;align-items:center;gap:10px;margin:0 2px 12px"><span onclick="bizDrawExpenses()" style="cursor:pointer;font-size:18px">‹</span><div style="font-size:16px;font-weight:700">'+bizCatLabel(key)+'</div></div>';
+  h+='<div class="card" style="text-align:center;margin-bottom:12px"><div class="muted" style="font-size:12px">'+bizLabel()+'</div><div style="font-size:26px;font-weight:800">'+m2(tot)+'</div></div>';
+  h+='<div class="card" style="padding:0;overflow:hidden">';
+  if(!list.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Καμία κίνηση','No entries')+'</div>';
+  list.forEach(function(x){
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)">'+
+      '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600">'+esc(x.label||bizCatLabel(x.category))+(x.official===false?' <span style="font-size:10px;color:var(--muted)">('+T('Χωρίς παραστατικό','No receipt')+')</span>':'')+'</div>'+
+      '<div class="muted" style="font-size:11px">'+fmtDate(x.exp_date)+' · '+revMethodLabel(x.payment_method||'transfer')+(x.recurring?(' · '+T('πάγιο','recurring')):'')+'</div></div>'+
+      '<div style="display:flex;align-items:center;gap:10px"><div style="text-align:right"><div style="font-size:14px;font-weight:700">'+m2(n(x.amount_net)+n(x.vat_amount))+'</div>'+
+      (n(x.vat_amount)>0?'<div class="muted" style="font-size:10px">'+T('ΦΠΑ','VAT')+' '+m2(x.vat_amount)+'</div>':'')+'</div>'+
+      '<span onclick="bizDelExpense(\''+x.id+'\',\''+encKey+'\')" style="cursor:pointer;color:var(--bad);font-size:15px">🗑</span></div></div>';
+  });
+  h+='</div></div></div>';
+  c.innerHTML=h;
+}
+function bizAddExpense(){
+  const T=(el,en)=>L(el,en);
+  ST._bizCat=ST._bizCat||'hosting';
+  // Κατηγορίες: σταθερές + όσες έχεις χρησιμοποιήσει
+  const used=[...new Set((ST.bizExpenses||[]).map(x=>x.category).filter(Boolean))];
+  const extra=used.filter(k=>!BIZ_CATS.some(c=>c[0]===k));
+  let chips='';
+  BIZ_CATS.forEach(function(cat){
+    chips+='<span onclick="bizPickCat(\''+cat[0]+'\')" data-cat="'+cat[0]+'" class="bizchip" style="padding:6px 11px;border-radius:14px;font-size:12px;cursor:pointer;border:1px solid var(--line);color:var(--muted)">'+cat[1]+' '+L(cat[2],cat[3])+'</span>';
+  });
+  extra.forEach(function(k){
+    chips+='<span onclick="bizPickCat(\''+esc(k)+'\')" data-cat="'+esc(k)+'" class="bizchip" style="padding:6px 11px;border-radius:14px;font-size:12px;cursor:pointer;border:1px solid var(--line);color:var(--muted)">📌 '+esc(k)+'</span>';
+  });
+  chips+='<span onclick="bizNewCat()" style="padding:6px 11px;border-radius:14px;font-size:12px;cursor:pointer;border:1px dashed var(--accent);color:var(--accent)">＋ '+T('Νέα','New')+'</span>';
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Κατηγορία','Category')+'</label>'+
+      '<div id="biz-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">'+chips+'</div>'+
+      '<input type="hidden" id="be-cat" value="'+esc(ST._bizCat)+'"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Περιγραφή','Description')+'</label><input id="be-label" type="text" placeholder="'+T('π.χ. Supabase Pro Ιουλίου','e.g. Supabase Pro July')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('Καθαρή Αξία','Net Amount')+'</label><input id="be-amount" type="number" step="0.01" placeholder="0.00" oninput="beLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('ΦΠΑ %','VAT %')+'</label><input id="be-vat" type="number" step="0.5" value="24" oninput="beLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '</div>'+
+    '<div id="be-calc" style="background:var(--accent-bg);border-radius:8px;padding:10px;font-size:12px;color:var(--accent)">—</div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημερομηνία','Date')+'</label><input id="be-date" type="date" value="'+todayISO()+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('Τρόπος','Method')+'</label><select id="be-method" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)">'+
+        '<option value="transfer">🏦 '+T('Τραπεζικό','Bank')+'</option><option value="card">💳 '+T('Κάρτα','Card')+'</option><option value="cash">💵 '+T('Μετρητά','Cash')+'</option></select></div>'+
+    '</div>'+
+    bizSwitch('be-rec',T('Πάγιο (κάθε μήνα)','Recurring (monthly)'),'',false)+
+    bizSwitch('be-ded',T('ΦΠΑ Εκπίπτει','VAT Deductible'),T('μειώνει τον ΦΠΑ που πληρώνεις','reduces the VAT you pay'),true)+
+    bizSwitch('be-off',T('Με Παραστατικό','With Receipt'),'',true)+
+  '</div>';
+  showModal('➕ '+T('Νέο Έξοδο','New Expense'),html,T('Αποθήκευση','Save'),bizSaveExpense);
+  setTimeout(function(){bizPickCat(ST._bizCat);beLive();},50);
+}
+function bizSwitch(id,title,sub,on){
+  return '<div onclick="bizToggle(\''+id+'\')" style="display:flex;justify-content:space-between;align-items:center;padding-top:9px;border-top:1px solid var(--line);cursor:pointer">'+
+    '<div style="min-width:0"><div style="font-size:13px">'+title+'</div>'+(sub?'<div class="muted" style="font-size:11px">'+sub+'</div>':'')+'</div>'+
+    '<input type="hidden" id="'+id+'" value="'+(on?'1':'0')+'">'+
+    '<div id="'+id+'-sw" style="position:relative;width:46px;height:26px;background:'+(on?'var(--accent)':'var(--line)')+';border-radius:26px;transition:.2s;flex:0 0 auto"><div id="'+id+'-kn" style="position:absolute;height:20px;width:20px;left:'+(on?'23px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div></div>';
+}
+function bizToggle(id){
+  const h=document.getElementById(id); if(!h)return;
+  const on=h.value!=='1'; h.value=on?'1':'0';
+  const sw=document.getElementById(id+'-sw'), k=document.getElementById(id+'-kn');
+  if(sw)sw.style.background=on?'var(--accent)':'var(--line)';
+  if(k)k.style.left=on?'23px':'3px';
+}
+function bizPickCat(k){
+  ST._bizCat=k;
+  const hid=document.getElementById('be-cat'); if(hid)hid.value=k;
+  document.querySelectorAll('.bizchip').forEach(function(el){
+    const on=el.getAttribute('data-cat')===k;
+    el.style.cssText='padding:6px 11px;border-radius:14px;font-size:12px;cursor:pointer;'+(on?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)');
+  });
+}
+function bizNewCat(){
+  const nm=prompt(L('Όνομα νέας κατηγορίας:','New category name:'));
+  if(!nm||!nm.trim())return;
+  const k=nm.trim();
+  const box=document.getElementById('biz-chips');
+  if(box){
+    const sp=document.createElement('span');
+    sp.className='bizchip'; sp.setAttribute('data-cat',k);
+    sp.setAttribute('onclick','bizPickCat("'+k.replace(/"/g,'&quot;')+'")');
+    sp.style.cssText='padding:6px 11px;border-radius:14px;font-size:12px;cursor:pointer;border:1px solid var(--line);color:var(--muted)';
+    sp.textContent='📌 '+k;
+    box.insertBefore(sp,box.lastElementChild);
+  }
+  bizPickCat(k);
+}
+function beLive(){
+  const g=x=>{const el=document.getElementById(x);return el&&el.value!==''?(+el.value):0;};
+  const net=g('be-amount'), vp=g('be-vat'); const vat=net*vp/100;
+  const box=document.getElementById('be-calc');
+  if(box)box.innerHTML='<div style="display:flex;justify-content:space-between"><span>'+L('ΦΠΑ','VAT')+' '+vp+'%</span><span>'+money(Math.round(vat*100)/100)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--accent);margin-top:4px;padding-top:4px"><span>'+L('Πληρώνεις','You pay')+'</span><span>'+money(Math.round((net+vat)*100)/100)+'</span></div>';
+}
+async function bizSaveExpense(){
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  const net=parseFloat(g('be-amount'))||0;
+  if(net<=0){toast('❌ '+L('Βάλε ποσό','Enter an amount'));return;}
+  const vp=parseFloat(g('be-vat'))||0; const vat=Math.round(net*vp)/100;
+  try{
+    const {error}=await sb.from('biz_expenses').insert({exp_date:g('be-date')||todayISO(),
+      category:g('be-cat')||'other', label:g('be-label')||null,
+      amount_net:net, vat_pct:vp, vat_amount:vat,
+      vat_deductible:g('be-ded')==='1', payment_method:g('be-method')||'transfer',
+      official:g('be-off')==='1', recurring:g('be-rec')==='1', created_by:ST.userEmail||null});
+    if(error)throw error;
+    closeModal(); toast('✅ '+L('Καταχωρήθηκε','Recorded')); bizLoadExpenses();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function bizDelExpense(id,encKey){
+  if(!confirm(L('Διαγραφή εξόδου;','Delete expense?')))return;
+  try{await sb.from('biz_expenses').delete().eq('id',id);
+    ST.bizExpenses=(ST.bizExpenses||[]).filter(x=>x.id!==id);
+    toast('✅ '+L('Διαγράφηκε','Deleted')); bizExpDetail(encKey);
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+function bizLoadPayroll(){ bizSoon('👥 '+L('Μισθοδοσία','Payroll')); }
+function bizLoadCashflow(){ bizSoon('🏦 '+L('Ταμείο','Cash')); }
+function bizDrawVat(){ bizSoon('🧾 '+L('ΦΠΑ','VAT')); }
+function bizDrawProfit(){ bizSoon('💹 '+L('Κερδοφορία','Profit')); }
+function bizSoon(title){
+  persistNav();
+  const c=document.getElementById('content');
+  c.innerHTML='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:760px;margin:0 auto">'+
+    bizTabs()+
+    '<div class="card muted" style="text-align:center;padding:30px">'+title+'<br><span style="font-size:13px">'+L('Έρχεται σύντομα','Coming soon')+'</span></div>'+
+  '</div></div>';
+}
+function bizTabs(){
+  const T=(el,en)=>L(el,en);
+  const cur=ST.bizTab||'revenue';
+  const items=[['revenue','💰 '+T('Έσοδα','Revenue')],['expenses','📉 '+T('Έξοδα','Expenses')],
+    ['payroll','👥 '+T('Μισθοδοσία','Payroll')],['cashflow','🏦 '+T('Ταμείο','Cash')],
+    ['vat','🧾 '+T('ΦΠΑ','VAT')],['profit','💹 '+T('Κερδοφορία','Profit')]];
+  return '<div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;margin-bottom:10px">'+
+    items.map(function(it){const on=cur===it[0];
+      return '<div onclick="bizGo(\''+it[0]+'\')" style="flex:0 0 auto;padding:8px 14px;border-radius:20px;cursor:pointer;font-size:13px;white-space:nowrap;'+(on?'background:var(--accent);color:#fff;font-weight:600':'border:1px solid var(--line);color:var(--muted)')+'">'+it[1]+'</div>';
+    }).join('')+'</div>';
+}
+function bizGo(tab){
+  ST.bizTab=tab; persistNav();
+  if(tab==='revenue')return drawRevenue();
+  if(tab==='expenses')return bizLoadExpenses();
+  if(tab==='payroll')return bizLoadPayroll();
+  if(tab==='cashflow')return bizLoadCashflow();
+  if(tab==='vat')return bizDrawVat();
+  if(tab==='profit')return bizDrawProfit();
+  drawRevenue();
+}
+function drawRevenue(){ persistNav(); ST.bizTab='revenue';
   const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
   const m2=x=>money(Math.round((x||0)*100)/100);
   const R=revCalc();
@@ -579,6 +831,7 @@ function drawRevenue(){ persistNav();
   const diff=R.target-prev.target;
   const methodName=revMethodLabel;
   let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:760px;margin:0 auto">';
+  h+=bizTabs();
   h+='<div style="display:flex;gap:6px;margin-bottom:10px">'+
     ['month','year'].map(function(v){const on=(ST.revView||'month')===v;
       return '<div onclick="ST.revView=\''+v+'\';ST.revOffset=0;drawRevenue()" style="flex:1;text-align:center;padding:8px;border-radius:20px;cursor:pointer;font-size:13px;'+(on?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+(v==='month'?T('Μήνας','Month'):T('Έτος','Year'))+'</div>';
@@ -1101,7 +1354,8 @@ async function loadAll(){
     if(nav.payView)ST.payView=nav.payView; if(nav.expView)ST.expView=nav.expView;
     if(nav.payPeriod)ST.payPeriod=nav.payPeriod; if(nav.payOffset)ST.payOffset=nav.payOffset; if(nav.cfOffset)ST.cfOffset=nav.cfOffset; if(nav.pfUseReal!=null)ST.pfUseReal=nav.pfUseReal; if(nav.vatPeriod)ST.vatPeriod=nav.vatPeriod; if(nav.vatOffset)ST.vatOffset=nav.vatOffset; if(nav.expPeriod)ST.expPeriod=nav.expPeriod;
     if(nav.ledgerSid)ST._ledgerSid=nav.ledgerSid; if(nav.delLedgerName)ST._delLedgerName=nav.delLedgerName;
-    if(nav.revView)ST.revView=nav.revView; if(nav.revOffset!=null)ST.revOffset=nav.revOffset; if(nav.revOfficial!=null)ST.revOfficial=nav.revOfficial;
+    if(nav.revView)ST.revView=nav.revView; if(nav.revOffset!=null)ST.revOffset=nav.revOffset; if(nav.revOfficial!=null)ST.revOfficial=nav.revOfficial; if(nav.revSpread!=null)ST.revSpread=nav.revSpread;
+    if(nav.bizTab)ST.bizTab=nav.bizTab; if(nav.bizPeriod)ST.bizPeriod=nav.bizPeriod; if(nav.bizOffset!=null)ST.bizOffset=nav.bizOffset;
     ST.homeView=!!nav.homeView;
     // Πρώτα το view. Λεπτομέρεια μόνο αν ταιριάζει η ενότητα.
     if(nav.view&&nav.view!=='detail'){ST.view=nav.view;}
@@ -7140,7 +7394,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·283';
+const BUILD='v'+'2026.07.19·284';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
