@@ -5455,6 +5455,9 @@ function vatRange(period,offset){
   if(period==='quarter'){
     const q=Math.floor(now.getMonth()/3)+off;
     from=new Date(now.getFullYear(),q*3,1); to=new Date(now.getFullYear(),q*3+3,0);
+  } else if(period==='half'){
+    const hh=Math.floor(now.getMonth()/6)+off;
+    from=new Date(now.getFullYear(),hh*6,1); to=new Date(now.getFullYear(),hh*6+6,0);
   } else if(period==='year'){
     from=new Date(now.getFullYear()+off,0,1); to=new Date(now.getFullYear()+off,11,31);
   } else {
@@ -5468,6 +5471,7 @@ function vatLabel(period,range){
   const f=new Date(range.from+'T12:00:00');
   if(period==='year')return ''+f.getFullYear();
   if(period==='quarter')return (Math.floor(f.getMonth()/3)+1)+'ο '+L('Τρίμηνο','Quarter')+' '+f.getFullYear();
+  if(period==='half')return (Math.floor(f.getMonth()/6)+1)+'ο '+L('Εξάμηνο','Half')+' '+f.getFullYear();
   return M[f.getMonth()]+' '+f.getFullYear();
 }
 function computeVat(range){
@@ -5500,7 +5504,7 @@ function drawVat(){ persistNav();
   const d=computeVat(range);
   let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:900px;margin:0 auto">';
   h+='<div style="font-size:16px;font-weight:700;margin:0 2px 12px">🧾 '+T('ΦΠΑ','VAT')+'</div>';
-  const pers=[['month',T('Μήνας','Month')],['quarter',T('Τρίμηνο','Quarter')],['year',T('Έτος','Year')]];
+  const pers=[['month',T('Μήνας','Month')],['quarter',T('Τρίμηνο','Quarter')],['half',T('Εξάμηνο','Half Year')],['year',T('Έτος','Year')]];
   h+='<div style="display:flex;gap:6px;margin-bottom:10px">';
   pers.forEach(p=>{const on=period===p[0];
     h+='<div onclick="ST.vatPeriod=\''+p[0]+'\';ST.vatOffset=0;drawVat()" style="flex:1;text-align:center;padding:7px;border-radius:20px;cursor:pointer;font-size:12px;'+(on?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+p[1]+'</div>';
@@ -6624,7 +6628,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.04·261';
+const BUILD='v'+'2026.07.04·262';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
