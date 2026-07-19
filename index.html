@@ -790,8 +790,145 @@ async function bizDelExpense(id,encKey){
     toast('✅ '+L('Διαγράφηκε','Deleted')); bizExpDetail(encKey);
   }catch(e){toast('❌ '+(e.message||e));}
 }
+// ═══════════ 🏦 ΤΑΜΕΙΟ ΕΠΙΧΕΙΡΗΣΗΣ ═══════════
+async function bizLoadCashflow(){
+  ST.bizTab='cashflow'; persistNav();
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  if(!ST.bizExpenses){try{const {data}=await sb.from('biz_expenses').select('*');ST.bizExpenses=data||[];}catch(e){ST.bizExpenses=[];}}
+  if(!ST.revPayments){try{const {data}=await sb.from('payments').select('*');ST.revPayments=data||[];}catch(e){ST.revPayments=[];}}
+  if(!ST.revCharges){try{const {data}=await sb.from('shop_charges').select('*');ST.revCharges=data||[];}catch(e){ST.revCharges=[];}}
+  try{const {data}=await sb.from('biz_payroll').select('*');ST.bizPayroll=data||[];}catch(e){ST.bizPayroll=[];}
+  try{const {data}=await sb.from('biz_balances').select('*').order('as_of');ST.bizBalances=data||[];}catch(e){ST.bizBalances=[];}
+  if(!ST.bizPeriod)ST.bizPeriod='month';
+  if(ST.bizOffset==null)ST.bizOffset=0;
+  bizDrawCashflow();
+}
+function bizCashCalc(){
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const r=bizRange();
+  const inR=d=>d&&String(d)>=r.from&&String(d)<=r.to;
+  const isCash=m=>m==='cash';
+  // ── Εισροές: συνδρομές + έξτρα χρεώσεις ──
+  const inflow=[]; let inBank=0,inTill=0,vatOut=0;
+  let subNet=0,subVat=0,subCashN=0,subCashV=0;
+  (ST.revPayments||[]).forEach(p=>{
+    if(!inR(p.pay_date))return;
+    const net=(p.amount_net!=null?n(p.amount_net):n(p.amount)), vat=n(p.vat_amount);
+    subNet+=net; subVat+=vat;
+    if(isCash(p.method)){subCashN+=net;subCashV+=vat;inTill+=net+vat;} else inBank+=net+vat;
+    if(p.official!==false)vatOut+=vat;
+  });
+  if(subNet+subVat>0)inflow.push({label:L('Συνδρομές','Subscriptions'),amt:subNet+subVat,cash:subCashN+subCashV>0,mixed:(subCashN+subCashV>0)&&(subNet+subVat>subCashN+subCashV)});
+  let chNet=0,chVat=0,chCash=0,setNet=0,setVat=0,setCash=0;
+  (ST.revCharges||[]).forEach(x=>{
+    if(!inR(x.charge_date))return;
+    const net=(x.amount_net!=null?n(x.amount_net):n(x.amount)), vat=n(x.vat_amount);
+    const setup=(x.label||'').toLowerCase().indexOf('setup')>=0;
+    if(setup){setNet+=net;setVat+=vat;} else {chNet+=net;chVat+=vat;}
+    inBank+=net+vat;   // οι χρεώσεις δεν έχουν τρόπο πληρωμής — θεωρούνται τράπεζα
+    if(x.official!==false)vatOut+=vat;
+  });
+  if(setNet+setVat>0)inflow.push({label:'Setup Fees',amt:setNet+setVat,cash:false});
+  if(chNet+chVat>0)inflow.push({label:L('Έξτρα Χρεώσεις','Extra Charges'),amt:chNet+chVat,cash:false});
+  // ── Εκροές: έξοδα ανά κατηγορία ──
+  const outMap={}; let outBank=0,outTill=0,vatIn=0;
+  (ST.bizExpenses||[]).forEach(x=>{
+    if(!inR(x.exp_date))return;
+    const tot=n(x.amount_net)+n(x.vat_amount);
+    const k=x.category||'other';
+    if(!outMap[k])outMap[k]={amt:0,cash:false};
+    outMap[k].amt+=tot;
+    if(isCash(x.payment_method)){outMap[k].cash=true;outTill+=tot;} else outBank+=tot;
+    if(x.vat_deductible!==false)vatIn+=n(x.vat_amount);
+  });
+  // ── Μισθοδοσία ──
+  let payBank=0,payTill=0;
+  (ST.bizPayroll||[]).forEach(p=>{
+    if(!inR(p.pay_date))return;
+    payBank+=n(p.amount_bank); payTill+=n(p.amount_cash);
+  });
+  if(payBank+payTill>0){outMap['_payroll']={amt:payBank+payTill,cash:payTill>0};outBank+=payBank;outTill+=payTill;}
+  const outflow=Object.keys(outMap).map(k=>({key:k,amt:outMap[k].amt,cash:outMap[k].cash})).sort((a,b)=>b.amt-a.amt);
+  // ── Αρχικά υπόλοιπα ──
+  const bal=(ST.bizBalances||[]).filter(b=>b.as_of<=r.from).slice(-1)[0];
+  const openBank=bal?n(bal.bank):0, openTill=bal?n(bal.till):0;
+  const vatDue=Math.max(0,vatOut-vatIn);
+  const bank=openBank+inBank-outBank, till=openTill+inTill-outTill;
+  return {inflow:inflow,outflow:outflow,openBank:openBank,openTill:openTill,hasOpening:!!bal,
+    bank:bank,till:till,vatDue:vatDue,vatOut:vatOut,vatIn:vatIn,
+    flow:(inBank+inTill)-(outBank+outTill),liquidity:bank+till,available:bank+till-vatDue};
+}
+function bizDrawCashflow(){ persistNav();
+  const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
+  const m2=x=>money(Math.round((x||0)*100)/100);
+  const R=bizCashCalc();
+  const outLabel=k=>k==='_payroll'?('👥 '+T('Μισθοί','Wages')):bizCatLabel(k);
+  let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:760px;margin:0 auto">';
+  h+=bizTabs()+bizNav();
+  if(!R.hasOpening)h+='<div class="card" style="border:1px solid var(--warn);background:#FFF7E6;margin-bottom:10px"><div style="font-size:12px;color:#B8860B">⚠ '+T('Δεν έχεις ορίσει αρχικά υπόλοιπα — τα νούμερα δείχνουν μόνο τις κινήσεις','No opening balances set — figures show movements only')+'</div></div>';
+  h+='<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:12px">'+
+    '<div class="card" style="padding:12px;margin:0"><div class="muted" style="font-size:11px">🏦 '+T('Τράπεζα','Bank')+'</div>'+
+      '<div style="font-size:21px;font-weight:800;margin-top:2px">'+m2(R.bank)+'</div>'+
+      (R.hasOpening?'<div class="muted" style="font-size:10px;margin-top:2px">'+T('από','from')+' '+m2(R.openBank)+'</div>':'')+'</div>'+
+    '<div class="card" style="padding:12px;margin:0"><div class="muted" style="font-size:11px">💵 '+T('Μετρητά','Cash')+'</div>'+
+      '<div style="font-size:21px;font-weight:800;margin-top:2px">'+m2(R.till)+'</div>'+
+      (R.hasOpening?'<div class="muted" style="font-size:10px;margin-top:2px">'+T('από','from')+' '+m2(R.openTill)+'</div>':'')+'</div>'+
+  '</div>';
+  h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+T('Εισροές','Inflows')+'</div>'+
+    '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">';
+  if(!R.inflow.length)h+='<div class="muted" style="text-align:center;padding:14px;font-size:13px">—</div>';
+  R.inflow.forEach(function(x){
+    h+='<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px">'+
+      '<span>'+esc(x.label)+' <span class="muted" style="font-size:11px">'+(x.mixed?'🏦💵':(x.cash?'💵':'🏦'))+'</span></span>'+
+      '<span style="color:var(--ok)">+ '+m2(x.amt)+'</span></div>';
+  });
+  h+='</div>';
+  h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 6px">'+T('Εκροές','Outflows')+'</div>'+
+    '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">';
+  if(!R.outflow.length)h+='<div class="muted" style="text-align:center;padding:14px;font-size:13px">—</div>';
+  R.outflow.forEach(function(x){
+    const clickable=x.key!=='_payroll';
+    h+='<div '+(clickable?'onclick="bizExpDetail(\''+encodeURIComponent(x.key)+'\')" style="cursor:pointer;':'style="')+'display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px">'+
+      '<span'+(clickable?' style="color:var(--accent)"':'')+'>'+outLabel(x.key)+(clickable?' ›':'')+' <span class="muted" style="font-size:11px">'+(x.cash?'💵':'🏦')+'</span></span>'+
+      '<span style="color:var(--bad)">− '+m2(x.amt)+'</span></div>';
+  });
+  h+='</div>';
+  if(R.vatDue>0.5){
+    h+='<div style="background:#FFF7E6;border-radius:12px;padding:11px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">'+
+      '<div><div style="font-size:12px;color:#B8860B;font-weight:600">'+T('ΦΠΑ προς Απόδοση','VAT Payable')+'</div>'+
+      '<div style="font-size:10px;color:#B8860B">'+T('δεσμευμένο, δεν είναι δικό σου','reserved, not yours')+'</div></div>'+
+      '<span style="font-size:16px;font-weight:700;color:#B8860B">− '+m2(R.vatDue)+'</span></div>';
+  }
+  h+='<div class="card">'+
+    '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Καθαρή Ροή Μήνα','Net Flow')+'</span><span style="color:'+(R.flow>=0?'var(--ok)':'var(--bad)')+';font-weight:600">'+(R.flow>=0?'+ ':'− ')+m2(Math.abs(R.flow))+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span class="muted">'+T('Σύνολο Ρευστότητας','Total Liquidity')+'</span><span>'+m2(R.liquidity)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:8px 0 3px;margin-top:3px;border-top:1px solid var(--line);font-size:15px;font-weight:700"><span>'+T('Πραγματικά Διαθέσιμα','Really Available')+'</span><span style="color:var(--accent)">'+m2(R.available)+'</span></div>'+
+  '</div>';
+  h+='<button class="btn ghost" style="width:100%;margin-top:12px" onclick="bizOpenBalance()">⚙️ '+T('Αρχικά Υπόλοιπα','Opening Balances')+'</button>';
+  h+='</div></div>';
+  c.innerHTML=h;
+}
+function bizOpenBalance(){
+  const T=(el,en)=>L(el,en);
+  const r=bizRange();
+  const cur=(ST.bizBalances||[]).find(b=>b.as_of===r.from)||{};
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div class="muted" style="font-size:12px">'+T('Τι είχες στην αρχή. Ορίζεται μία φορά — μετά υπολογίζεται μόνο του.','What you had at the start. Set once — then it carries over.')+'</div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημερομηνία','Date')+'</label><input id="bb-date" type="date" value="'+r.from+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">🏦 '+T('Τράπεζα','Bank')+'</label><input id="bb-bank" type="number" step="0.01" value="'+(cur.bank||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">💵 '+T('Μετρητά','Cash')+'</label><input id="bb-till" type="number" step="0.01" value="'+(cur.till||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+  '</div>';
+  showModal('⚙️ '+T('Αρχικά Υπόλοιπα','Opening Balances'),html,T('Αποθήκευση','Save'),bizSaveBalance);
+}
+async function bizSaveBalance(){
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  const asOf=g('bb-date'); if(!asOf){toast('❌ '+L('Βάλε ημερομηνία','Enter a date'));return;}
+  try{const {error}=await sb.from('biz_balances').upsert({as_of:asOf,bank:parseFloat(g('bb-bank'))||0,till:parseFloat(g('bb-till'))||0},{onConflict:'as_of'});
+    if(error)throw error; closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved')); bizLoadCashflow();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
 function bizLoadPayroll(){ bizSoon('👥 '+L('Μισθοδοσία','Payroll')); }
-function bizLoadCashflow(){ bizSoon('🏦 '+L('Ταμείο','Cash')); }
 function bizDrawVat(){ bizSoon('🧾 '+L('ΦΠΑ','VAT')); }
 function bizDrawProfit(){ bizSoon('💹 '+L('Κερδοφορία','Profit')); }
 function bizSoon(title){
@@ -7394,7 +7531,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·284';
+const BUILD='v'+'2026.07.19·285';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
