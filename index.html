@@ -845,7 +845,8 @@ function allowedTabs(){
   if(isPro()){items.push('daily');}
   // 1) Πακέτο μαγαζιού
   if(ST.plan==='basic')items=items.filter(t=>BASIC_TABS.indexOf(t)>=0);
-  // 2) Δικαιώματα ανά χρήστη (αν έχουν οριστεί on/off)
+  // 2) Δικαιώματα ανά χρήστη (αν έχουν οριστεί on/off) — owner/admin βλέπουν πάντα τα πάντα
+  if(ST.role==='admin'||ST.role==='owner')return items;
   if(ST.tabs&&ST.tabs.length)items=items.filter(t=>ST.tabs.indexOf(t)>=0);
   else if(ST.role==='staff')items=items.filter(t=>t==='ocr'||t==='orders');   // προεπιλογή staff
   return items;
@@ -1336,8 +1337,9 @@ function renderRecipes(){
     let right;
     if(home){const y=parseFloat(r.yield_qty)||0;const cpu=y>0?cc.realCost/y:0;right='<div style="text-align:right;font-size:12px"><div style="font-weight:700">€'+cc.realCost.toFixed(2)+'</div><div class="muted">'+(y>0?('€'+cpu.toFixed(4)+'/'+esc(r.yield_unit||L('μον','unit'))):lbl('rcSetYield','βάλε παραγωγή'))+'</div></div>';}
     else right='<span class="cm" style="background:'+col+'22;color:'+col+';font-size:12px;font-weight:700;padding:2px 8px;border-radius:9px">'+pctTxt+'</span>';
-    h+='<div class="row" onclick="openRecipe(\''+r.id+'\')"><div style="min-width:0">'+
-      '<div class="name">'+esc(r.name)+'</div>'+
+    const inact=(r.is_active===false);
+    h+='<div class="row" onclick="openRecipe(\''+r.id+'\')"'+(inact?' style="opacity:.55"':'')+'><div style="min-width:0">'+
+      '<div class="name">'+(inact?'🔕 ':'')+esc(r.name)+'</div>'+
       '<div class="sub">'+ingredientsFor(r.id).length+' '+L('υλικά','ingredients')+' · '+L('Κόστος','Cost')+' €'+cc.realCost.toFixed(2)+((!home&&cc.retail>0)?(' · '+lbl('sale','Πώληση')+' €'+cc.retail.toFixed(2)):'')+'</div>'+
       '</div>'+right+'</div>';
   });
@@ -1366,8 +1368,23 @@ function subcatCardHtml(r){
   preset.forEach(p=>{opts+='<option value="'+esc(p[0])+'"'+(cur===p[0]?' selected':'')+'>'+esc(ST.lang==='en'?p[1]:p[0])+'</option>';});
   custom.forEach(v=>{opts+='<option value="'+esc(v)+'"'+(cur===v?' selected':'')+'>'+esc(v)+'</option>';});
   opts+='<option value="__new__">➕ '+L('Νέα Υποκατηγορία','New Sub-Category')+'</option>';
-  return '<div class="card" style="margin:0 0 14px"><div class="field" style="margin:0"><label>'+lbl('wSubcat','Υποκατηγορία')+'</label>'+
-    '<select onchange="changeRecipeSub(\''+r.id+'\',this.value)" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+opts+'</select></div></div>';
+  const isOn=(r.is_active!==false);
+  return '<div class="card" style="margin:0 0 14px"><div class="field" style="margin:0 0 12px"><label>'+lbl('wSubcat','Υποκατηγορία')+'</label>'+
+    '<select onchange="changeRecipeSub(\''+r.id+'\',this.value)" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+opts+'</select></div>'+
+    '<div onclick="toggleRecipeActive(\''+r.id+'\')" style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--line);cursor:pointer">'+
+      '<div><div style="font-size:14px;font-weight:600">'+L('Ενεργό','Active')+'</div>'+
+      '<div class="muted" style="font-size:11px">'+L('Ανενεργό: δεν εμφανίζεται στο Menu Engineering','Inactive: hidden from Menu Engineering')+'</div></div>'+
+      '<div style="position:relative;width:52px;height:30px;background:'+(isOn?'var(--ok)':'var(--line)')+';border-radius:30px;transition:.2s;flex:0 0 auto"><div style="position:absolute;height:24px;width:24px;left:'+(isOn?'25px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>'+
+    '</div></div>';
+}
+async function toggleRecipeActive(rid){
+  const r=(ST.recipes||[]).find(x=>x.id===rid); if(!r)return;
+  const val=(r.is_active===false);   // ανενεργό → ενεργό
+  try{await sb.from('recipes').update({is_active:val}).eq('id',rid);
+    r.is_active=val; ST.recipe=r;
+    toast(val?('✅ '+L('Ενεργό','Active')):('🔕 '+L('Ανενεργό','Inactive')));
+    keepScroll(drawRecipe);
+  }catch(e){toast('❌ '+(e.message||e));}
 }
 async function changeRecipeSub(rid,val){
   const r=ST.recipes.find(x=>x.id===rid); if(!r)return;
@@ -2159,7 +2176,7 @@ function renderStats(){
   const c=document.getElementById('content');
   const sub=ST.repsub||'overview';
   const b=(id,l)=>'<div class="tab '+(sub===id?'active':'')+'" style="flex:0 0 auto;padding:9px 14px;white-space:nowrap;text-align:center" onclick="setRepSub(\''+id+'\')">'+l+'</div>';
-  let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div class="tabs stat-tabs" style="margin-top:8px;flex-wrap:wrap;justify-content:center;gap:6px;padding-bottom:4px">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+(ST.plan!=='basic'?b('menu','🍽️ '+lbl('sMenuEng','Menu Engineering')):'')+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+(isPro()?b('expenses','📉 '+lbl('expenses','Έξοδα')):'')+(isPro()?b('payroll','👥 '+lbl('payroll','Μισθοδοσία')):'')+(isPro()?b('cashflow','🏦 '+lbl('cashflow','Ταμειακή Ροή')):'')+(isPro()?b('vat','🧾 '+lbl('vat','ΦΠΑ')):'')+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+'</div></div></div>';
+  let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div class="tabs stat-tabs" style="margin-top:8px;flex-wrap:wrap;justify-content:center;gap:6px;padding-bottom:4px">'+b('overview','📈 '+lbl('sOverview','Επισκόπηση'))+b('price','💶 '+lbl('sPriceDB','Ιστορικό Τιμών'))+b('purchased','🛒 '+lbl('sPurchDB','Ιστορικό Αγορών'))+(ST.plan!=='basic'?b('menu','🍽️ '+lbl('sMenuEng','Menu Engineering')):'')+(isPro()?b('expenses','📉 '+lbl('expenses','Έξοδα')):'')+(isPro()?b('payroll','👥 '+lbl('payroll','Μισθοδοσία')):'')+(isPro()?b('cashflow','🏦 '+lbl('cashflow','Ταμειακή Ροή')):'')+(isPro()?b('vat','🧾 '+lbl('vat','ΦΠΑ')):'')+b('profit','💹 '+lbl('sProfit','Κερδοφορία'))+'</div></div></div>';
   if(sub==='price')h+=priceDbView();
   else if(sub==='purchased')h+=purchasedView();
   else if(sub==='expenses')h+='<div id="exp-mount"></div>';
@@ -2206,7 +2223,7 @@ function scoreClass(score,cmHigh,sellHigh){
 function menuEngCalc(){
   const kind=ST.meKind||'cocktail';
   const sub=ST.meSub||'';
-  const recs=(ST.recipes||[]).filter(r=>r.kind===kind && !r.is_homemade && (!sub || r.sub_category===sub));
+  const recs=(ST.recipes||[]).filter(r=>r.kind===kind && !r.is_homemade && r.is_active!==false && (!sub || r.sub_category===sub));
   const sold=ST.meSold||(ST.meSold={});
   const off=ST.meOff||(ST.meOff={});
   const rows=[];
@@ -2254,7 +2271,7 @@ function menuEngView(){
     MKINDS.map(([k,label])=>'<div class="tab '+(kind===k?'active':'')+'" style="flex:0 0 auto;white-space:nowrap;padding:9px 14px" onclick="ST.meKind=\''+k+'\';ST.meSub=\'\';renderStats()">'+esc(label)+'</div>').join('')+'</div>';
   // φίλτρο υποκατηγορίας (έτοιμες + όσες υπάρχουν στις συνταγές)
   const preset=RSUBS[kind]||[];
-  const usedSubs=[...new Set((ST.recipes||[]).filter(r=>r.kind===kind&&!r.is_homemade&&r.sub_category).map(r=>r.sub_category))];
+  const usedSubs=[...new Set((ST.recipes||[]).filter(r=>r.kind===kind&&!r.is_homemade&&r.is_active!==false&&r.sub_category).map(r=>r.sub_category))];
   const allSubs=[]; preset.forEach(p=>{if(!allSubs.includes(p[0]))allSubs.push(p[0]);}); usedSubs.forEach(s=>{if(!allSubs.includes(s))allSubs.push(s);});
   if(allSubs.length){
     const curSub=ST.meSub||'';
@@ -2264,7 +2281,7 @@ function menuEngView(){
     '</select></div>';
   }
   h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent);font-size:12px;color:var(--muted)">💡 '+L('Βάλε πόσα πούλησε το κάθε επιλεγμένο προιον. Το σκορ (0-100) συνδυάζει κέρδος × δημοτικότητα. Βγάλε από την ανάλυση όσα δεν θες (π.χ. signature) με το ✓/✗. Μετά αποθήκευσε με ημερομηνία για να συγκρίνεις μήνες.','Enter how many each item sold. Score (0-100) combines profit × popularity. Exclude items you do not want (e.g. signature). Then save with a date to compare months.')+'</div>';
-  const recs=(ST.recipes||[]).filter(r=>r.kind===kind && !r.is_homemade && (!ST.meSub || r.sub_category===ST.meSub));
+  const recs=(ST.recipes||[]).filter(r=>r.kind===kind && !r.is_homemade && r.is_active!==false && (!ST.meSub || r.sub_category===ST.meSub));
   if(!recs.length){h+='<div class="card muted" style="text-align:center">'+L('Καμία συνταγή σε αυτή την κατηγορία. Φτιάξε συνταγές πρώτα (με τιμή πώλησης).','No recipes in this category. Create recipes first (with selling price).')+'</div><div style="margin-top:10px">'+menuEngHistoryBtn()+'</div></div>';return h;}
   // ── Κάρτες αποτελεσμάτων ──
   if(R.activeCount){
@@ -2681,7 +2698,7 @@ function profitResultsHtml(R){
   const useReal=(ST.pfUseReal!==false)&&R.hasCash;
   const M=useReal?RE:D;
   const ttl=useReal?('💵 '+T('Πραγματική','Real')):('📊 '+T('Δηλωμένη','Declared'));
-  const note=useReal?T('με μετρητά','incl. cash'):(R.hasCash?T('χωρίς μετρητά','excl. cash'):'');
+  const note='';
   let h=cardP(ttl,M,note);
   h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">📈 '+T('Δείκτες','Ratios')+'</h3>'+
     '<div class="kv"><span class="k">🍸 Beverage Cost</span><span class="v" style="color:'+badge(M.bevPct,25,30)+'">'+pct(M.bevPct)+' <span style="font-size:11px;color:var(--muted)">(≤25%)</span></span></div>'+
@@ -2729,8 +2746,8 @@ function drawProfit(){
       f('pf-vhl','ΦΠΑ '+T('Ροφημάτων Πακέτο','Beverages Takeaway')+' %',p.vat_hot_low!=null?p.vat_hot_low:vRed)+
       fa('pf-w',T('Μισθοί','Wages'),p.wages,A.wages||0,T('από Μισθοδοσία','from Payroll'))+
       fa('pf-soc','ΙΚΑ / '+T('Εισφορές','Contributions'),p.social,A.social||0,T('από Μισθοδοσία','from Payroll'))+
-      f('pf-rent',T('Ενοίκιο','Rent'),p.rent)+
-      f('pf-util',T('ΔΕΗ/Νερό/Internet','Utilities'),p.utilities)+
+      fa('pf-rent',T('Ενοίκιο','Rent'),p.rent,0,'')+
+      fa('pf-util',T('ΔΕΗ/Νερό/Internet','Utilities'),p.utilities,0,'')+
       fa('pf-oth',T('Λοιπά Έξοδα','Other Expenses'),p.other_expenses,A.opex||0,T('από Έξοδα','from Expenses'),
         (A.opexList&&A.opexList.length)?A.opexList.slice(0,6).map(x=>esc(x.name)+' '+money(Math.round(x.amt))).join(' · '):'')+
       fa('pf-cash','💵 '+T('Μετρητά','Cash'),p.sales_cash_unrec,A.cashUnrec||0,T('από Ταμείο','from Till'))+
@@ -2743,9 +2760,9 @@ function drawProfit(){
       f('pf-ps','📦 '+T('Αναλώσιμα','Supplies'),p.purch_sup_manual,money(R.auto.sup))+
     '</div>'+
     profitCrossCheck(R,A,p)+
-    (isPro()?'':'<div style="background:var(--accent-bg);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:11px;color:var(--accent)">💡 '+T('Οι αγορές έρχονται αυτόματα από τα τιμολόγια. Πωλήσεις, μισθοί και έξοδα συμπληρώνονται χειροκίνητα — με το πακέτο Pro γεμίζουν μόνα τους από το Κλείσιμο Ημέρας, τη Μισθοδοσία και τα Έξοδα.','Purchases come automatically from invoices. Sales, wages and expenses are entered manually — with the Pro plan they fill in automatically from Daily Close, Payroll and Expenses.')+'</div>')+
+    (isPro()?'':'<div style="background:var(--accent-bg);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:11px;color:var(--accent)">💡 '+T('Οι αγορές έρχονται αυτόματα από τα τιμολόγια. Πωλήσεις, μισθοί και έξοδα συμπληρώνονται χειροκίνητα. Με το πακέτο Pro γεμίζουν μόνα τους από το Κλείσιμο Ημέρας, τη Μισθοδοσία και τα Έξοδα.','Purchases come automatically from invoices. Sales, wages and expenses are entered manually. With the Pro plan they fill in automatically from Daily Close, Payroll and Expenses.')+'</div>')+
     '<div onclick="pfToggleReal()" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px;margin-top:8px;border-top:1px solid var(--line);cursor:pointer">'+
-      '<div><div style="font-size:12px">'+T('Μετρητά στον Τζίρο','Cash in Turnover')+'</div><div class="muted" style="font-size:10px">'+T('επηρεάζει το Prime Cost','affects Prime Cost')+'</div></div>'+
+      '<div><div style="font-size:12px">'+T('Μετρητά στον Τζίρο','Cash in Turnover')+'</div><div class="muted" style="font-size:10px">'+T('Επηρεάζει το Prime Cost','Affects Prime Cost')+'</div></div>'+
       '<div style="position:relative;width:46px;height:26px;background:'+(ST.pfUseReal!==false?'var(--accent)':'var(--line)')+';border-radius:26px;transition:.2s;flex:0 0 auto"><div style="position:absolute;height:20px;width:20px;left:'+(ST.pfUseReal!==false?'23px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>'+
     '</div>'+
     '<button class="btn" style="margin-top:10px" onclick="saveProfit()">💾 '+T('Αποθήκευση','Save')+'</button>'+
@@ -4056,6 +4073,9 @@ function dailyDate(){ return ST.dailyDate || (new Date()).toISOString().slice(0,
 function dailyDateLocal(d){ const x=d?new Date(d+'T12:00:00'):new Date(); const y=x.getFullYear(),m=String(x.getMonth()+1).padStart(2,'0'),dd=String(x.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
 async function renderDaily(){
   persistNav();
+  const _bb=document.getElementById('backBtn');
+  if(_bb&&(!ST.view||ST.view==='list')){_bb.setAttribute('onclick','goList()');_bb.style.display='none';}
+  if(!ST.view||ST.view==='list'){const _t=document.getElementById('hTitle');if(_t)_t.textContent=brandTitle();}
   const c=document.getElementById('content');
   if(!isPro()){ c.innerHTML='<div class="card muted" style="text-align:center;margin-top:14px">🔒 '+L('Το Daily Routine είναι στο πακέτο PRO','Daily Routine is a PRO feature')+'</div>'; return; }
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
@@ -6706,7 +6726,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·276';
+const BUILD='v'+'2026.07.19·277';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -7003,6 +7023,12 @@ async function deleteShop(){
   toast('✅ '+L('Το μαγαζί διαγράφηκε','Shop deleted')); chooseShop();
 }
 async function openMembers(){
+  if(ST.role!=='admin'&&ST.role!=='owner'){
+    ST.view='list'; persistNav();
+    const bb=document.getElementById('backBtn'); if(bb){bb.setAttribute('onclick','goList()');bb.style.display='none';}
+    toast('🔒 '+L('Μόνο ο ιδιοκτήτης','Owner only'));
+    return goHome();
+  }
   ST.view='members';persistNav(); const bb=document.getElementById('backBtn');if(bb)bb.style.display='block';
   document.getElementById('hTitle').textContent='👥 '+L('Μέλη','Members');
   const c=document.getElementById('content');
@@ -7099,7 +7125,7 @@ async function openMembers(){
     ST._accessOwners.forEach(o=>{
       h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">'+
         '<div style="min-width:0"><div style="font-weight:600;font-size:14px">'+esc(o.full_name||o.email||'—')+'</div>'+
-        '<div style="font-size:12px;color:var(--muted)">'+esc(o.email||'')+' · '+L('κύριο μαγαζί αλλού','main shop elsewhere')+'</div></div>'+
+        '<div style="font-size:12px;color:var(--muted)">'+esc(o.email||'')+' · '+L('Κύριο Μαγαζί Αλλού','Main Shop Elsewhere')+'</div></div>'+
         (ST.role==='admin'?'<button class="pick" style="margin:0;border-color:var(--bad);color:var(--bad)" onclick="removeAccessOwner(\''+o.id+'\')">🗑 '+L('Αφαίρεση','Remove')+'</button>':'')+
       '</div>';
     });
@@ -7110,7 +7136,7 @@ async function openMembers(){
   if(!canAddMore){
     const brk=(ST._accessOwners&&ST._accessOwners.length)?(' ('+members.length+' '+L('μέλη','members')+' + '+ST._accessOwners.length+' owner)'):'';
     h+='<div class="card" style="border:1.5px solid #e0a800;background:#FFF7E6"><h3 style="font-size:13px;margin-bottom:6px">➕ '+L('Νέο μέλος','New member')+'</h3>'+
-      '<div style="font-size:13px;line-height:1.6">'+L('Το πακέτο σου περιλαμβάνει','Your plan includes')+' <b>'+freeUsers()+'</b> '+L('χρήστες — έχεις ήδη','users — you already have')+' <b>'+totalUsers+'</b>'+brk+'.<br>'+
+      '<div style="font-size:13px;line-height:1.6">'+L('Το πακέτο σου περιλαμβάνει','Your plan includes')+' <b>'+freeUsers()+'</b> '+L('Χρήστες — Έχεις ήδη','Users — You already have')+' <b>'+totalUsers+'</b>'+brk+'.<br>'+
       L('Για επιπλέον χρήστη (+10€/μήνα) επικοινώνησε μαζί μας:','For an extra user (+10€/month) contact us:')+' <b>getcostiq@gmail.com</b></div></div></div>';
     c.innerHTML=h; return;
   }
