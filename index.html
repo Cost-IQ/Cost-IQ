@@ -95,6 +95,22 @@
   .kv .k{color:var(--muted)}.kv .v{font-weight:600}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:22px;font-size:14px;z-index:100;opacity:0;transition:opacity .3s;max-width:90%;text-align:center}
   .toast.show{opacity:1}
+  /* ── Μπάρα περιόδων: χωρίς κύλιση ── */
+  .perbar{display:flex;gap:6px;margin-bottom:14px;flex-wrap:nowrap}
+  .perbar > div{flex:1 1 0;min-width:0;padding:8px 5px;border-radius:20px;cursor:pointer;font-size:12.5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--line);color:var(--muted);background:var(--card)}
+  .perbar > div.on{background:var(--accent);color:#fff;font-weight:600;border-color:var(--accent)}
+  @media(max-width:600px){
+    .perbar{flex-wrap:wrap}
+    .perbar > div{flex:1 1 calc(33.333% - 4px);font-size:12px;padding:8px 4px}
+  }
+  /* ── Tabs οικονομικών ιδιοκτήτη: χωρίς κύλιση ── */
+  .biztabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:nowrap}
+  .biztabs > div{flex:1 1 0;min-width:0;padding:9px 6px;border-radius:20px;cursor:pointer;font-size:12px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--line);color:var(--muted);background:var(--card)}
+  .biztabs > div.on{background:var(--accent);color:#fff;font-weight:600;border-color:var(--accent)}
+  @media(max-width:600px){
+    .biztabs{flex-wrap:wrap}
+    .biztabs > div{flex:1 1 calc(25% - 5px);font-size:10.5px;padding:8px 3px}
+  }
   /* Στατιστικά tabs: ολόκληρες λέξεις, wrap σε δεύτερη σειρά αν χρειαστεί */
   @media(min-width:601px){
     .stat-tabs{flex-wrap:wrap!important;justify-content:center}
@@ -1999,9 +2015,9 @@ function bizTabs(){
     ['payroll','👥 '+T('Μισθοδοσία','Payroll')],['cashflow','🏦 '+T('Ταμείο','Cash')],
     ['vat','🧾 '+T('ΦΠΑ','VAT')],['profit','💹 '+T('Κερδοφορία','Profit')],
     ['clients','🏪 '+T('Πελάτες','Clients')],['partners','🤝 '+T('Συνεργάτες','Partners')]];
-  return '<div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;margin-bottom:10px">'+
+  return '<div class="biztabs">'+
     items.map(function(it){const on=cur===it[0];
-      return '<div onclick="bizGo(\''+it[0]+'\')" style="flex:0 0 auto;padding:8px 14px;border-radius:20px;cursor:pointer;font-size:13px;white-space:nowrap;'+(on?'background:var(--accent);color:#fff;font-weight:600':'border:1px solid var(--line);color:var(--muted)')+'">'+it[1]+'</div>';
+      return '<div onclick="bizGo(\''+it[0]+'\')" class="'+(on?'on':'')+'">'+it[1]+'</div>';
     }).join('')+'</div>';
 }
 function bizGo(tab){
@@ -6040,9 +6056,9 @@ function drawExpenses(){ persistNav();
   if(sv==='suppliers'){ drawExpSuppliers(c,h); return; }
   if(sv==='delivery'){ drawExpDelivery(c,h); return; }
   // Φίλτρο περιόδου
-  h+='<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:4px">';
+  h+='<div class="perbar">';
   periods.forEach(p=>{const on=period===p[0];
-    h+='<div onclick="ST.expPeriod=\''+p[0]+'\';drawExpenses()" style="padding:7px 14px;border-radius:20px;white-space:nowrap;cursor:pointer;font-size:13px;'+(on?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+p[1]+'</div>';
+    h+='<div onclick="ST.expPeriod=\''+p[0]+'\';drawExpenses()" class="'+(on?'on':'')+'">'+p[1]+'</div>';
   });
   h+='</div>';
   // Σύνολο
@@ -8634,7 +8650,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.20·294';
+const BUILD='v'+'2026.07.20·296';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
