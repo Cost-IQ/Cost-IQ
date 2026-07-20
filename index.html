@@ -1760,8 +1760,8 @@ function bizDrawPartners(){ ST.bizTab='partners'; persistNav();
   const view=ST.partnerView||'commissions';
   let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:760px;margin:0 auto">';
   h+=bizTabs();
-  const vp=(id,lbl)=>'<div onclick="ST.partnerView=\''+id+'\';bizDrawPartners()" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(view===id?'background:var(--accent);color:#fff;font-weight:600':'border:1px solid var(--line);color:var(--muted)')+'">'+lbl+'</div>';
-  h+='<div style="display:flex;gap:6px;margin-bottom:12px">'+vp('commissions','💶 '+T('Προμήθειες','Commissions'))+vp('people','👤 '+T('Συνεργάτες','Partners'))+vp('shops','🏪 '+T('Ανάθεση Μαγαζιών','Shop Assignment'))+'</div>';
+  const vp=(id,emo,lbl)=>'<div onclick="ST.partnerView=\''+id+'\';bizDrawPartners()" class="subtab '+(view===id?'on':'')+'"><span class="e">'+emo+'</span><span class="t">'+lbl+'</span></div>';
+  h+='<div class="subtabs">'+vp('commissions','💶',T('Προμήθειες','Commissions'))+vp('people','👤',T('Συνεργάτες','Partners'))+vp('shops','🏪',T('Ανάθεση','Assignment'))+'</div>';
 
   // ── ΣΥΝΕΡΓΑΤΕΣ ──
   if(view==='people'){
@@ -8656,7 +8656,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.20·297';
+const BUILD='v'+'2026.07.20·298';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
