@@ -457,7 +457,7 @@ function bizRestore(){
 async function revLoadData(){
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
-  try{const {data}=await sb.from('tenants').select('id,name,plan,paid_until,vat_pct');ST.revTenants=data||[];}catch(e){ST.revTenants=[];}
+  try{const {data}=await sb.from('tenants').select('id,name,plan,paid_until,vat_pct,is_demo');ST.revTenants=data||[];}catch(e){ST.revTenants=[];}
   try{const {data}=await sb.from('payments').select('*');ST.revPayments=data||[];}catch(e){ST.revPayments=[];}
   try{const {data}=await sb.from('shop_charges').select('*');ST.revCharges=data||[];}catch(e){ST.revCharges=[];}
   try{const {data}=await sb.from('shop_finance').select('*');ST.revFinance=data||[];}catch(e){ST.revFinance=[];}
@@ -509,9 +509,11 @@ function revCalc(){
   const onlyOff=!!ST.revOfficial;
   const spread=!!ST.revSpread;
   const keep=x=>!onlyOff||(x.official!==false);
-  const tenants=ST.revTenants||[];
+  const allT=ST.revTenants||[];
+  const tenants=allT.filter(t=>!t.is_demo);           // τα δοκιμαστικά δεν μετρούν
+  const demoIds={}; allT.forEach(t=>{if(t.is_demo)demoIds[t.id]=true;});
   const today=new Date(); today.setHours(0,0,0,0);
-  const vatOf=tid=>{const t=tenants.find(x=>x.id===tid);return t&&t.vat_pct!=null?n(t.vat_pct):24;};
+  const vatOf=tid=>{const t=allT.find(x=>x.id===tid);return t&&t.vat_pct!=null?n(t.vat_pct):24;};
   // Καθαρό / ΦΠΑ μιας εγγραφής (παλιές: το amount είναι καθαρό)
   const split=x=>{
     const net=(x.amount_net!=null&&x.amount_net!=='')?n(x.amount_net):n(x.amount);
@@ -543,7 +545,7 @@ function revCalc(){
   // Κατανομή: μοιράζεται στους μήνες που καλύπτει.
   let colNet=0,colVat=0; const byMethod={}; const paysShown=[];
   (ST.revPayments||[]).forEach(p=>{
-    if(!keep(p))return;
+    if(!keep(p)||demoIds[p.tenant_id])return;
     const s=split(p);
     const months=Math.max(1,parseInt(p.months,10)||1);
     if(spread&&months>1){
@@ -570,7 +572,7 @@ function revCalc(){
     }
   });
   // ── Έξτρα χρεώσεις ──
-  const chs=(ST.revCharges||[]).filter(x=>inR(x.charge_date)&&keep(x));
+  const chs=(ST.revCharges||[]).filter(x=>inR(x.charge_date)&&keep(x)&&!demoIds[x.tenant_id]);
   let chNet=0,chVat=0;
   chs.forEach(x=>{const s=split(x);chNet+=s.net;chVat+=s.vat;});
   // Setup fees καταγράφονται πλέον ως έξτρα χρεώσεις (shop_charges)
@@ -582,12 +584,12 @@ function revCalc(){
   // ΦΠΑ προς απόδοση: μόνο από ΔΗΛΩΜΕΝΕΣ εισπράξεις
   let vatDue=0;
   (ST.revPayments||[]).forEach(p=>{
-    if(p.official===false)return;
+    if(p.official===false||demoIds[p.tenant_id])return;
     if(!inR(p.pay_date))return;
     const sp=split(p); vatDue+=sp.vat;
   });
   (ST.revCharges||[]).forEach(x=>{
-    if(x.official===false)return;
+    if(x.official===false||demoIds[x.tenant_id])return;
     if(!inR(x.charge_date))return;
     const sp=split(x); vatDue+=sp.vat;
   });
@@ -870,8 +872,9 @@ function bizCashCalc(){
   // ── Εισροές: συνδρομές + έξτρα χρεώσεις ──
   const inflow=[]; let inBank=0,inTill=0,vatOut=0;
   let subNet=0,subVat=0,subCashN=0,subCashV=0;
+  const demoC={}; (ST.revTenants||[]).forEach(t=>{if(t.is_demo)demoC[t.id]=true;});
   (ST.revPayments||[]).forEach(p=>{
-    if(!inR(p.pay_date))return;
+    if(!inR(p.pay_date)||demoC[p.tenant_id])return;
     const net=(p.amount_net!=null?n(p.amount_net):n(p.amount)), vat=n(p.vat_amount);
     subNet+=net; subVat+=vat;
     if(isCash(p.method)){subCashN+=net;subCashV+=vat;inTill+=net+vat;} else inBank+=net+vat;
@@ -880,7 +883,7 @@ function bizCashCalc(){
   if(subNet+subVat>0)inflow.push({label:L('Συνδρομές','Subscriptions'),amt:subNet+subVat,cash:subCashN+subCashV>0,mixed:(subCashN+subCashV>0)&&(subNet+subVat>subCashN+subCashV)});
   let chNet=0,chVat=0,chCash=0,setNet=0,setVat=0,setCash=0;
   (ST.revCharges||[]).forEach(x=>{
-    if(!inR(x.charge_date))return;
+    if(!inR(x.charge_date)||demoC[x.tenant_id])return;
     const net=(x.amount_net!=null?n(x.amount_net):n(x.amount)), vat=n(x.vat_amount);
     const setup=(x.label||'').toLowerCase().indexOf('setup')>=0;
     if(setup){setNet+=net;setVat+=vat;} else {chNet+=net;chVat+=vat;}
@@ -1336,12 +1339,13 @@ function bizVatCalc(off){
   const inR=d=>d&&String(d)>=r.from&&String(d)<=r.to;
   // Εκροές
   let subNet=0,subVat=0,setNet=0,setVat=0,chNet=0,chVat=0;
+  const demo={}; (ST.revTenants||[]).forEach(t=>{if(t.is_demo)demo[t.id]=true;});
   (ST.revPayments||[]).forEach(p=>{
-    if(p.official===false||!inR(p.pay_date))return;
+    if(p.official===false||!inR(p.pay_date)||demo[p.tenant_id])return;
     subNet+=(p.amount_net!=null?n(p.amount_net):n(p.amount)); subVat+=n(p.vat_amount);
   });
   (ST.revCharges||[]).forEach(x=>{
-    if(x.official===false||!inR(x.charge_date))return;
+    if(x.official===false||!inR(x.charge_date)||demo[x.tenant_id])return;
     const net=(x.amount_net!=null?n(x.amount_net):n(x.amount)), vat=n(x.vat_amount);
     if((x.label||'').toLowerCase().indexOf('setup')>=0){setNet+=net;setVat+=vat;} else {chNet+=net;chVat+=vat;}
   });
@@ -1445,7 +1449,7 @@ async function bizLoadProfit(){
   if(!ST.revPayments){try{const {data}=await sb.from('payments').select('*');ST.revPayments=data||[];}catch(e){ST.revPayments=[];}}
   if(!ST.revCharges){try{const {data}=await sb.from('shop_charges').select('*');ST.revCharges=data||[];}catch(e){ST.revCharges=[];}}
   if(!ST.bizPayroll){try{const {data}=await sb.from('biz_payroll').select('*');ST.bizPayroll=data||[];}catch(e){ST.bizPayroll=[];}}
-  if(!ST.revTenants){try{const {data}=await sb.from('tenants').select('id,name,plan,paid_until,vat_pct');ST.revTenants=data||[];}catch(e){ST.revTenants=[];}}
+  if(!ST.revTenants){try{const {data}=await sb.from('tenants').select('id,name,plan,paid_until,vat_pct,is_demo');ST.revTenants=data||[];}catch(e){ST.revTenants=[];}}
   if(!ST.bizPeriod)ST.bizPeriod='month';
   if(ST.bizOffset==null)ST.bizOffset=0;
   bizDrawProfit();
@@ -1457,12 +1461,13 @@ function bizProfitCalc(off){
   const inR=d=>d&&String(d)>=r.from&&String(d)<=r.to;
   // Έσοδα (καθαρά, χωρίς ΦΠΑ)
   let sub=0,oneOff=0;
+  const demoP={}; (ST.revTenants||[]).forEach(t=>{if(t.is_demo)demoP[t.id]=true;});
   (ST.revPayments||[]).forEach(p=>{
-    if(!inR(p.pay_date))return;
+    if(!inR(p.pay_date)||demoP[p.tenant_id])return;
     sub+=(p.amount_net!=null?n(p.amount_net):n(p.amount));
   });
   (ST.revCharges||[]).forEach(x=>{
-    if(!inR(x.charge_date))return;
+    if(!inR(x.charge_date)||demoP[x.tenant_id])return;
     oneOff+=(x.amount_net!=null?n(x.amount_net):n(x.amount));
   });
   const revenue=sub+oneOff;
@@ -1484,7 +1489,7 @@ function bizProfitCalc(off){
     payroll+=n(p.gross)+n(p.empr_contrib);
   });
   const profit=revenue-opex-payroll;
-  const shops=(ST.revTenants||[]).length;
+  const shops=(ST.revTenants||[]).filter(t=>!t.is_demo).length;
   const avgPerShop=shops?revenue/shops:0;
   const fixedTotal=fixed+payroll;
   const breakEven=avgPerShop>0?Math.ceil(fixedTotal/avgPerShop):0;
@@ -1557,7 +1562,7 @@ async function bizLoadClients(){
   ST.bizTab='clients'; persistNav();
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
-  if(!ST.revTenants){try{const {data}=await sb.from('tenants').select('id,name,plan,paid_until,vat_pct');ST.revTenants=data||[];}catch(e){ST.revTenants=[];}}
+  if(!ST.revTenants){try{const {data}=await sb.from('tenants').select('id,name,plan,paid_until,vat_pct,is_demo');ST.revTenants=data||[];}catch(e){ST.revTenants=[];}}
   if(!ST.revFinance){try{const {data}=await sb.from('shop_finance').select('*');ST.revFinance=data||[];}catch(e){ST.revFinance=[];}}
   try{const {data}=await sb.from('usage_log').select('*');ST.usageLog=data||[];}catch(e){ST.usageLog=[];}
   try{const {data}=await sb.from('cost_settings').select('*').eq('id',1).maybeSingle();ST.costSettings=data||{cost_per_ocr:0.03,monthly_fixed:0,cost_per_gb:0.02};}catch(e){ST.costSettings={cost_per_ocr:0.03,monthly_fixed:0,cost_per_gb:0.02};}
@@ -1589,7 +1594,7 @@ function bizClientsCalc(){
     if(u.kind==='ocr_z'){use[u.tenant_id].z+=units;} else {use[u.tenant_id].ocr+=units;}
     totalOcr+=units;
   });
-  const tenants=ST.revTenants||[];
+  const tenants=(ST.revTenants||[]).filter(t=>!t.is_demo);
   const shopCount=tenants.length||1;
   // Το πάγιο μοιράζεται: μισό ισομερώς (κάθε μαγαζί κρατά χώρο),
   // μισό αναλογικά με τη χρήση (όποιος σκανάρει πολλά, κοστίζει πιο πολύ)
@@ -1685,7 +1690,7 @@ async function bizLoadPartners(){
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
   try{const {data}=await sb.from('partners').select('*').order('name');ST.partners=data||[];}catch(e){ST.partners=[];}
   try{const {data}=await sb.from('partner_payments').select('*');ST.partnerPayments=data||[];}catch(e){ST.partnerPayments=[];}
-  try{const {data}=await sb.from('tenants').select('id,name,plan,paid_until,vat_pct,partner_id,partner_since');ST.revTenants=data||[];}catch(e){ST.revTenants=ST.revTenants||[];}
+  try{const {data}=await sb.from('tenants').select('id,name,plan,paid_until,vat_pct,partner_id,partner_since,is_demo');ST.revTenants=data||[];}catch(e){ST.revTenants=ST.revTenants||[];}
   if(!ST.revPayments){try{const {data}=await sb.from('payments').select('*');ST.revPayments=data||[];}catch(e){ST.revPayments=[];}}
   if(!ST.revCharges){try{const {data}=await sb.from('shop_charges').select('*');ST.revCharges=data||[];}catch(e){ST.revCharges=[];}}
   if(!ST.bizContrib){try{const {data}=await sb.from('biz_contrib_setup').select('*');ST.bizContrib=data||[];}catch(e){ST.bizContrib=[];}}
@@ -1701,7 +1706,7 @@ function partnerCalc(){
   const inR=d=>d&&String(d).slice(0,10)>=r.from&&String(d).slice(0,10)<=r.to;
   const tenants=ST.revTenants||[];
   const rows=(ST.partners||[]).filter(p=>p.active!==false).map(function(pt){
-    const shops=tenants.filter(t=>t.partner_id===pt.id);
+    const shops=tenants.filter(t=>t.partner_id===pt.id&&!t.is_demo);
     let base=0; const detail=[];
     shops.forEach(function(t){
       // Μέσα στη διάρκεια της συμφωνίας;
@@ -8656,7 +8661,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.20·299';
+const BUILD='v'+'2026.07.20·300';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -8862,9 +8867,10 @@ async function chooseShop(){
   // Σύνολο (μόνο admin)
   if(ST.role==='admin'&&ST.tenants.length){
     let active=0,soon=0,exp=0,revenue=0;
-    ST.tenants.forEach(t=>{const s=shopStatus(t);if(s.expired)exp++;else if(s.days!==null&&s.days<=7)soon++;else active++;revenue+=shopValue(t).net;});
+    const realCount=ST.tenants.filter(t=>!t.is_demo).length;
+    ST.tenants.filter(t=>!t.is_demo).forEach(t=>{const s=shopStatus(t);if(s.expired)exp++;else if(s.days!==null&&s.days<=7)soon++;else active++;revenue+=shopValue(t).net;});
     h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent);text-align:center;font-size:13px;padding:12px">'+
-      '<b>'+ST.tenants.length+'</b> '+L('Μαγαζιά','Shops')+' · 🟢 <b>'+active+'</b> '+L('Ενεργά','Active')+' · 🟡 <b>'+soon+'</b> '+L('Λήγουν','Expiring')+' · 🔴 <b>'+exp+'</b> '+L('Έληξαν','Expired')+
+      '<b>'+realCount+'</b> '+L('Μαγαζιά','Shops')+' · 🟢 <b>'+active+'</b> '+L('Ενεργά','Active')+' · 🟡 <b>'+soon+'</b> '+L('Λήγουν','Expiring')+' · 🔴 <b>'+exp+'</b> '+L('Έληξαν','Expired')+
       '<div style="margin-top:6px;font-size:15px;font-weight:800;color:var(--accent)">💶 '+money(revenue)+'/'+L('μήνα','month')+'</div>'+
     '</div>';
   }
@@ -8875,7 +8881,7 @@ async function chooseShop(){
     const val=isAdmin?shopValue(t):null;
     const valTxt=val?('<div style="font-size:12px;color:var(--accent);font-weight:600">💶 '+(val.extra>0?(money(val.price)+'+'+money(val.extraFee)):money(val.price))+(val.disc?(' − '+val.disc+'%'):'')+' = '+money(val.net)+'/'+L('μήνα','mo')+(val.extra>0?(' <span style="color:var(--muted);font-weight:400">('+val.extra+' extra)</span>'):'')+'</div>'):'';
     h+='<div class="row" style="border-left:4px solid '+s.col+'">'+
-      '<div style="flex:1;min-width:0'+(isAdmin?';cursor:pointer':'')+'" '+(isAdmin?'onclick="openShopAdmin(\''+t.id+'\')"':'onclick="pickShop(\''+t.id+'\')"')+'><div class="name">'+s.emo+' '+esc(t.name||'—')+'</div>'+
+      '<div style="flex:1;min-width:0'+(isAdmin?';cursor:pointer':'')+'" '+(isAdmin?'onclick="openShopAdmin(\''+t.id+'\')"':'onclick="pickShop(\''+t.id+'\')"')+'><div class="name">'+s.emo+' '+esc(t.name||'—')+(t.is_demo?' <span style="font-size:10px;font-weight:700;color:var(--warn);background:#FFF7E6;padding:2px 7px;border-radius:8px;vertical-align:middle">'+L('ΔΟΚΙΜΑΣΤΙΚΟ','DEMO')+'</span>':'')+'</div>'+
       '<div style="font-size:12px;color:var(--muted)"><b>'+plan+'</b> · '+s.txt+'</div>'+valTxt+'</div>'+
       '<button class="pick" style="margin:0;white-space:nowrap" onclick="pickShop(\''+t.id+'\')">🚪 '+L('Είσοδος','Enter')+'</button></div>';
   });
@@ -9103,6 +9109,7 @@ async function openShopAdmin(id){
   ST._adminShopPlan=(t.plan||'advanced');
   ST._adminShopPaid=t.paid_until||null;
   ST._adminShopVat=(t.vat_pct!=null?+t.vat_pct:24);
+  ST._adminShopDemo=!!t.is_demo;
   ST.view='shopAdmin';persistNav();
   const bb=document.getElementById('backBtn');if(bb){bb.style.display='flex';bb.setAttribute('onclick','chooseShop()');}
   document.getElementById('hTitle').textContent='🏪 '+esc(t.name||'—');
@@ -9141,6 +9148,11 @@ async function loadShopFinance(forceTid){
       '<button class="btn" style="width:auto;margin:0 0 14px;padding:10px 14px;font-size:13px" onclick="paySetupFee()">💰 '+T('Είσπραξη','Collect')+'</button>'+
     '</div>'+
     '<div class="field"><label>🏷️ '+T('Έκπτωση','Discount')+' (%)</label><input id="fin-disc" type="number" step="0.1" value="'+(fin.owner_discount_pct!=null?fin.owner_discount_pct:'')+'" placeholder="'+T('κενό = καμία','empty = none')+'" oninput="updateFinValue()"></div>'+
+    '<div onclick="toggleDemo()" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:12px;cursor:pointer">'+
+      '<div><div style="font-size:13px;font-weight:600">'+T('Δοκιμαστικό Μαγαζί','Demo Shop')+'</div>'+
+      '<div class="muted" style="font-size:11px">'+T('Δεν μετράει σε έσοδα, πελάτες και προμήθειες','Not counted in revenue, clients or commissions')+'</div></div>'+
+      '<div style="position:relative;width:46px;height:26px;background:'+(ST._adminShopDemo?'var(--warn)':'var(--line)')+';border-radius:26px;transition:.2s;flex:0 0 auto"><div style="position:absolute;height:20px;width:20px;left:'+(ST._adminShopDemo?'23px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>'+
+    '</div>'+
     '<div class="field"><label>🧾 '+T('ΦΠΑ','VAT')+' (%)</label><input id="fin-vat" type="number" step="0.5" value="'+(ST._adminShopVat!=null?ST._adminShopVat:24)+'" oninput="updateFinValue()"><div class="muted" style="font-size:11px;margin-top:3px">'+T('Ελλάδα 24% · Κύπρος 19%','Greece 24% · Cyprus 19%')+'</div></div>'+
     '<div id="fin-value" style="text-align:center;font-size:15px;font-weight:800;color:var(--accent);margin:4px 0 10px"></div>'+
     '<button class="btn" onclick="saveShopFinance()">💾 '+T('Αποθήκευση','Save')+'</button>'+
@@ -9181,6 +9193,18 @@ async function removeAccessOwner(uid){
   try{
     await sb.from('owner_shops').delete().eq('user_id',uid).eq('tenant_id',curTenant());
     toast('✅ '+L('Αφαιρέθηκε','Removed')); keepScroll(openMembers);
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function toggleDemo(){
+  const tid=ST._adminShop||curTenant(); if(!tid)return;
+  const val=!ST._adminShopDemo;
+  try{const {error}=await sb.from('tenants').update({is_demo:val}).eq('id',tid);
+    if(error)throw error;
+    ST._adminShopDemo=val;
+    const t=(ST.tenants||[]).find(x=>x.id===tid); if(t)t.is_demo=val;
+    ST.revTenants=null;
+    toast(val?('🧪 '+L('Ορίστηκε ως δοκιμαστικό','Set as demo')):('✅ '+L('Κανονικό μαγαζί','Normal shop')));
+    keepScroll(loadShopFinance);
   }catch(e){toast('❌ '+(e.message||e));}
 }
 async function saveShopFinance(){
