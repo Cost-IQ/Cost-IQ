@@ -4386,13 +4386,222 @@ function menuEngView(){
     });
   }
   h+='</div></div>';
-  // ── Αποθήκευση + Αρχείο ──
+  // ── Εισαγωγή + Αποθήκευση + Αρχείο ──
+  h+='<button class="btn ghost" style="margin-top:12px" onclick="meImportOpen()">📄 '+L('Εισαγωγή Πωλήσεων Από Αρχείο','Import Sales From File')+'</button>';
   if(R.activeCount){
-    h+='<button class="btn" style="margin-top:12px" onclick="saveMenuAnalysis()">📸 '+L('Αποθήκευση Ανάλυσης (με Ημερομηνία)','Save Analysis (with Date)')+'</button>';
+    h+='<button class="btn" style="margin-top:8px" onclick="saveMenuAnalysis()">📸 '+L('Αποθήκευση Ανάλυσης (με Ημερομηνία)','Save Analysis (with Date)')+'</button>';
   }
   h+=menuEngHistoryBtn();
   h+='</div>';
   return h;
+}
+// ═══════════ 📄 ΕΙΣΑΓΩΓΗ ΠΩΛΗΣΕΩΝ ΑΠΟ ΑΡΧΕΙΟ ═══════════
+function meImportOpen(){
+  const T=(el,en)=>L(el,en);
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div class="muted" style="font-size:12.5px;line-height:1.6">'+T('Ανεβάστε την αναφορά πωλήσεων από το σύστημά σας. Δουλεύει με Excel ή CSV από οποιοδήποτε POS.','Upload the sales report from your system. Works with Excel or CSV from any POS.')+'</div>'+
+    '<div onclick="document.getElementById(\'me-file\').click()" style="border:2px dashed var(--line);border-radius:12px;padding:26px 16px;text-align:center;cursor:pointer;background:var(--bg)">'+
+      '<div style="font-size:30px;margin-bottom:6px">📄</div>'+
+      '<div style="font-size:14px;font-weight:600">'+T('Επιλογή Αρχείου','Choose File')+'</div>'+
+      '<div class="muted" style="font-size:12px;margin-top:3px">CSV, TXT '+T('ή','or')+' Excel (.csv)</div>'+
+    '</div>'+
+    '<input type="file" id="me-file" accept=".csv,.txt,text/csv,text/plain" style="display:none" onchange="meImportFile(this)">'+
+    '<div id="me-imp-status"></div>'+
+    '<div class="muted" style="font-size:11px;line-height:1.6">'+T('Χρειάζονται δύο στήλες: όνομα προϊόντος και ποσότητα. Αν υπάρχει στήλη ημερομηνίας, θα συμπληρωθεί αυτόματα η περίοδος.','Two columns are needed: product name and quantity. If a date column exists, the period fills in automatically.')+'</div>'+
+  '</div>';
+  showModal('📄 '+T('Εισαγωγή Πωλήσεων','Import Sales'),html,null,null);
+}
+// Διαβάζει CSV με αυτόματη ανίχνευση διαχωριστικού
+function meParseCsv(text){
+  text=text.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const lines=text.split('\n').filter(l=>l.trim()!=='');
+  if(!lines.length)return null;
+  // Διαχωριστικό: ό,τι εμφανίζεται πιο συχνά στην πρώτη γραμμή
+  const cands=[';','\t',','];
+  let sep=',',best=0;
+  cands.forEach(function(c){const n=(lines[0].split(c).length-1);if(n>best){best=n;sep=c;}});
+  const split=function(line){
+    const out=[]; let cur='',q=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){ if(q&&line[i+1]==='"'){cur+='"';i++;} else q=!q; }
+      else if(ch===sep&&!q){ out.push(cur); cur=''; }
+      else cur+=ch;
+    }
+    out.push(cur);
+    return out.map(x=>x.trim().replace(/^"|"$/g,''));
+  };
+  const rows=lines.map(split);
+  return {head:rows[0],rows:rows.slice(1)};
+}
+// Καθαρίζει όνομα για σύγκριση: πεζά, χωρίς τόνους, χωρίς σημεία στίξης
+function meNorm(s){
+  return String(s||'').toLowerCase()
+    .replace(/[άàá]/g,'α').replace(/[έèé]/g,'ε').replace(/[ήèé]/g,'η')
+    .replace(/[ίìíϊΐ]/g,'ι').replace(/[όòó]/g,'ο').replace(/[ύùúϋΰ]/g,'υ').replace(/[ώòó]/g,'ω')
+    .replace(/[^a-zα-ω0-9]/g,'');
+}
+// Απόσταση επεξεργασίας: πόσοι χαρακτήρες διαφέρουν
+function meDist(a,b){
+  const m=a.length,n=b.length;
+  if(!m)return n; if(!n)return m;
+  let prev=new Array(n+1),cur=new Array(n+1);
+  for(let j=0;j<=n;j++)prev[j]=j;
+  for(let i=1;i<=m;i++){
+    cur[0]=i;
+    for(let j=1;j<=n;j++){
+      cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    }
+    const t=prev; prev=cur; cur=t;
+  }
+  return prev[n];
+}
+function meNum(v){
+  if(v==null)return 0;
+  let s=String(v).replace(/[^\d,.\-]/g,'');
+  // 1.234,56 → 1234.56 · 1,234.56 → 1234.56
+  if(s.indexOf(',')>-1&&s.indexOf('.')>-1){
+    s=(s.lastIndexOf(',')>s.lastIndexOf('.'))?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
+  } else if(s.indexOf(',')>-1){
+    s=(s.split(',')[1]||'').length<=2?s.replace(',','.'):s.replace(/,/g,'');
+  }
+  const n=parseFloat(s);
+  return isNaN(n)?0:n;
+}
+function meImportFile(input){
+  const f=input.files&&input.files[0]; if(!f)return;
+  const box=document.getElementById('me-imp-status');
+  if(box)box.innerHTML='<div class="card center" style="padding:14px"><span class="spin"></span></div>';
+  const rd=new FileReader();
+  rd.onload=function(){
+    try{ meImportProcess(meParseCsv(rd.result), f.name); }
+    catch(e){ if(box)box.innerHTML='<div class="card" style="background:#FFF0F0;color:var(--bad);font-size:12.5px;padding:12px">❌ '+L('Δεν διαβάστηκε το αρχείο','Could not read the file')+'</div>'; }
+  };
+  rd.onerror=function(){ if(box)box.innerHTML='<div class="card" style="background:#FFF0F0;color:var(--bad);font-size:12.5px;padding:12px">❌ '+L('Σφάλμα ανάγνωσης','Read error')+'</div>'; };
+  rd.readAsText(f,'utf-8');
+}
+function meImportProcess(parsed,fname){
+  const T=(el,en)=>L(el,en);
+  const box=document.getElementById('me-imp-status');
+  if(!parsed||!parsed.head||parsed.rows.length===0){
+    if(box)box.innerHTML='<div class="card" style="background:#FFF0F0;color:var(--bad);font-size:12.5px;padding:12px">❌ '+T('Το αρχείο είναι άδειο','The file is empty')+'</div>';
+    return;
+  }
+  const head=parsed.head, rows=parsed.rows;
+  // ── Αναγνώριση στηλών ──
+  const hn=head.map(meNorm);
+  const findCol=function(keys){
+    for(let i=0;i<hn.length;i++)for(const k of keys)if(hn[i].indexOf(k)>-1)return i;
+    return -1;
+  };
+  let cName=findCol(['itemname','item','product','προιον','ονομα','περιγραφη','description','name','ειδος']);
+  let cQty =findCol(['itemssold','quantity','qty','ποσοτητα','τεμαχια','τεμ','sold','πωλησεις','count']);
+  const cDate=findCol(['date','ημερομηνια','ημερομ','day','ημερα']);
+  // Αν δεν βρέθηκαν, μάντεψε: 1η στήλη κείμενο = όνομα, 1η αριθμητική = ποσότητα
+  if(cName<0)cName=0;
+  if(cQty<0){
+    for(let i=0;i<head.length;i++){
+      if(i===cName||i===cDate)continue;
+      let ok=0;
+      rows.slice(0,8).forEach(function(r){ if(r[i]!=null&&r[i]!==''&&meNum(r[i])>0)ok++; });
+      if(ok>=Math.min(3,rows.length)){cQty=i;break;}
+    }
+  }
+  if(cQty<0){
+    if(box)box.innerHTML='<div class="card" style="background:#FFF7E6;color:var(--warn);font-size:12.5px;padding:12px">⚠ '+T('Δεν βρήκα στήλη με ποσότητες. Ελέγξτε το αρχείο.','No quantity column found. Check the file.')+'</div>';
+    return;
+  }
+  // ── Συγκέντρωση ανά όνομα ──
+  const agg={}; let minD='',maxD='';
+  rows.forEach(function(r){
+    const nm=(r[cName]||'').trim(); if(!nm)return;
+    const q=meNum(r[cQty]); if(q<=0)return;
+    const k=meNorm(nm);
+    if(!agg[k])agg[k]={name:nm,qty:0};
+    agg[k].qty+=q;
+    if(cDate>-1&&r[cDate]){
+      const iso=meDateIso(r[cDate]);
+      if(iso){ if(!minD||iso<minD)minD=iso; if(!maxD||iso>maxD)maxD=iso; }
+    }
+  });
+  // ── Ταίριασμα με ενεργές συνταγές ──
+  const recs=(ST.recipes||[]).filter(r=>!r.is_homemade&&r.is_active!==false);
+  const byNorm={}; recs.forEach(function(r){ byNorm[meNorm(r.name)]=r; });
+  const matched=[], unmatched=[];
+  Object.keys(agg).forEach(function(k){
+    const a=agg[k];
+    let rec=byNorm[k];
+    if(!rec){ // μερικό ταίριασμα
+      const cands=recs.filter(function(r){const rn=meNorm(r.name);return rn.indexOf(k)>-1||k.indexOf(rn)>-1;});
+      if(cands.length===1)rec=cands[0];
+    }
+    if(!rec&&k.length>=5){ // ανοχή σε μικρές διαφορές γραφής
+      let bestR=null,bestD=99;
+      recs.forEach(function(r){
+        const rn=meNorm(r.name);
+        if(Math.abs(rn.length-k.length)>2)return;
+        const d=meDist(k,rn);
+        if(d<bestD){bestD=d;bestR=r;}
+      });
+      if(bestR&&bestD<=Math.max(1,Math.floor(k.length*0.12)))rec=bestR;
+    }
+    if(rec)matched.push({rec:rec,qty:a.qty,src:a.name});
+    else unmatched.push(a);
+  });
+  ST._meImport={matched:matched,unmatched:unmatched,from:minD,to:maxD};
+  // ── Αποτέλεσμα ──
+  let h='<div class="card" style="padding:0;overflow:hidden">'+
+    '<div style="padding:12px 14px;border-bottom:1px solid var(--line)">'+
+      '<div style="font-size:13px;font-weight:600">'+esc(fname)+'</div>'+
+      '<div class="muted" style="font-size:11.5px;margin-top:2px">'+rows.length+' '+T('γραμμές','rows')+' · '+T('Στήλες','Columns')+': '+esc(head[cName])+' + '+esc(head[cQty])+(cDate>-1?(' + '+esc(head[cDate])):'')+'</div>'+
+    '</div>'+
+    '<div style="display:flex;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px">'+
+      '<span style="color:var(--ok)">✓ '+T('Ταίριαξαν','Matched')+'</span><b>'+matched.length+'</b></div>';
+  if(unmatched.length){
+    h+='<div style="display:flex;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px">'+
+      '<span style="color:var(--muted)">'+T('Χωρίς Συνταγή','No Recipe')+'</span><b>'+unmatched.length+'</b></div>';
+  }
+  if(minD&&maxD){
+    h+='<div style="display:flex;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px">'+
+      '<span style="color:var(--muted)">'+T('Περίοδος','Period')+'</span><b>'+dGRs(minD)+' – '+dGRs(maxD)+'</b></div>';
+  }
+  h+='</div>';
+  if(matched.length){
+    h+='<div class="card" style="padding:0;overflow:hidden;margin-top:10px;max-height:220px;overflow-y:auto">';
+    matched.slice(0,40).forEach(function(m){
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line);font-size:12.5px">'+
+        '<div style="min-width:0;flex:1"><div>'+esc(m.rec.name)+'</div>'+
+        (meNorm(m.src)!==meNorm(m.rec.name)?('<div class="muted" style="font-size:10.5px">← '+esc(m.src)+'</div>'):'')+'</div>'+
+        '<b>'+Math.round(m.qty)+'</b></div>';
+    });
+    if(matched.length>40)h+='<div class="muted" style="text-align:center;padding:9px;font-size:11.5px">…'+T('και άλλα','and')+' '+(matched.length-40)+'</div>';
+    h+='</div>';
+  }
+  if(unmatched.length){
+    h+='<div class="muted" style="font-size:11.5px;margin-top:10px;line-height:1.6">'+T('Δεν βρέθηκε συνταγή για','No recipe found for')+': '+
+      unmatched.slice(0,8).map(x=>esc(x.name)).join(', ')+(unmatched.length>8?('… +'+(unmatched.length-8)):'')+'</div>';
+  }
+  if(matched.length){
+    h+='<button class="btn" style="margin-top:12px" onclick="meImportApply()">✓ '+T('Εισαγωγή','Import')+' '+matched.length+' '+T('Προϊόντων','Products')+'</button>';
+  }
+  if(box)box.innerHTML=h;
+}
+function meDateIso(v){
+  const s=String(v||'').trim();
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m)return m[1]+'-'+m[2]+'-'+m[3];
+  m=s.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})/);
+  if(m)return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+  return null;
+}
+function meImportApply(){
+  const D=ST._meImport; if(!D||!D.matched.length)return;
+  ST.meSold=ST.meSold||{};
+  D.matched.forEach(function(m){ ST.meSold[m.rec.id]=Math.round(m.qty); });
+  if(D.from&&D.to){ ST._meImpFrom=D.from; ST._meImpTo=D.to; }
+  closeModal();
+  toast('✅ '+D.matched.length+' '+L('προϊόντα ενημερώθηκαν','products updated'));
+  renderStats();
 }
 function menuEngHistoryBtn(){
   return '<button class="btn ghost" style="margin-top:8px" onclick="menuAnalysisHistory()">📚 '+L('Αρχείο Αναλύσεων','Analysis Archive')+'</button>';
@@ -4403,11 +4612,14 @@ async function saveMenuAnalysis(){
   if(!R.activeCount){toast('❌ '+L('Καμία εγγραφή','Nothing to save'));return;}
   if(R.totalSold<=0){toast('❌ '+L('Βάλε πωλήσεις πρώτα','Enter sales first'));return;}
   const today=new Date().toISOString().slice(0,10);
-  const d=prompt(L('ΑΠΟ ημερομηνία (πχ 01/07/2026):','FROM date (e.g. 01/07/2026):'),dGRs(today));
+  // Αν έγινε εισαγωγή από αρχείο με ημερομηνίες, προτείνονται αυτές
+  const sugFrom=ST._meImpFrom||today;
+  const sugTo=ST._meImpTo||null;
+  const d=prompt(L('ΑΠΟ ημερομηνία (πχ 01/07/2026):','FROM date (e.g. 01/07/2026):'),dGRs(sugFrom));
   if(d===null)return;
   const iso=parseGRDate(d);
   if(!iso){toast('❌ '+L('Λάθος ημερομηνία (πχ 01/07/2026)','Bad date (e.g. 01/07/2026)'));return;}
-  const d2=prompt(L('ΕΩΣ ημερομηνία (πχ 07/07/2026) — άφησε κενό για μία μέρα:','TO date (e.g. 07/07/2026) — leave empty for a single day:'),dGRs(iso));
+  const d2=prompt(L('ΕΩΣ ημερομηνία (πχ 07/07/2026) — άφησε κενό για μία μέρα:','TO date (e.g. 07/07/2026) — leave empty for a single day:'),dGRs(sugTo||iso));
   if(d2===null)return;
   let isoTo=null;
   if(String(d2).trim()){
@@ -8897,7 +9109,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.20·303';
+const BUILD='v'+'2026.07.20·305';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
