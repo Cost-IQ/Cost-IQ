@@ -110,11 +110,11 @@
     .perbar > div{flex:1 1 calc(33.333% - 4px);font-size:12px;padding:8px 4px}
   }
   /* ── Tabs οικονομικών ιδιοκτήτη: χωρίς κύλιση ── */
-  .biztabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:nowrap}
-  .biztabs > div{flex:1 1 0;min-width:0;padding:10px 6px;border-radius:20px;cursor:pointer;font-size:13.5px;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--line);color:var(--muted);background:var(--card)}
+  .biztabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:nowrap;width:calc(100vw - 24px);position:relative;left:50%;margin-left:calc(-50vw + 12px)}
+  .biztabs > div{flex:1 1 0;min-width:0;padding:10px 8px;border-radius:20px;cursor:pointer;font-size:13.5px;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--line);color:var(--muted);background:var(--card)}
   .biztabs > div.on{background:var(--accent);color:#fff;font-weight:600;border-color:var(--accent)}
   @media(max-width:600px){
-    .biztabs{flex-wrap:wrap}
+    .biztabs{flex-wrap:wrap;width:auto;position:static;left:auto;margin-left:0}
     .biztabs > div{flex:1 1 calc(25% - 5px);font-size:11.5px;padding:9px 2px}
   }
   /* Στατιστικά tabs: ολόκληρες λέξεις, wrap σε δεύτερη σειρά αν χρειαστεί */
@@ -8656,7 +8656,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.20·298';
+const BUILD='v'+'2026.07.20·299';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
