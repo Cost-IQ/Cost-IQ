@@ -1726,7 +1726,7 @@ function bizDrawProfit(){ ST.bizTab='profit'; persistNav();
   }
   if(!any)h+='<div class="muted" style="text-align:center;padding:14px;font-size:13px">—</div>';
   h+='</div>';
-  h+='<button class="btn ghost" style="width:100%;margin-top:12px" onclick="bizCostSettings()">⚙️ '+T('Ρύθμιση Φόρου & Κόστους','Tax & Cost Settings')+'</button>';
+  h+='<button class="btn ghost" style="width:100%;margin-top:12px" onclick="bizTaxSettings()">⚙️ '+T('Ρύθμιση Φόρου','Tax Settings')+'</button>';
   h+='</div></div>';
   c.innerHTML=h;
 }
@@ -1845,18 +1845,37 @@ function bizCostSettings(){
       '<div class="muted" style="font-size:11px;margin-top:4px">'+T('Τι πληρώνεις στο Claude ανά τιμολόγιο ή Ζ','What you pay Claude per invoice or Z')+'</div></div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Μηνιαίο Πάγιο Υποδομής','Monthly Infrastructure')+'</label><input id="cs-fixed" type="number" step="0.01" value="'+(cs.monthly_fixed!=null?cs.monthly_fixed:0)+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px">'+
       '<div class="muted" style="font-size:11px;margin-top:4px">'+T('Supabase, domain και ό,τι πληρώνεις ανεξάρτητα από πελάτες','Supabase, domain and anything you pay regardless of clients')+'</div></div>'+
-    '<div style="border-top:1px solid var(--line);padding-top:12px"><label style="font-size:12px;color:var(--muted)">'+T('Φορολογικός Συντελεστής','Tax Rate')+' %</label><input id="cs-tax" type="number" step="0.5" value="'+(cs.tax_pct!=null?cs.tax_pct:0)+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px">'+
-      '<div class="muted" style="font-size:11px;margin-top:4px">'+T('Για να βλέπετε τι σας μένει καθαρά μετά τον φόρο. Κενό ή μηδέν σημαίνει ότι δεν υπολογίζεται.','To see what remains after tax. Empty or zero means it is not calculated.')+'</div></div>'+
   '</div>';
-  showModal('⚙️ '+T('Ρύθμιση Κόστους','Cost Settings'),html,T('Αποθήκευση','Save'),bizSaveCostSettings);
+  showModal('⚙️ '+T('Ρύθμιση Κόστους','Cost Settings'),html,T('Αποθήκευση','Save'),function(){bizSaveCostSettings('cost');});
 }
-async function bizSaveCostSettings(){
+function bizTaxSettings(){
+  const T=(el,en)=>L(el,en);
+  const cs=ST.costSettings||{};
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div class="muted" style="font-size:12px">'+T('Ο συντελεστής φόρου της επιχείρησής σου, για να βλέπεις τι σου μένει καθαρά.','Your business tax rate, so you can see what actually remains.')+'</div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Φορολογικός Συντελεστής','Tax Rate')+' %</label><input id="cs-tax" type="number" step="0.5" value="'+(cs.tax_pct!=null?cs.tax_pct:0)+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px">'+
+      '<div class="muted" style="font-size:11px;margin-top:4px">'+T('Κενό ή μηδέν σημαίνει ότι δεν υπολογίζεται. Ο σωστός συντελεστής εξαρτάται από τη νομική μορφή — ρώτα τον λογιστή σου.','Empty or zero means it is not calculated. The correct rate depends on your legal form — ask your accountant.')+'</div></div>'+
+  '</div>';
+  showModal('⚙️ '+T('Ρύθμιση Φόρου','Tax Settings'),html,T('Αποθήκευση','Save'),function(){bizSaveCostSettings('tax');});
+}
+async function bizSaveCostSettings(which){
   const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
-  try{const {error}=await sb.from('cost_settings').upsert({id:1,
-      cost_per_ocr:parseFloat(g('cs-ocr'))||0,monthly_fixed:parseFloat(g('cs-fixed'))||0,
-      tax_pct:parseFloat(g('cs-tax'))||0,
-      updated_at:new Date().toISOString()},{onConflict:'id'});
-    if(error)throw error; closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved')); bizLoadClients();
+  const cs=ST.costSettings||{};
+  const row={id:1,updated_at:new Date().toISOString()};
+  if(which==='tax'){
+    row.tax_pct=parseFloat(g('cs-tax'))||0;
+    row.cost_per_ocr=(cs.cost_per_ocr!=null?cs.cost_per_ocr:0.03);
+    row.monthly_fixed=(cs.monthly_fixed!=null?cs.monthly_fixed:0);
+  } else {
+    row.cost_per_ocr=parseFloat(g('cs-ocr'))||0;
+    row.monthly_fixed=parseFloat(g('cs-fixed'))||0;
+    row.tax_pct=(cs.tax_pct!=null?cs.tax_pct:0);
+  }
+  try{const {error}=await sb.from('cost_settings').upsert(row,{onConflict:'id'});
+    if(error)throw error;
+    ST.costSettings=Object.assign({},cs,row);
+    closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved'));
+    if(which==='tax')bizLoadProfit(); else bizLoadClients();
   }catch(e){toast('❌ '+(e.message||e));}
 }
 // ═══════════ 🤝 ΣΥΝΕΡΓΑΤΕΣ & ΠΡΟΜΗΘΕΙΕΣ ═══════════
@@ -9109,7 +9128,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.20·305';
+const BUILD='v'+'2026.07.20·306';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
