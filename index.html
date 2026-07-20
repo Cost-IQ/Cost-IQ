@@ -586,7 +586,8 @@ const BIZ_CATS=[['hosting','☁️','Hosting / Supabase','Hosting / Supabase'],
   ['accountant','📊','Λογιστής','Accountant'],
   ['marketing','📣','Marketing','Marketing'],
   ['equipment','💻','Εξοπλισμός','Equipment'],
-  ['travel','🚗','Μετακινήσεις','Travel']];
+  ['travel','🚗','Μετακινήσεις','Travel'],
+  ['commission','🤝','Προμήθειες','Commissions']];
 function bizCatLabel(k){
   const f=BIZ_CATS.find(x=>x[0]===k);
   if(f)return f[1]+' '+L(f[2],f[3]);
@@ -1655,6 +1656,334 @@ async function bizSaveCostSettings(){
     if(error)throw error; closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved')); bizLoadClients();
   }catch(e){toast('❌ '+(e.message||e));}
 }
+// ═══════════ 🤝 ΣΥΝΕΡΓΑΤΕΣ & ΠΡΟΜΗΘΕΙΕΣ ═══════════
+async function bizLoadPartners(){
+  ST.bizTab='partners'; persistNav();
+  const c=document.getElementById('content');
+  c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
+  try{const {data}=await sb.from('partners').select('*').order('name');ST.partners=data||[];}catch(e){ST.partners=[];}
+  try{const {data}=await sb.from('partner_payments').select('*');ST.partnerPayments=data||[];}catch(e){ST.partnerPayments=[];}
+  try{const {data}=await sb.from('tenants').select('id,name,plan,paid_until,vat_pct,partner_id,partner_since');ST.revTenants=data||[];}catch(e){ST.revTenants=ST.revTenants||[];}
+  if(!ST.revPayments){try{const {data}=await sb.from('payments').select('*');ST.revPayments=data||[];}catch(e){ST.revPayments=[];}}
+  if(!ST.revCharges){try{const {data}=await sb.from('shop_charges').select('*');ST.revCharges=data||[];}catch(e){ST.revCharges=[];}}
+  if(!ST.bizContrib){try{const {data}=await sb.from('biz_contrib_setup').select('*');ST.bizContrib=data||[];}catch(e){ST.bizContrib=[];}}
+  if(!ST.bizPeriod)ST.bizPeriod='month';
+  if(ST.bizOffset==null)ST.bizOffset=0;
+  if(!ST.partnerView)ST.partnerView='commissions';
+  bizDrawPartners();
+}
+// Υπολογισμός προμηθειών περιόδου ανά συνεργάτη
+function partnerCalc(){
+  const n=v=>(v!=null&&v!==''?(+v):0);
+  const r=bizRange();
+  const inR=d=>d&&String(d).slice(0,10)>=r.from&&String(d).slice(0,10)<=r.to;
+  const tenants=ST.revTenants||[];
+  const rows=(ST.partners||[]).filter(p=>p.active!==false).map(function(pt){
+    const shops=tenants.filter(t=>t.partner_id===pt.id);
+    let base=0; const detail=[];
+    shops.forEach(function(t){
+      // Μέσα στη διάρκεια της συμφωνίας;
+      let ok=true;
+      if(pt.duration_months&&t.partner_since){
+        const st=new Date(t.partner_since+'T12:00:00');
+        const end=new Date(st.getFullYear(),st.getMonth()+parseInt(pt.duration_months,10),st.getDate());
+        const per=new Date(r.from+'T12:00:00');
+        ok=per<end;
+      }
+      if(!ok){detail.push({name:t.name,amt:0,expired:true});return;}
+      let amt=0;
+      // Συνδρομές (μόνο ό,τι εισπράχθηκε)
+      if(pt.on_subscriptions!==false){
+        (ST.revPayments||[]).forEach(function(pay){
+          if(pay.tenant_id!==t.id||!inR(pay.pay_date))return;
+          amt+=(pay.amount_net!=null?n(pay.amount_net):n(pay.amount));
+        });
+      }
+      // Setup fees και έξτρα χρεώσεις
+      (ST.revCharges||[]).forEach(function(x){
+        if(x.tenant_id!==t.id||!inR(x.charge_date))return;
+        const isSetup=(x.label||'').toLowerCase().indexOf('setup')>=0;
+        if(isSetup&&pt.on_setup!==true)return;
+        if(!isSetup&&pt.on_extras!==true)return;
+        amt+=(x.amount_net!=null?n(x.amount_net):n(x.amount));
+      });
+      base+=amt;
+      detail.push({name:t.name,amt:amt,expired:false});
+    });
+    const pct=n(pt.pct);
+    const commission=base*pct/100;
+    // Τι έχει ήδη πληρωθεί
+    const paid=(ST.partnerPayments||[]).filter(x=>x.partner_id===pt.id&&x.period_from===r.from&&x.period_to===r.to)
+      .reduce((s2,x)=>s2+n(x.amount_net),0);
+    // Αν είναι μισθοδοσία, υπολογίζουμε εισφορές
+    let empC=0,emprC=0;
+    if(pt.kind==='payroll'){
+      const cls=(ST.bizContrib||[]).find(x=>x.name===pt.contrib_class);
+      if(cls){empC=commission*n(cls.emp_pct)/100;emprC=commission*n(cls.empr_pct)/100;}
+    }
+    return {p:pt,shops:shops.length,base:base,pct:pct,commission:commission,
+      paid:paid,due:commission-paid,detail:detail,empC:empC,emprC:emprC,cost:commission+emprC};
+  }).sort((a,b)=>b.commission-a.commission);
+  const total=rows.reduce((s2,x)=>s2+x.commission,0);
+  const totalCost=rows.reduce((s2,x)=>s2+x.cost,0);
+  return {rows:rows,total:total,totalCost:totalCost};
+}
+function partnerKindLabel(k){
+  const T=(el,en)=>L(el,en);
+  return {invoice:'🧾 '+T('Τιμολόγιο','Invoice'),payroll:'👥 '+T('Μισθοδοσία','Payroll'),simple:'💵 '+T('Απλή Πληρωμή','Simple Payment')}[k]||k;
+}
+function bizDrawPartners(){ ST.bizTab='partners'; persistNav();
+  const c=document.getElementById('content'); const T=(el,en)=>L(el,en);
+  const m2=x=>money(Math.round((x||0)*100)/100);
+  const view=ST.partnerView||'commissions';
+  let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:760px;margin:0 auto">';
+  h+=bizTabs();
+  const vp=(id,lbl)=>'<div onclick="ST.partnerView=\''+id+'\';bizDrawPartners()" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(view===id?'background:var(--accent);color:#fff;font-weight:600':'border:1px solid var(--line);color:var(--muted)')+'">'+lbl+'</div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:12px">'+vp('commissions','💶 '+T('Προμήθειες','Commissions'))+vp('people','👤 '+T('Συνεργάτες','Partners'))+vp('shops','🏪 '+T('Ανάθεση Μαγαζιών','Shop Assignment'))+'</div>';
+
+  // ── ΣΥΝΕΡΓΑΤΕΣ ──
+  if(view==='people'){
+    h+='<button class="btn ghost" style="width:100%;margin-bottom:12px" onclick="partnerForm({})">➕ '+T('Νέος Συνεργάτης','New Partner')+'</button>';
+    h+='<div class="card" style="padding:0;overflow:hidden">';
+    const list=ST.partners||[];
+    if(!list.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Κανένας Συνεργάτης','No Partners')+'</div>';
+    list.forEach(function(p){
+      const dur=p.duration_months?(p.duration_months+' '+T('Μήνες','Months')):T('Εφ\' Όρου Ζωής','Lifetime');
+      const cov=[p.on_subscriptions!==false?T('Συνδρομές','Subscriptions'):null,p.on_setup?T('Setup','Setup'):null,p.on_extras?T('Έξτρα','Extras'):null].filter(Boolean).join(' · ');
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)">'+
+        '<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600">'+esc(p.name)+(p.active===false?' <span class="muted" style="font-size:11px">('+T('Ανενεργός','Inactive')+')</span>':'')+'</div>'+
+        '<div class="muted" style="font-size:11px">'+partnerKindLabel(p.kind||'invoice')+' · '+p.pct+'% · '+dur+'</div>'+
+        '<div class="muted" style="font-size:11px">'+cov+'</div></div>'+
+        '<div style="display:flex;gap:8px"><span onclick="partnerEdit(\''+p.id+'\')" style="cursor:pointer;color:var(--accent);font-size:15px">✏️</span>'+
+        '<span onclick="partnerDel(\''+p.id+'\')" style="cursor:pointer;color:var(--bad);font-size:15px">🗑</span></div></div>';
+    });
+    h+='</div></div></div>'; c.innerHTML=h; return;
+  }
+
+  // ── ΑΝΑΘΕΣΗ ΜΑΓΑΖΙΩΝ ──
+  if(view==='shops'){
+    h+='<div class="muted" style="font-size:12px;margin:0 2px 12px">'+T('Ορίστε ποιος συνεργάτης έφερε κάθε μαγαζί.','Set which partner brought each shop.')+'</div>';
+    h+='<div class="card" style="padding:0;overflow:hidden">';
+    const parts=(ST.partners||[]).filter(p=>p.active!==false);
+    (ST.revTenants||[]).forEach(function(t){
+      const cur=parts.find(p=>p.id===t.partner_id);
+      h+='<div style="padding:12px 14px;border-bottom:1px solid var(--line)">'+
+        '<div style="font-size:14px;font-weight:600;margin-bottom:7px">'+esc(t.name||'—')+'</div>'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          '<select onchange="partnerAssign(\''+t.id+'\',this.value)" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:12.5px;background:var(--card)">'+
+            '<option value="">'+T('— Κανένας —','— None —')+'</option>'+
+            parts.map(p=>'<option value="'+p.id+'"'+(t.partner_id===p.id?' selected':'')+'>'+esc(p.name)+' ('+p.pct+'%)</option>').join('')+
+          '</select>'+
+          (cur?('<input type="date" value="'+esc(t.partner_since||'')+'" onchange="partnerSince(\''+t.id+'\',this.value)" title="'+T('Από πότε','Since')+'" style="width:140px;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:12px">'):'')+
+        '</div></div>';
+    });
+    h+='</div></div></div>'; c.innerHTML=h; return;
+  }
+
+  // ── ΠΡΟΜΗΘΕΙΕΣ ──
+  h+=bizNav();
+  const R=partnerCalc();
+  h+='<div class="card" style="text-align:center;margin-bottom:12px"><div class="muted" style="font-size:12px">'+T('Προμήθειες Περιόδου','Period Commissions')+'</div>'+
+    '<div style="font-size:26px;font-weight:800;margin-top:2px">'+m2(R.total)+'</div>'+
+    (R.totalCost>R.total?('<div class="muted" style="font-size:11px;margin-top:3px">'+T('Με Εισφορές','With Contributions')+' '+m2(R.totalCost)+'</div>'):'')+'</div>';
+  h+='<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">';
+  if(!R.rows.length)h+='<div class="muted" style="text-align:center;padding:16px;font-size:13px">'+T('Κανένας Συνεργάτης','No Partners')+'</div>';
+  R.rows.forEach(function(x){
+    const dt=x.detail.filter(d=>d.amt>0||d.expired);
+    h+='<div style="padding:12px 14px;border-bottom:1px solid var(--line)">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'+
+        '<div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:600">'+esc(x.p.name)+'</div>'+
+        '<div class="muted" style="font-size:11px">'+x.shops+' '+T('Μαγαζιά','Shops')+' · '+T('Βάση','Base')+' '+m2(x.base)+' × '+x.pct+'%</div></div>'+
+        '<span style="font-size:15px;font-weight:800">'+m2(x.commission)+'</span></div>'+
+      (dt.length?('<div class="muted" style="font-size:11px;margin-top:6px;line-height:1.7">'+
+        dt.map(d=>esc(d.name)+' '+(d.expired?('<span style="color:var(--muted)">'+T('έληξε','expired')+'</span>'):m2(d.amt))).join(' · ')+'</div>'):'')+
+      (x.p.kind==='payroll'&&x.emprC>0?('<div class="muted" style="font-size:11px;margin-top:4px">'+T('Εισφορές Εργοδότη','Employer Contributions')+' '+m2(x.emprC)+' · '+T('Κόστος','Cost')+' '+m2(x.cost)+'</div>'):'')+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px">'+
+        '<div style="font-size:11px;flex:1">'+(x.paid>0?('<span style="color:var(--ok)">✓ '+T('Πληρώθηκε','Paid')+' '+m2(x.paid)+'</span>'+(x.due>0.005?(' <span style="color:var(--bad)">· '+T('Απομένουν','Remaining')+' '+m2(x.due)+'</span>'):'')):(x.commission>0.005?('<span class="muted">'+T('Εκκρεμεί','Pending')+'</span>'):''))+'</div>'+
+        (x.due>0.005?('<button class="btn ghost" style="padding:5px 12px;font-size:12px;width:auto;margin:0" onclick="partnerPay(\''+x.p.id+'\','+x.due.toFixed(2)+','+x.base.toFixed(2)+')">💰 '+T('Πληρωμή','Pay')+'</button>'):'')+
+      '</div></div>';
+  });
+  h+='</div>';
+  h+='<div class="muted" style="font-size:11px;text-align:center;line-height:1.6">'+T('Η προμήθεια υπολογίζεται μόνο σε ό,τι έχει εισπραχθεί, στην καθαρή αξία.','Commission is calculated only on collected amounts, on net value.')+'</div>';
+  h+='</div></div>';
+  c.innerHTML=h;
+}
+function partnerEdit(id){
+  const p=(ST.partners||[]).find(x=>x.id===id); if(!p)return;
+  partnerForm(p);
+}
+function partnerForm(e){
+  const T=(el,en)=>L(el,en);
+  const kind=e.kind||'invoice';
+  const life=!e.duration_months;
+  const kb=(k,lbl)=>'<div id="pk-'+k+'" onclick="partnerSetKind(\''+k+'\')" style="flex:1;text-align:center;padding:8px 4px;border-radius:8px;cursor:pointer;font-size:11.5px;'+(kind===k?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+lbl+'</div>';
+  const csOpts=(ST.bizContrib||[]).map(x=>'<option value="'+esc(x.name)+'"'+(e.contrib_class===x.name?' selected':'')+'>'+esc(x.name)+' ('+x.emp_pct+'% / '+x.empr_pct+'%)</option>').join('');
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<input type="hidden" id="pt-id" value="'+(e.id||'')+'">'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα','Name')+'</label><input id="pt-name" type="text" value="'+esc(e.name||'')+'" placeholder="'+T('π.χ. Γιώργος Παπαδόπουλος','e.g. John Smith')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('Τηλέφωνο','Phone')+'</label><input id="pt-phone" type="tel" value="'+esc(e.phone||'')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">Email</label><input id="pt-email" type="email" value="'+esc(e.email||'')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '</div>'+
+    '<div style="border-top:1px solid var(--line);padding-top:10px"><label style="font-size:12px;color:var(--muted)">'+T('Τύπος Σχέσης','Relationship Type')+'</label>'+
+      '<div style="display:flex;gap:5px;margin:6px 0 0">'+kb('invoice','🧾 '+T('Τιμολόγιο','Invoice'))+kb('payroll','👥 '+T('Μισθοδοσία','Payroll'))+kb('simple','💵 '+T('Απλή','Simple'))+'</div>'+
+      '<input type="hidden" id="pt-kind" value="'+kind+'">'+
+      '<div id="pt-vat-wrap" style="margin-top:10px;'+(kind!=='invoice'?'display:none':'')+'"><label style="font-size:12px;color:var(--muted)">'+T('ΑΦΜ','VAT No')+'</label><input id="pt-vatno" type="text" value="'+esc(e.vat_no||'')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div id="pt-pay-wrap" style="margin-top:10px;'+(kind!=='payroll'?'display:none':'')+'">'+
+        '<label style="font-size:12px;color:var(--muted)">'+T('Κατηγορία Εισφορών','Contribution Class')+'</label><select id="pt-contrib" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)"><option value="">'+T('— Καμία —','— None —')+'</option>'+csOpts+'</select>'+
+        '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:10px">'+
+          '<div><label style="font-size:12px;color:var(--muted)">'+T('ΑΜΚΑ','Social Security No')+'</label><input id="pt-amka" type="text" value="'+esc(e.amka||'')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+          '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημ. Έναρξης','Start Date')+'</label><input id="pt-hire" type="date" value="'+esc(e.hire_date||'')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+        '</div></div>'+
+    '</div>'+
+    '<div style="border-top:1px solid var(--line);padding-top:10px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">'+T('Όροι Προμήθειας','Commission Terms')+'</div>'+
+      '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
+        '<div><label style="font-size:12px;color:var(--muted)">'+T('Ποσοστό','Percentage')+' %</label><input id="pt-pct" type="number" step="0.5" value="'+(e.pct!=null?e.pct:10)+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+        '<div><label style="font-size:12px;color:var(--muted)">'+T('Διάρκεια (Μήνες)','Duration (Months)')+'</label><input id="pt-dur" type="number" value="'+(e.duration_months||'')+'" placeholder="'+T('Κενό = Εφ\' Όρου Ζωής','Empty = Lifetime')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '</div>'+
+      '<div class="muted" style="font-size:11px;margin-top:6px">'+T('Κενή διάρκεια σημαίνει ότι η προμήθεια δίνεται όσο ο πελάτης πληρώνει.','Empty duration means commission continues as long as the client pays.')+'</div>'+
+    '</div>'+
+    '<div style="border-top:1px solid var(--line);padding-top:10px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+T('Τι Καλύπτει','What It Covers')+'</div>'+
+      bizSwitch('pt-sub',T('Συνδρομές','Subscriptions'),'',(e.on_subscriptions!==false))+
+      bizSwitch('pt-setup','Setup Fees','',(e.on_setup===true))+
+      bizSwitch('pt-extras',T('Έξτρα Χρεώσεις','Extra Charges'),'',(e.on_extras===true))+
+    '</div>'+
+  '</div>';
+  showModal((e.id?'✏️ '+T('Επεξεργασία Συνεργάτη','Edit Partner'):'➕ '+T('Νέος Συνεργάτης','New Partner')),html,T('Αποθήκευση','Save'),partnerSave);
+}
+function partnerSetKind(k){
+  const hid=document.getElementById('pt-kind'); if(hid)hid.value=k;
+  const on='background:var(--accent);color:#fff', off='border:1px solid var(--line);color:var(--muted)';
+  ['invoice','payroll','simple'].forEach(function(x){
+    const el=document.getElementById('pk-'+x);
+    if(el)el.style.cssText='flex:1;text-align:center;padding:8px 4px;border-radius:8px;cursor:pointer;font-size:11.5px;'+(x===k?on:off);
+  });
+  const v=document.getElementById('pt-vat-wrap'), p=document.getElementById('pt-pay-wrap');
+  if(v)v.style.display=(k==='invoice')?'':'none';
+  if(p)p.style.display=(k==='payroll')?'':'none';
+}
+async function partnerSave(){
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  const name=g('pt-name').trim();
+  if(!name){toast('❌ '+L('Βάλε όνομα','Enter a name'));return;}
+  const row={name:name,phone:g('pt-phone')||null,email:g('pt-email')||null,
+    kind:g('pt-kind')||'invoice',vat_no:g('pt-vatno')||null,
+    contrib_class:g('pt-contrib')||null,amka:g('pt-amka')||null,hire_date:g('pt-hire')||null,
+    pct:parseFloat(g('pt-pct'))||0,
+    duration_months:g('pt-dur')?parseInt(g('pt-dur'),10):null,
+    on_subscriptions:g('pt-sub')==='1',on_setup:g('pt-setup')==='1',on_extras:g('pt-extras')==='1',
+    active:true};
+  const id=g('pt-id');
+  try{
+    if(id){const {error}=await sb.from('partners').update(row).eq('id',id); if(error)throw error;}
+    else{const {error}=await sb.from('partners').insert(row); if(error)throw error;}
+    closeModal(); toast('✅ '+L('Αποθηκεύτηκε','Saved')); bizLoadPartners();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function partnerDel(id){
+  if(!confirm(L('Διαγραφή συνεργάτη; Τα μαγαζιά του θα μείνουν χωρίς ανάθεση.','Delete partner? Their shops will be unassigned.')))return;
+  try{await sb.from('partners').delete().eq('id',id);toast('✅ '+L('Διαγράφηκε','Deleted'));bizLoadPartners();}
+  catch(e){toast('❌ '+(e.message||e));}
+}
+async function partnerAssign(tenantId,partnerId){
+  try{
+    const upd={partner_id:partnerId||null};
+    if(partnerId){
+      const t=(ST.revTenants||[]).find(x=>x.id===tenantId);
+      if(t&&!t.partner_since)upd.partner_since=todayISO();
+    }
+    const {error}=await sb.from('tenants').update(upd).eq('id',tenantId);
+    if(error)throw error;
+    const t=(ST.revTenants||[]).find(x=>x.id===tenantId);
+    if(t){t.partner_id=partnerId||null;if(upd.partner_since)t.partner_since=upd.partner_since;}
+    toast('✅ '+L('Αποθηκεύτηκε','Saved')); bizDrawPartners();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+async function partnerSince(tenantId,date){
+  try{await sb.from('tenants').update({partner_since:date||null}).eq('id',tenantId);
+    const t=(ST.revTenants||[]).find(x=>x.id===tenantId); if(t)t.partner_since=date||null;
+    toast('✅ '+L('Αποθηκεύτηκε','Saved'));
+  }catch(e){toast('❌ '+(e.message||e));}
+}
+function partnerPay(partnerId,amount,base){
+  const p=(ST.partners||[]).find(x=>x.id===partnerId); if(!p)return;
+  const T=(el,en)=>L(el,en);
+  const sug=(+amount)||0;
+  const isInv=(p.kind||'invoice')==='invoice';
+  const isPay=(p.kind||'invoice')==='payroll';
+  const cls=isPay?(ST.bizContrib||[]).find(x=>x.name===p.contrib_class):null;
+  const html='<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div class="muted" style="font-size:13px">'+esc(p.name)+' · '+bizLabel()+' · '+partnerKindLabel(p.kind||'invoice')+'</div>'+
+    '<div style="background:var(--accent-bg);border-radius:8px;padding:10px;font-size:12px;color:var(--accent)">'+
+      T('Βάση','Base')+' '+money(Math.round((+base||0)*100)/100)+' × '+p.pct+'% = <b>'+money(Math.round(sug*100)/100)+'</b></div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('Καθαρό Ποσό','Net Amount')+'</label><input id="pp-amount" type="number" step="0.01" value="'+(sug?sug.toFixed(2):'')+'" oninput="ppLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      (isInv?('<div><label style="font-size:12px;color:var(--muted)">'+T('ΦΠΑ %','VAT %')+'</label><input id="pp-vat" type="number" step="0.5" value="24" oninput="ppLive()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'):'<input type="hidden" id="pp-vat" value="0">')+
+    '</div>'+
+    '<div id="pp-calc" style="background:var(--bg);border-radius:8px;padding:10px;font-size:12px;color:var(--muted)">—</div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημερομηνία','Date')+'</label><input id="pp-date" type="date" value="'+todayISO()+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+      '<div><label style="font-size:12px;color:var(--muted)">'+T('Τρόπος','Method')+'</label><select id="pp-method" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)">'+
+        '<option value="transfer">🏦 '+T('Τραπεζικό','Bank')+'</option><option value="cash">💵 '+T('Μετρητά','Cash')+'</option></select></div>'+
+    '</div>'+
+    bizSwitch('pp-off',T('Με Παραστατικό','With Receipt'),'',(p.kind!=='simple'))+
+    '<input type="hidden" id="pp-kind" value="'+(p.kind||'invoice')+'">'+
+    '<input type="hidden" id="pp-base" value="'+(+base||0)+'">'+
+    '<input type="hidden" id="pp-emp" value="'+(cls?cls.emp_pct:0)+'">'+
+    '<input type="hidden" id="pp-empr" value="'+(cls?cls.empr_pct:0)+'">'+
+  '</div>';
+  showModal('💰 '+T('Πληρωμή Προμήθειας','Commission Payment'),html,T('Καταχώρηση','Record'),function(){partnerSavePay(partnerId);});
+  setTimeout(ppLive,50);
+}
+function ppLive(){
+  const g=x=>{const el=document.getElementById(x);return el&&el.value!==''?(+el.value):0;};
+  const net=g('pp-amount'), vp=g('pp-vat');
+  const kind=(document.getElementById('pp-kind')||{}).value||'invoice';
+  const vat=net*vp/100;
+  const empP=g('pp-emp'), emprP=g('pp-empr');
+  const box=document.getElementById('pp-calc');
+  if(!box)return;
+  let html='';
+  if(kind==='payroll'&&(empP>0||emprP>0)){
+    const empC=net*empP/100, emprC=net*emprP/100;
+    html='<div style="display:flex;justify-content:space-between"><span>'+L('Εισφορές Εργαζομένου','Employee Contributions')+'</span><span>− '+money(Math.round(empC*100)/100)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between"><span>'+L('Καθαρά Πληρωτέα','Net Payable')+'</span><span>'+money(Math.round((net-empC)*100)/100)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><span>'+L('Πραγματικό Κόστος','Real Cost')+'</span><span>'+money(Math.round((net+emprC)*100)/100)+'</span></div>';
+  } else if(vp>0){
+    html='<div style="display:flex;justify-content:space-between"><span>'+L('ΦΠΑ','VAT')+' '+vp+'%</span><span>'+money(Math.round(vat*100)/100)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;font-weight:700"><span>'+L('Πληρώνεις','You pay')+'</span><span>'+money(Math.round((net+vat)*100)/100)+'</span></div>';
+  } else {
+    html='<div style="display:flex;justify-content:space-between;font-weight:700"><span>'+L('Πληρώνεις','You pay')+'</span><span>'+money(Math.round(net*100)/100)+'</span></div>';
+  }
+  box.innerHTML=html;
+}
+async function partnerSavePay(partnerId){
+  const p=(ST.partners||[]).find(x=>x.id===partnerId); if(!p)return;
+  const g=x=>{const el=document.getElementById(x);return el?el.value:'';};
+  const net=parseFloat(g('pp-amount'))||0;
+  if(net<=0){toast('❌ '+L('Βάλε ποσό','Enter an amount'));return;}
+  const vp=parseFloat(g('pp-vat'))||0; const vat=Math.round(net*vp)/100;
+  const empP=parseFloat(g('pp-emp'))||0, emprP=parseFloat(g('pp-empr'))||0;
+  const empC=Math.round(net*empP)/100, emprC=Math.round(net*emprP)/100;
+  const r=bizRange();
+  const official=g('pp-off')==='1';
+  try{
+    const {error}=await sb.from('partner_payments').insert({partner_id:partnerId,partner_name:p.name,
+      period_from:r.from,period_to:r.to,base_amount:parseFloat(g('pp-base'))||0,pct:p.pct,
+      amount_net:net,vat_pct:vp,vat_amount:vat,emp_contrib:empC,empr_contrib:emprC,
+      payment_method:g('pp-method')||'transfer',official:official,
+      pay_date:g('pp-date')||todayISO(),created_by:ST.userEmail||null});
+    if(error)throw error;
+    // Καταγράφεται και ως έξοδο επιχείρησης
+    try{await sb.from('biz_expenses').insert({exp_date:g('pp-date')||todayISO(),
+      category:'commission',label:L('Προμήθεια','Commission')+' '+p.name,
+      amount_net:net,vat_pct:vp,vat_amount:vat,vat_deductible:(p.kind==='invoice'),
+      payment_method:g('pp-method')||'transfer',official:official,recurring:false,
+      created_by:ST.userEmail||null});}catch(e2){}
+    ST.bizExpenses=null;
+    closeModal(); toast('✅ '+L('Καταχωρήθηκε','Recorded')); bizLoadPartners();
+  }catch(e){toast('❌ '+(e.message||e));}
+}
 function bizSoon(title){
   persistNav();
   const c=document.getElementById('content');
@@ -1669,7 +1998,7 @@ function bizTabs(){
   const items=[['revenue','💰 '+T('Έσοδα','Revenue')],['expenses','📉 '+T('Έξοδα','Expenses')],
     ['payroll','👥 '+T('Μισθοδοσία','Payroll')],['cashflow','🏦 '+T('Ταμείο','Cash')],
     ['vat','🧾 '+T('ΦΠΑ','VAT')],['profit','💹 '+T('Κερδοφορία','Profit')],
-    ['clients','🏪 '+T('Πελάτες','Clients')]];
+    ['clients','🏪 '+T('Πελάτες','Clients')],['partners','🤝 '+T('Συνεργάτες','Partners')]];
   return '<div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;margin-bottom:10px">'+
     items.map(function(it){const on=cur===it[0];
       return '<div onclick="bizGo(\''+it[0]+'\')" style="flex:0 0 auto;padding:8px 14px;border-radius:20px;cursor:pointer;font-size:13px;white-space:nowrap;'+(on?'background:var(--accent);color:#fff;font-weight:600':'border:1px solid var(--line);color:var(--muted)')+'">'+it[1]+'</div>';
@@ -1684,6 +2013,7 @@ function bizGo(tab){
   if(tab==='vat')return bizLoadVat();
   if(tab==='profit')return bizLoadProfit();
   if(tab==='clients')return bizLoadClients();
+  if(tab==='partners')return bizLoadPartners();
   drawRevenue();
 }
 function drawRevenue(){ persistNav(); ST.bizTab='revenue';
@@ -8304,7 +8634,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.19·293';
+const BUILD='v'+'2026.07.20·294';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
