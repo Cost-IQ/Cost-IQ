@@ -2933,8 +2933,8 @@ function drawSupport(){ persistNav();
   (ST.supportMsgs||[]).forEach(function(m){
     const me=(m.role==='user');
     h+='<div style="display:flex;justify-content:'+(me?'flex-end':'flex-start')+'">'+
-      '<div style="max-width:82%;padding:10px 13px;border-radius:'+(me?'14px 14px 3px 14px':'14px 14px 14px 3px')+';font-size:13.5px;line-height:1.65;white-space:pre-wrap;'+
-      (me?'background:var(--accent);color:#fff':'background:var(--card);border:1px solid var(--line);color:var(--fg)')+'">'+esc(m.content)+'</div></div>';
+      '<div style="max-width:82%;padding:10px 13px;border-radius:'+(me?'14px 14px 3px 14px':'14px 14px 14px 3px')+';font-size:13.5px;line-height:1.65;'+
+      (me?'background:var(--accent);color:#fff;white-space:pre-wrap':'background:var(--card);border:1px solid var(--line);color:var(--fg)')+'">'+(me?esc(m.content):supportFmt(m.content))+'</div></div>';
   });
   if(ST.supportBusy){
     h+='<div style="display:flex;justify-content:flex-start"><div style="padding:10px 14px;border-radius:14px 14px 14px 3px;background:var(--card);border:1px solid var(--line)"><span class="spin" style="width:16px;height:16px;border-width:2px"></span></div></div>';
@@ -2961,6 +2961,24 @@ function drawSupport(){ persistNav();
   h+='</div>';
   c.innerHTML=h;
   setTimeout(function(){const el=document.getElementById('sup-in');if(el&&!ST.supportBusy)el.focus();},60);
+}
+// Μετατρέπει βασικό Markdown σε HTML, με ασφάλεια
+function supportFmt(t){
+  let x=esc(String(t||''));
+  // Τίτλοι ### ## #
+  x=x.replace(/^#{1,4}\s*(.+)$/gm,function(m,t2){return '<b style="display:block;margin:10px 0 3px">'+t2.replace(/\*\*/g,'')+'</b>';});
+  // Έντονα και πλάγια
+  x=x.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+  x=x.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g,'$1<i>$2</i>');
+  // Κώδικας σε backticks
+  x=x.replace(/`([^`]+)`/g,'<code style="background:var(--bg);padding:1px 5px;border-radius:4px;font-size:12px">$1</code>');
+  // Οριζόντιες γραμμές
+  x=x.replace(/^\s*---+\s*$/gm,'<hr style="border:none;border-top:1px solid var(--line);margin:9px 0">');
+  // Λίστες με παύλα ή αστερίσκο
+  x=x.replace(/^\s*[-•]\s+(.+)$/gm,'<span style="display:block;padding-left:14px;text-indent:-9px">• $1</span>');
+  // Αριθμημένες λίστες
+  x=x.replace(/^\s*(\d+)\.\s+(.+)$/gm,'<span style="display:block;padding-left:18px;text-indent:-14px"><b>$1.</b> $2</span>');
+  return x;
 }
 function supportAsk(q){
   const el=document.getElementById('sup-in');
@@ -9282,7 +9300,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·315';
+const BUILD='v'+'2026.07.21·316';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
