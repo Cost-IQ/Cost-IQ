@@ -9365,7 +9365,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·321';
+const BUILD='v'+'2026.07.21·322';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -9409,7 +9409,9 @@ const GMAIL_REDIRECT="https://cost-iq.github.io/Cost-IQ/gmail-callback.html";
 const GMAIL_SCOPE="https://www.googleapis.com/auth/gmail.readonly";
 async function gmailApi(payload){
   const {data:{session}}=await sb.auth.getSession();
-  const r=await fetch(GMAIL_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(session?session.access_token:SUPABASE_KEY),"apikey":SUPABASE_KEY},body:JSON.stringify(payload)});
+  // Στέλνουμε ποιο μαγαζί είναι επιλεγμένο. Ο server ελέγχει αν επιτρέπεται.
+  const p=Object.assign({tenant_id:curTenant()||null},payload);
+  const r=await fetch(GMAIL_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(session?session.access_token:SUPABASE_KEY),"apikey":SUPABASE_KEY},body:JSON.stringify(p)});
   return await r.json();
 }
 function gmailConnect(){
