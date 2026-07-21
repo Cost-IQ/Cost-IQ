@@ -104,13 +104,17 @@
   .subtab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   /* ── Tabs συνταγών: ίσα πλάτη, δύο σειρές κειμένου ── */
   .rkinds{display:flex;gap:8px;margin:14px 0 6px}
-  .rkinds > .tab{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;text-align:center;
-    padding:9px 8px;min-height:44px;border-radius:11px;font-size:14px;line-height:1.25;font-weight:600;
+  .rkinds > .tab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;
+    padding:9px 6px;min-height:58px;border-radius:11px;
     border:1px solid var(--line);color:var(--muted);background:var(--card);cursor:pointer;transition:.15s}
+  .rkinds > .tab .e{font-size:19px;line-height:1}
+  .rkinds > .tab .t{font-size:13.5px;line-height:1.25;font-weight:600}
   .rkinds > .tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   @media(max-width:600px){
     .rkinds{gap:6px}
-    .rkinds > .tab{font-size:12.5px;padding:8px 5px;min-height:46px}
+    .rkinds > .tab{padding:8px 4px;min-height:60px}
+    .rkinds > .tab .e{font-size:17px}
+    .rkinds > .tab .t{font-size:12px}
   }
   /* ── Μπάρα περιόδων: χωρίς κύλιση ── */
   .perbar{display:flex;gap:6px;margin-bottom:14px;flex-wrap:nowrap}
@@ -280,7 +284,7 @@ const EN_DEF={
   p9m:'9 Months',pCustom:'Custom',wUnitWord:'unit',rcSetYield:'set yield',wAll:'All',wAllM:'All',rcSaveAll:'Save all'
 };
 function persistNav(){
-  try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,okind:ST.okind,invsub:ST.invsub,repsub:ST.repsub,adminShop:ST._adminShop,homeView:ST.homeView,lang:ST.lang,
+  try{localStorage.setItem('ciq_nav',JSON.stringify({section:ST.section,view:ST.view,prod:ST.prod&&ST.prod.id,recipe:ST.recipe&&ST.recipe.id,inv:ST.inv&&ST.inv.id,kind:ST.kind,rkind:ST.rkind,okind:ST.okind,invsub:ST.invsub,repsub:ST.repsub,adminShop:ST._adminShop,homeView:ST.homeView,lang:ST.lang,
     payView:ST.payView,expView:ST.expView,payPeriod:ST.payPeriod,payOffset:ST.payOffset,cfOffset:ST.cfOffset,pfUseReal:ST.pfUseReal,vatPeriod:ST.vatPeriod,vatOffset:ST.vatOffset,expPeriod:ST.expPeriod,ledgerSid:ST._ledgerSid,delLedgerName:ST._delLedgerName,revView:ST.revView,revOffset:ST.revOffset,revOfficial:ST.revOfficial,revSpread:ST.revSpread,bizTab:ST.bizTab,bizPeriod:ST.bizPeriod,bizOffset:ST.bizOffset}));}catch(e){}
 }
 function rerenderCurrent(){ return keepScroll(_rerenderCurrent); }
@@ -2772,7 +2776,7 @@ async function loadAll(){
   try{const nav=JSON.parse(localStorage.getItem('ciq_nav')||localStorage.getItem('ciq_section')&&JSON.stringify({section:localStorage.getItem('ciq_section')})||'{}');
     if(nav.section)ST.section=nav.section;
     // (η γλώσσα φορτώνεται ανά χρήστη από το profile, όχι από localStorage)
-    if(nav.kind)ST.kind=nav.kind; if(nav.okind)ST.okind=nav.okind; if(nav.invsub)ST.invsub=nav.invsub; if(nav.repsub)ST.repsub=nav.repsub;
+    if(nav.kind)ST.kind=nav.kind; if(nav.rkind)ST.rkind=nav.rkind; if(nav.okind)ST.okind=nav.okind; if(nav.invsub)ST.invsub=nav.invsub; if(nav.repsub)ST.repsub=nav.repsub;
     if(nav.payView)ST.payView=nav.payView; if(nav.expView)ST.expView=nav.expView;
     if(nav.payPeriod)ST.payPeriod=nav.payPeriod; if(nav.payOffset)ST.payOffset=nav.payOffset; if(nav.cfOffset)ST.cfOffset=nav.cfOffset; if(nav.pfUseReal!=null)ST.pfUseReal=nav.pfUseReal; if(nav.vatPeriod)ST.vatPeriod=nav.vatPeriod; if(nav.vatOffset)ST.vatOffset=nav.vatOffset; if(nav.expPeriod)ST.expPeriod=nav.expPeriod;
     if(nav.ledgerSid)ST._ledgerSid=nav.ledgerSid; if(nav.delLedgerName)ST._delLedgerName=nav.delLedgerName;
@@ -3363,6 +3367,7 @@ function recipeCalc(rec,depth){
   return {lines,total,waste,realCost,retail,retailNet,netProfit,costPct};
 }
 const RKINDS=[['cocktail','Spirits & Cocktails'],['hotcold','Hot & Cold Beverages'],['food','Food']];
+const RKIND_EMO={cocktail:'🍸',hotcold:'☕',food:'🍽️'};
 const RSUBS={
   cocktail:[['Classics','Classics'],['Signature','Signature'],['Non-Alcoholic','Non-Alcoholic']],
   hotcold:[['Καφέδες','Coffee'],['Ροφήματα','Hot Drinks'],['Χυμοί & Smoothies','Juices & Smoothies'],['Αναψυκτικά','Soft Drinks']],
@@ -3401,7 +3406,7 @@ function renderRecipes(){
   const home=!!ST.homeView;
   const q=(document.getElementById('rq')?document.getElementById('rq').value:'').toLowerCase().trim();
   let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div class="rkinds">'+
-    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'on':'')+'" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div></div></div>';
+    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'on':'')+'" onclick="setRkind(\''+k+'\')"><span class="e">'+(RKIND_EMO[k]||'')+'</span><span class="t">'+esc(lbl('recipe_'+k,label))+'</span></div>').join('')+'</div></div></div>';
   if(!ST.recipes||!ST.recipes.length){
     h+='<div style="display:flex;justify-content:flex-end;margin:8px 2px"><button class="pick" onclick="newRecipe(false)">+ '+lbl('rNewRecipe','Νέα Συνταγή')+'</button></div>';
     h+='<div class="card muted" style="text-align:center;margin-top:14px">'+L('Καμία συνταγή ακόμα — πάτα «+ Νέα Συνταγή».','No recipes yet — tap «+ New Recipe».')+'</div>';
@@ -9139,7 +9144,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·311';
+const BUILD='v'+'2026.07.21·313';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
