@@ -171,6 +171,7 @@
     <button class="out" id="shopsBtn" onclick="chooseShop()" style="margin-right:6px;display:none" title="Τα μαγαζιά μου">🏪</button>
     <button class="out" id="shopBtn" onclick="openMembers()" style="margin-right:6px;display:none" title="Μαγαζί & Μέλη">👥</button>
     <button class="out" id="labelBtn" onclick="openLabelEditor()" style="margin-right:6px;display:none" title="Ονόματα καρτελών">⚙️</button>
+    <button class="out" id="helpBtn" onclick="openSupport()" style="margin-right:6px" title="Βοήθεια">💬</button>
     <button class="out" id="fsBtn" onclick="toggleFullscreen()" style="margin-right:6px" title="Πλήρης οθόνη">⛶</button>
     <button class="out" id="langBtn" onclick="toggleLang()" style="margin-right:6px"><img src="https://flagcdn.com/28x21/gb.png" alt="EN" style="height:15px;vertical-align:middle;border-radius:2px"></button>
     <button class="out" id="logoutBtn" onclick="doLogout()">Έξοδος</button>
@@ -233,8 +234,8 @@ function matchSupplier(name){
 let ST={products:[],suppliers:[],prices:[],best:{},orders:{},history:[],invoices:[],ocr:null,lang:'el',kind:'beverage',okind:'beverage',mkind:'beverage',invsub:'db',invF:null,pd:null,sortby:'cat',view:'list',prod:null,inv:null,section:'products',role:'',tenant:'',myTenant:'',tenants:[],plan:'advanced',paidUntil:null,tabs:null};
 function curTenant(){return ST.tenant||ST.myTenant||(ST.products[0]&&ST.products[0].tenant_id)||(ST.suppliers[0]&&ST.suppliers[0].tenant_id)||null;}
 const T={
-  el:{tProducts:'📦 Προϊόντα',tSuppliers:'🏢 Προμηθευτές',tOrders:'🛒 Παραγγελίες',tHistory:'📊 Στατιστικά',tOcr:'📷 Πρόσθεσε Τιμολόγιο',tInvoices:'📋 Τιμολόγια',tRecipes:'🍸 Συνταγές',tAgree:'🤝 Συμφωνίες',logout:'Έξοδος'},
-  en:{tProducts:'📦 Products',tSuppliers:'🏢 Suppliers',tOrders:'🛒 Orders',tHistory:'📊 Stats',tOcr:'📷 Scan Invoice',tInvoices:'📋 Invoices',tRecipes:'🍸 Recipes',tAgree:'🤝 Agreements',logout:'Logout'}
+  el:{tProducts:'📦 Προϊόντα',tSuppliers:'🏢 Προμηθευτές',tOrders:'🛒 Παραγγελίες',tHistory:'📊 Στατιστικά',tOcr:'📷 Πρόσθεσε Τιμολόγιο',tInvoices:'📋 Τιμολόγια',tRecipes:'📖 Συνταγές',tAgree:'🤝 Συμφωνίες',logout:'Έξοδος'},
+  en:{tProducts:'📦 Products',tSuppliers:'🏢 Suppliers',tOrders:'🛒 Orders',tHistory:'📊 Stats',tOcr:'📷 Scan Invoice',tInvoices:'📋 Invoices',tRecipes:'📖 Recipes',tAgree:'🤝 Agreements',logout:'Logout'}
 };
 function t(k){return (T[ST.lang]&&T[ST.lang][k])||k;}
 function L(el,en){return ST.lang==='en'?en:el;}
@@ -291,6 +292,7 @@ function rerenderCurrent(){ return keepScroll(_rerenderCurrent); }
 function _rerenderCurrent(){
   if(ST.section==='events')return renderEvents();
   if(ST.view==='gmail')return gmailList();
+  if(ST.view==='support')return openSupport();
   if(ST.view==='revenue')return openRevenue();
   if(ST.view==='shops')return chooseShop();
   if(ST.view==='shopAdmin'&&ST._adminShop)return openShopAdmin(ST._adminShop);
@@ -2859,9 +2861,145 @@ function goSection(s){
   if(_bb){_bb.setAttribute('onclick','goList()');_bb.style.display='none';}
   if(s==='recipes')ST.homeView=false;
   if(s==='daily')ST.dailyDate=null;
+  persistNav();
   renderSection();window.scrollTo(0,0);
 }
-function goHome(){ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;const bb=document.getElementById('backBtn');if(bb){bb.setAttribute('onclick','goList()');bb.style.display='none';}document.getElementById('hTitle').textContent=brandTitle();renderSection();window.scrollTo(0,0);}
+function goHome(){ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;const bb=document.getElementById('backBtn');if(bb){bb.setAttribute('onclick','goList()');bb.style.display='none';}document.getElementById('hTitle').textContent=brandTitle();persistNav();renderSection();window.scrollTo(0,0);}
+// ═══════════ 💬 ΒΟΗΘΕΙΑ ═══════════
+// Απαντά μόνο για τη χρήση της εφαρμογής, μόνο σε συνδεδεμένους χρήστες.
+const SUPPORT_LIMIT=30;   // ερωτήσεις ανά ημέρα
+function supportCount(){
+  try{
+    const k='ciq_help_'+todayISO();
+    return parseInt(localStorage.getItem(k)||'0',10);
+  }catch(e){return 0;}
+}
+function supportBump(){
+  try{
+    const k='ciq_help_'+todayISO();
+    localStorage.setItem(k,String(supportCount()+1));
+    // Καθάρισμα παλιών
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i);
+      if(key&&key.indexOf('ciq_help_')===0&&key!==k)localStorage.removeItem(key);
+    }
+  }catch(e){}
+}
+// Πού βρίσκεται ο χρήστης, για πιο σχετικές απαντήσεις
+function supportContext(){
+  const names={products:'Προϊόντα',suppliers:'Προμηθευτές',orders:'Παραγγελίες',
+    ocr:'Πρόσθεσε Τιμολόγιο',invoices:'Τιμολόγια',recipes:'Συνταγές',daily:'Ημέρα',
+    agree:'Συμφωνίες',events:'Εκδηλώσεις',history:'Στατιστικά'};
+  let c='Οθόνη: '+(names[ST.section]||ST.section||'—');
+  if(ST.section==='recipes'){
+    const rk={cocktail:'Spirits & Cocktails',hotcold:'Hot & Cold Beverages',food:'Food'};
+    c+=' · '+(rk[ST.rkind]||'');
+    if(ST.homeView)c+=' · Υποσυνταγές';
+    if(ST.recipe)c+=' · Ανοιχτή συνταγή';
+  }
+  if(ST.section==='history'&&ST.hsub)c+=' · '+ST.hsub;
+  c+=' · Πακέτο: '+String(ST.plan||'advanced').toUpperCase();
+  return c;
+}
+function openSupport(){
+  ST.view='support'; persistNav();
+  const bb=document.getElementById('backBtn');if(bb){bb.setAttribute('onclick','goHome()');bb.style.display='flex';}
+  document.getElementById('hTitle').textContent='💬 '+L('Βοήθεια','Help');
+  ST.supportMsgs=ST.supportMsgs||[];
+  drawSupport();
+}
+function drawSupport(){ persistNav();
+  const T=(el,en)=>L(el,en);
+  const c=document.getElementById('content');
+  const left=SUPPORT_LIMIT-supportCount();
+  let h='<div style="max-width:760px;margin:10px auto">';
+  // Εισαγωγή
+  if(!(ST.supportMsgs||[]).length){
+    h+='<div class="card" style="background:var(--accent-bg);border-color:var(--accent)">'+
+      '<div style="font-size:14px;font-weight:600;color:var(--accent);margin-bottom:6px">'+T('Πώς μπορώ να βοηθήσω;','How can I help?')+'</div>'+
+      '<div style="font-size:12.5px;color:var(--accent);line-height:1.7">'+T('Ρώτησέ με για τη χρήση της εφαρμογής. Για οτιδήποτε άλλο, επικοινώνησε με την ομάδα του CostIQ.','Ask me about using the app. For anything else, contact the CostIQ team.')+'</div></div>';
+    const sug=[
+      T('Πώς προσθέτω υποσυνταγή;','How do I add a sub-recipe?'),
+      T('Πώς σκανάρω τιμολόγιο;','How do I scan an invoice?'),
+      T('Τι δείχνει το Menu Engineering;','What does Menu Engineering show?'),
+      T('Πώς κλείνω την ημέρα;','How do I close the day?')
+    ];
+    h+='<div style="display:flex;flex-wrap:wrap;gap:7px;margin:12px 0">'+
+      sug.map(function(x){return '<div onclick="supportAsk(this.textContent)" style="padding:8px 13px;border:1px solid var(--line);border-radius:18px;font-size:12.5px;cursor:pointer;background:var(--card);color:var(--accent)">'+esc(x)+'</div>';}).join('')+
+    '</div>';
+  }
+  // Συνομιλία
+  h+='<div id="sup-log" style="display:flex;flex-direction:column;gap:9px;margin-bottom:12px">';
+  (ST.supportMsgs||[]).forEach(function(m){
+    const me=(m.role==='user');
+    h+='<div style="display:flex;justify-content:'+(me?'flex-end':'flex-start')+'">'+
+      '<div style="max-width:82%;padding:10px 13px;border-radius:'+(me?'14px 14px 3px 14px':'14px 14px 14px 3px')+';font-size:13.5px;line-height:1.65;white-space:pre-wrap;'+
+      (me?'background:var(--accent);color:#fff':'background:var(--card);border:1px solid var(--line);color:var(--fg)')+'">'+esc(m.content)+'</div></div>';
+  });
+  if(ST.supportBusy){
+    h+='<div style="display:flex;justify-content:flex-start"><div style="padding:10px 14px;border-radius:14px 14px 14px 3px;background:var(--card);border:1px solid var(--line)"><span class="spin" style="width:16px;height:16px;border-width:2px"></span></div></div>';
+  }
+  h+='</div>';
+  // Πεδίο εισαγωγής
+  if(left>0){
+    h+='<div style="display:flex;gap:8px;align-items:flex-end">'+
+      '<textarea id="sup-in" rows="1" placeholder="'+T('Γράψε την ερώτησή σου…','Type your question…')+'" '+
+        'oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'" '+
+        'onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();supportSend();}" '+
+        'style="flex:1;padding:11px 13px;border:1px solid var(--line);border-radius:12px;font-family:inherit;font-size:14px;resize:none;background:var(--card);color:var(--fg);max-height:120px"></textarea>'+
+      '<button class="btn" style="width:auto;margin:0;padding:11px 18px" onclick="supportSend()">'+T('Στείλε','Send')+'</button>'+
+    '</div>';
+    h+='<div class="muted" style="font-size:11px;text-align:center;margin-top:8px">'+left+' '+T('ερωτήσεις σήμερα','questions today')+'</div>';
+  } else {
+    h+='<div class="card" style="background:#FFF7E6;border-color:var(--warn);text-align:center">'+
+      '<div style="font-size:13px;color:var(--warn)">'+T('Έφτασες το όριο ερωτήσεων για σήμερα.','Daily question limit reached.')+'</div>'+
+      '<div style="font-size:12px;color:var(--warn);margin-top:5px">info@costiq.gr · +30 694 608 0817</div></div>';
+  }
+  if((ST.supportMsgs||[]).length){
+    h+='<div style="text-align:center;margin-top:14px"><span onclick="ST.supportMsgs=[];drawSupport()" style="font-size:12px;color:var(--muted);cursor:pointer">'+T('Καθαρισμός συνομιλίας','Clear conversation')+'</span></div>';
+  }
+  h+='</div>';
+  c.innerHTML=h;
+  setTimeout(function(){const el=document.getElementById('sup-in');if(el&&!ST.supportBusy)el.focus();},60);
+}
+function supportAsk(q){
+  const el=document.getElementById('sup-in');
+  if(el)el.value=q;
+  supportSend();
+}
+async function supportSend(){
+  if(ST.supportBusy)return;
+  const el=document.getElementById('sup-in');
+  const q=(el?el.value:'').trim();
+  if(!q)return;
+  if(supportCount()>=SUPPORT_LIMIT){toast('⚠ '+L('Όριο ερωτήσεων','Question limit'));return;}
+  ST.supportMsgs=ST.supportMsgs||[];
+  ST.supportMsgs.push({role:'user',content:q});
+  if(el)el.value='';
+  ST.supportBusy=true; drawSupport();
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch(SUPABASE_URL+'/functions/v1/support-chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:'')},
+      body:JSON.stringify({messages:ST.supportMsgs,context:supportContext()})
+    });
+    const d=await r.json();
+    ST.supportBusy=false;
+    if(d.error){ST.supportMsgs.push({role:'assistant',content:'⚠ '+d.error});}
+    else{
+      ST.supportMsgs.push({role:'assistant',content:d.reply||'—'});
+      supportBump();
+      logUsage('support_chat',1);
+    }
+    drawSupport();
+    setTimeout(function(){window.scrollTo(0,document.body.scrollHeight);},80);
+  }catch(e){
+    ST.supportBusy=false;
+    ST.supportMsgs.push({role:'assistant',content:'⚠ '+L('Δεν έγινε σύνδεση. Δοκίμασε ξανά.','Connection failed. Try again.')});
+    drawSupport();
+  }
+}
 function toggleFullscreen(){
   const d=document.documentElement;
   if(!document.fullscreenElement){(d.requestFullscreen||d.webkitRequestFullscreen||d.msRequestFullscreen||function(){}).call(d);}
@@ -2947,7 +3085,7 @@ function allowedTabs(){
 }
 function sectionNav(){
   const allow=allowedTabs();
-  let items=[['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['products','📦',lbl('products','Προϊόντα')],['recipes','🍸',lbl('recipes','Συνταγές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['daily','📅',lbl('daily','Ημέρα')],['agree','🤝',lbl('agree','Συμφωνίες')],['events','🎉',lbl('events','Εκδηλώσεις')],['history','📊',lbl('history','Στατιστικά')]];
+  let items=[['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['products','📦',lbl('products','Προϊόντα')],['recipes','📖',lbl('recipes','Συνταγές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['daily','📅',lbl('daily','Ημέρα')],['agree','🤝',lbl('agree','Συμφωνίες')],['events','🎉',lbl('events','Εκδηλώσεις')],['history','📊',lbl('history','Στατιστικά')]];
   items=items.filter(i=>allow.indexOf(i[0])>=0);
   // ── Desktop: οριζόντια tabs ──
   const tab=(sec,emo,txt)=>'<div class="tab '+(ST.section===sec?'active':'')+'" onclick="goSection(\''+sec+'\')" style="flex:1 1 auto;min-width:0;white-space:nowrap;padding:10px 8px;box-sizing:border-box;font-size:13px;text-align:center">'+emo+' '+txt+'</div>';
@@ -3375,7 +3513,7 @@ const RSUBS={
 };
 function subLabel(kind,val){const arr=RSUBS[kind]||[];const f=arr.find(x=>x[0]===val);return f?(ST.lang==='en'?f[1]:f[0]):val;}
 const RUNITS=['ml','g','τεμ'];
-function setRkind(k){ST.rkind=k;renderRecipes();}
+function setRkind(k){ST.rkind=k;persistNav();renderRecipes();}
 function prodDatalistHtml(){
   let o='';
   const homes=(ST.recipes||[]).filter(r=>r.is_homemade).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
@@ -9144,7 +9282,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·313';
+const BUILD='v'+'2026.07.21·315';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -9502,7 +9640,7 @@ async function openMembers(){
   if(!members.length)h+='<div class="muted" style="font-size:13px">'+L('Κανένα μέλος ακόμα','No members yet')+'</div>';
   members.forEach(m=>{
     const canEdit=(ST.role==='admin')||(ST.role==='owner'&&m.role!=='admin'&&m.role!=='owner');
-    const tabsAll=[['products','📦',lbl('products','Προϊόντα')],['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['recipes','🍸',lbl('recipes','Συνταγές')],['events','🎉',lbl('events','Εκδηλώσεις')],['agree','🤝',lbl('agree','Συμφωνίες')],['history','📊',lbl('history','Στατιστικά')]];
+    const tabsAll=[['products','📦',lbl('products','Προϊόντα')],['suppliers','🏢',lbl('suppliers','Προμηθευτές')],['orders','🛒',lbl('orders','Παραγγελίες')],['ocr','📷',lbl('ocr','Πρόσθεσε Τιμολόγιο')],['invoices','📋',lbl('invoices','Τιμολόγια')],['recipes','📖',lbl('recipes','Συνταγές')],['events','🎉',lbl('events','Εκδηλώσεις')],['agree','🤝',lbl('agree','Συμφωνίες')],['history','📊',lbl('history','Στατιστικά')]];
     const planAllow=(ST.plan==='basic')?BASIC_TABS:tabsAll.map(t=>t[0]);
     const cur=(m.tabs&&m.tabs.length)?m.tabs:(m.role==='staff'?['ocr','orders']:planAllow);
     h+='<div style="padding:10px 0;border-bottom:1px solid var(--line)">'+
