@@ -5218,9 +5218,24 @@ function pfCompareHtml(){
 // Κάρτες σύνοψης και μπάρα κατανομής
 function profitTopHtml(M,T,money2,pct,badge){
   const sales=M.sales||0;
-  if(sales<=0)return '';
   const nn=v=>(v!=null&&isFinite(v)?v:0);
   const pu=nn(M.purchases), la=nn(M.labour), op=nn(M.opex), np=nn(M.np);
+  // Χωρίς πωλήσεις: κρατάμε τις κάρτες ορατές με παύλες, ώστε να μην
+  // αναβοσβήνει η οθόνη κάθε φορά που ο χρήστης σβήνει ένα ψηφίο.
+  if(sales<=0){
+    const empty=(t,sub)=>'<div class="pcard"><div><div class="t">'+t+'</div></div>'+
+      '<div class="r"><div class="n" style="color:var(--muted)">—</div><div class="s">'+sub+'</div></div></div>';
+    return '<div class="pcards">'+
+      empty(T('Τζίρος','Sales'),T('Καθαρές Πωλήσεις','Net Sales'))+
+      empty('Prime Cost',T('Αγορές + Προσωπικό','Purchases + Labour'))+
+      empty(T('Καθαρό Κέρδος','Net Profit'),T('Περιθώριο','Margin'))+
+    '</div>'+
+    '<div class="card" style="padding:15px">'+
+      '<h3 style="font-size:13px;color:var(--muted);margin-bottom:11px">📊 '+T('Πού πάνε τα λεφτά','Where the money goes')+'</h3>'+
+      '<div style="display:flex;height:34px;border-radius:6px;overflow:hidden;margin-bottom:13px;background:var(--line)"></div>'+
+      '<div class="muted" style="font-size:12px;text-align:center">'+T('Συμπλήρωσε πωλήσεις για να δεις την κατανομή','Enter sales to see the breakdown')+'</div>'+
+    '</div>';
+  }
   const pPu=pu/sales*100, pLa=la/sales*100, pOp=op/sales*100, pNp=np/sales*100;
   const primeCol=badge(M.primePct,65,70);
   const npCol=(np>=0)?'var(--ok)':'var(--bad)';
@@ -9366,7 +9381,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·327';
+const BUILD='v'+'2026.07.21·328';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
