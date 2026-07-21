@@ -2883,7 +2883,7 @@ function goSection(s){
 function goHome(){ST.section='products';ST.view='list';ST.prod=null;ST.recipe=null;ST.inv=null;ST.homeView=false;const bb=document.getElementById('backBtn');if(bb){bb.setAttribute('onclick','goList()');bb.style.display='none';}document.getElementById('hTitle').textContent=brandTitle();persistNav();renderSection();window.scrollTo(0,0);}
 // ═══════════ 💬 ΒΟΗΘΕΙΑ ═══════════
 // Απαντά μόνο για τη χρήση της εφαρμογής, μόνο σε συνδεδεμένους χρήστες.
-const SUPPORT_LIMIT=30;   // ερωτήσεις ανά ημέρα
+const SUPPORT_LIMIT=10;   // ερωτήσεις ανά ημέρα (ελέγχεται και server-side)
 function supportCount(){
   try{
     const k='ciq_help_'+todayISO();
@@ -3020,16 +3020,19 @@ async function supportSend(){
     const {data:{session}}=await sb.auth.getSession();
     const r=await fetch(SUPABASE_URL+'/functions/v1/support-chat',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:'')},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:''),'apikey':SUPABASE_KEY},
       body:JSON.stringify({messages:ST.supportMsgs,context:supportContext(),lang:(ST.lang==='en'?'en':'el')})
     });
     const d=await r.json();
     ST.supportBusy=false;
-    if(d.error){ST.supportMsgs.push({role:'assistant',content:'⚠ '+d.error});}
+    if(d.error){
+      ST.supportMsgs.push({role:'assistant',content:'⚠ '+d.error});
+      // Αν ο server λέει ότι εξαντλήθηκε το όριο, συγχρόνισε τον τοπικό μετρητή
+      if(r.status===429){try{localStorage.setItem('ciq_help_'+todayISO(),String(SUPPORT_LIMIT));}catch(e){}}
+    }
     else{
       ST.supportMsgs.push({role:'assistant',content:d.reply||'—'});
       supportBump();
-      logUsage('support_chat',1);
     }
     drawSupport();
     setTimeout(function(){window.scrollTo(0,document.body.scrollHeight);},80);
@@ -9363,7 +9366,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·325';
+const BUILD='v'+'2026.07.21·326';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
