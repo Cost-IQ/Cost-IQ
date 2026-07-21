@@ -2524,7 +2524,7 @@ async function doLogin(){
   }catch(e){}
   await enterApp();
 }
-async function doLogout(){if(_hbTimer){clearInterval(_hbTimer);_hbTimer=null;}try{localStorage.removeItem('ciq_tenant');localStorage.removeItem('ciq_seen');}catch(e){}ST.tenant='';ST.role='';ST.termsOk=false;await sb.auth.signOut();document.getElementById('appView').style.display='none';document.getElementById('loginView').style.display='flex';document.getElementById('password').value='';}
+async function doLogout(){if(_hbTimer){clearInterval(_hbTimer);_hbTimer=null;}try{localStorage.removeItem('ciq_tenant');localStorage.removeItem('ciq_seen');localStorage.removeItem('ciq_gmail_rt');}catch(e){}ST.tenant='';ST.role='';ST.termsOk=false;ST.gmailConnected=false;ST.gmailEmail='';await sb.auth.signOut();document.getElementById('appView').style.display='none';document.getElementById('loginView').style.display='flex';document.getElementById('password').value='';}
 async function enterApp(){
   touchActivity();
   document.getElementById('loginView').style.display='none';
@@ -9365,7 +9365,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·319';
+const BUILD='v'+'2026.07.21·321';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -9422,36 +9422,24 @@ function gmailConnect(){
   toast(L('Άνοιξε παράθυρο σύνδεσης Gmail…','Opened Gmail sign-in…'));
   if(!w)toast(L('Επίτρεψε τα pop-ups και ξαναπροσπάθησε','Allow pop-ups and retry'));
 }
+// ΑΣΦΑΛΕΙΑ: το refresh token δεν φτάνει ποτέ στον browser.
+// Ο server το αποθηκεύει μόνος του και ελέγχει δικαιώματα σε κάθε κλήση.
+const GMAIL_OK_ORIGINS=['https://costiq.gr','https://www.costiq.gr','https://cost-iq.github.io'];
 window.addEventListener('message',async(ev)=>{
+  if(GMAIL_OK_ORIGINS.indexOf(ev.origin)<0)return;   // μόνο από τη δική μας callback σελίδα
   const d=ev.data; if(!d||d.source!=='costiq-gmail'||!d.code)return;
   toast(L('Σύνδεση…','Connecting…'));
   const res=await gmailApi({action:'exchange',code:d.code});
   if(res.error){toast('❌ '+res.error);return;}
-  if(res.refresh_token){
-    try{await sb.from('gmail_accounts').upsert({tenant_id:curTenant(),refresh_token:res.refresh_token,email:res.email||null,connected_by:ST.userEmail||null,connected_at:new Date().toISOString()},{onConflict:'tenant_id'});}
-    catch(e){console.error('gmail save',e);}
-    try{localStorage.setItem('ciq_gmail_rt',res.refresh_token);}catch(e){}   // εφεδρικό
-  }
-  if(res.access_token){window._gmailAT=res.access_token;}
+  ST.gmailConnected=true; ST.gmailEmail=res.email||'';
   toast('✅ '+L('Συνδέθηκε το Gmail','Gmail connected'));
   gmailList();
 });
-function gmailRT(){ return ST.gmailRT || (function(){try{return localStorage.getItem('ciq_gmail_rt')||'';}catch(e){return'';}})(); }
-async function loadGmailToken(){
-  try{
-    const {data}=await sb.rpc('get_gmail_token');
-    if(data){ST.gmailRT=data;return data;}
-  }catch(e){}
-  try{
-    const {data}=await sb.from('gmail_accounts').select('refresh_token,email').eq('tenant_id',curTenant()).maybeSingle();
-    if(data&&data.refresh_token){ST.gmailRT=data.refresh_token;ST.gmailEmail=data.email||'';return data.refresh_token;}
-  }catch(e){}
-  return gmailRT();
-}
 async function gmailDisconnect(){
   if(!confirm(L('Αποσύνδεση Gmail από το μαγαζί; Κανείς δεν θα βλέπει τιμολόγια από email.','Disconnect Gmail from the shop? Nobody will see email invoices.')))return;
-  try{await sb.from('gmail_accounts').delete().eq('tenant_id',curTenant());}catch(e){}
-  ST.gmailRT=''; try{localStorage.removeItem('ciq_gmail_rt');}catch(e){}
+  const res=await gmailApi({action:'disconnect'});
+  if(res.error){toast('❌ '+res.error);return;}
+  ST.gmailConnected=false; ST.gmailEmail='';
   toast('✅ '+L('Αποσυνδέθηκε','Disconnected')); gmailList();
 }
 async function gmailList(){
@@ -9460,8 +9448,14 @@ async function gmailList(){
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span> '+L('Φόρτωση email…','Loading emails…')+'</div>';
   const canConnect=(ST.role==='admin'||ST.role==='owner');
-  const rt=await loadGmailToken(); const at=window._gmailAT;
-  if(!rt&&!at){
+  const st=await gmailApi({action:'status'});
+  if(st&&st.error&&!st.connected){
+    // 401/403 → ο χρήστης δεν έχει δικαίωμα· δείχνουμε το ίδιο μήνυμα με παρακάτω
+    ST.gmailConnected=false;
+  } else {
+    ST.gmailConnected=!!(st&&st.connected); ST.gmailEmail=(st&&st.email)||'';
+  }
+  if(!ST.gmailConnected){
     if(canConnect){
       c.innerHTML='<div class="card" style="text-align:center;margin-top:20px;padding:24px">'+
         '<div style="font-size:40px">📧</div>'+
@@ -9476,7 +9470,7 @@ async function gmailList(){
     }
     return;
   }
-  const res=await gmailApi({action:'list',refresh_token:rt,access_token:at});
+  const res=await gmailApi({action:'list'});
   if(res.error){c.innerHTML='<div class="card" style="border-color:var(--bad)"><b style="color:var(--bad)">❌ '+esc(res.error)+'</b>'+(canConnect?('<div style="margin-top:8px"><button class="btn" onclick="gmailConnect()">🔄 '+L('Ξανασύνδεση Gmail','Reconnect Gmail')+'</button></div>'):('<div style="margin-top:8px;font-size:13px;color:var(--muted)">'+L('Ζήτα από τον ιδιοκτήτη να ξανασυνδέσει το Gmail.','Ask the owner to reconnect Gmail.')+'</div>'))+'</div>';return;}
   // ποια έχουν ήδη περαστεί (κοινό ανά μαγαζί)
   let done=new Set();
@@ -9502,7 +9496,7 @@ async function gmailList(){
 }
 async function gmailPick(messageId,attachmentId,mime){
   toast(L('Κατέβασμα…','Downloading…'));
-  const res=await gmailApi({action:'attachment',refresh_token:gmailRT(),access_token:window._gmailAT,messageId,attachmentId});
+  const res=await gmailApi({action:'attachment',messageId,attachmentId});
   if(res.error){toast('❌ '+res.error);return;}
   if(!res.data){toast('❌ '+L('Άδειο αρχείο','Empty file'));return;}
   window._gmailCurrentMsg={id:messageId,subject:(window._gmailMsgs&&window._gmailMsgs[messageId])||''};
@@ -10226,6 +10220,8 @@ async function editShop(){
     if(dl&&prev.length)dl.innerHTML=prev.map(function(x){return '<option value="'+esc(x)+'">';}).join('');
   }catch(e){}
   try{const lv=document.getElementById('loginVer');if(lv)lv.textContent=BUILD;}catch(e){}
+  // Εφάπαξ καθάρισμα: παλιό refresh token που είχε μείνει σε συσκευές
+  try{localStorage.removeItem('ciq_gmail_rt');}catch(e){}
   try{const tt=localStorage.getItem('ciq_tenant');if(tt)ST.tenant=tt;}catch(e){}
   const {data:{session}}=await sb.auth.getSession();
   if(session){
