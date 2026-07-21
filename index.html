@@ -6295,11 +6295,10 @@ async function doOcr(){
   const st=document.getElementById('ocr-status');st.innerHTML='<div class="card" style="text-align:center"><span class="spin"></span> '+L('Διαβάζω το τιμολόγιο…','Reading the invoice…')+'</div>';
   try{
     const {data:{session}}=await sb.auth.getSession();
-    const r=await fetch(OCR_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({imageBase64:window._ocrImg.b64,mediaType:window._ocrImg.mediaType})});
+    const r=await fetch(OCR_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({imageBase64:window._ocrImg.b64,mediaType:window._ocrImg.mediaType,tenant_id:curTenant()||null})});
     const data=await r.json();
     if(data.error){st.innerHTML='<div class="err">❌ '+esc(data.error)+'</div>';return;}
     const lines=(data.lines||[]).map(l=>({raw:l.product||'',qty:l.quantity,price:l.price,unit:l.unit||'',vintage:(l.vintage!=null?l.vintage:''),conf:(l.confidence||'high'),lineTotal:l.line_total,productId:matchProduct(l.product||'')}));
-    logUsage('ocr_invoice',1);
     ST.ocr={supplierRaw:data.supplier||'',supplierId:matchSupplier(data.supplier||''),date:data.date||new Date().toISOString().slice(0,10),invoiceNo:data.invoice_no||'',netTotal:data.net_total,vatTotal:data.vat_total,grandTotal:data.grand_total,prevBalance:data.prev_balance,newBalance:data.new_balance,lines};
     renderOcr();
   }catch(e){st.innerHTML='<div class="err">❌ '+esc(e.message||e)+'<br><span style="font-size:11px">Έλεγξε ότι έγινε deploy η function smart-worker.</span></div>';}
@@ -8761,10 +8760,9 @@ async function scanZ(input){
   try{
     const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
     const {data:{session}}=await sb.auth.getSession();
-    const r=await fetch(OCR_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({imageBase64:b64,mediaType:file.type,mode:'zreport'})});
+    const r=await fetch(OCR_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:SUPABASE_KEY),'apikey':SUPABASE_KEY},body:JSON.stringify({imageBase64:b64,mediaType:file.type,mode:'zreport',tenant_id:curTenant()||null})});
     const data=await r.json();
     if(data.error){toast('❌ '+data.error);return;}
-    logUsage('ocr_z',1);
     // Γέμισμα πεδίων Ζ από το αποτέλεσμα
     ST.dailyZ=ST.dailyZ||{};
     if(data.z_number!=null)ST.dailyZ.z_number=data.z_number;
@@ -9365,7 +9363,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·324';
+const BUILD='v'+'2026.07.21·325';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
