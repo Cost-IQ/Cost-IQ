@@ -98,14 +98,14 @@
   .toast.show{opacity:1}
   /* ── Κάρτες σύνοψης κερδοφορίας ── */
   .pcards{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}
-  .pcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 13px;text-align:center}
   .pcard .t{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
   .pcard .n{font-size:21px;font-weight:800;margin-top:3px;letter-spacing:-.5px}
   .pcard .s{font-size:10.5px;color:var(--muted);margin-top:2px}
   .plegend{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11.5px;color:var(--muted)}
   @media(max-width:600px){
     .pcards{grid-template-columns:1fr;gap:8px}
-    .pcard{display:flex;justify-content:space-between;align-items:center;padding:12px 14px}
+    .pcard{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;text-align:left}
     .pcard .n{font-size:19px;margin:0}
     .pcard .s{margin:0}
     .pcard .r{text-align:right}
@@ -5249,7 +5249,7 @@ function profitTopHtml(M,T,money2,pct,badge){
       mc(T('Καθαρό Κέρδος','Net Profit'),money2(np),T('Περιθώριο','Margin')+' '+pct(M.npPct),npCol,npCol)+
     '</div>'+
     '<div class="card" style="padding:15px">'+
-      '<h3 style="font-size:13px;color:var(--muted);margin-bottom:11px">📊 '+T('Πού Πάνε Τα Λεφτά','Where The Money Goes')+'</h3>'+
+      '<h3 style="font-size:13px;color:var(--muted);margin-bottom:11px">📊 '+T('Πού πάνε τα λεφτά','Where the money goes')+'</h3>'+
       '<div style="display:flex;height:34px;border-radius:6px;overflow:hidden;margin-bottom:13px">'+bar+'</div>'+
       '<div class="plegend">'+
         lg('#154766',T('Αγορές','Purchases'),pu)+
@@ -9366,7 +9366,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·326';
+const BUILD='v'+'2026.07.21·327';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
