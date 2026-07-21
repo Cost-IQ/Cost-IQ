@@ -102,6 +102,16 @@
   .subtab .e{font-size:17px;line-height:1}
   .subtab .t{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .subtab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  /* ── Tabs συνταγών: ίσα πλάτη, δύο σειρές κειμένου ── */
+  .rkinds{display:flex;gap:8px;margin:14px 0 6px}
+  .rkinds > .tab{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;text-align:center;
+    padding:9px 8px;min-height:44px;border-radius:11px;font-size:14px;line-height:1.25;font-weight:600;
+    border:1px solid var(--line);color:var(--muted);background:var(--card);cursor:pointer;transition:.15s}
+  .rkinds > .tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  @media(max-width:600px){
+    .rkinds{gap:6px}
+    .rkinds > .tab{font-size:12.5px;padding:8px 5px;min-height:46px}
+  }
   /* ── Μπάρα περιόδων: χωρίς κύλιση ── */
   .perbar{display:flex;gap:6px;margin-bottom:14px;flex-wrap:nowrap}
   .perbar > div{flex:1 1 0;min-width:0;padding:8px 5px;border-radius:20px;cursor:pointer;font-size:12.5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--line);color:var(--muted);background:var(--card)}
@@ -3390,8 +3400,8 @@ function renderRecipes(){
   if(!ST.rkind)ST.rkind='cocktail';
   const home=!!ST.homeView;
   const q=(document.getElementById('rq')?document.getElementById('rq').value:'').toLowerCase().trim();
-  let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div class="tabs lap-tabs" style="display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px">'+
-    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'active':'')+'" style="white-space:nowrap" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div></div></div>';
+  let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto"><div class="rkinds">'+
+    RKINDS.map(([k,label])=>'<div class="tab '+(ST.rkind===k?'on':'')+'" onclick="setRkind(\''+k+'\')">'+esc(lbl('recipe_'+k,label))+'</div>').join('')+'</div></div></div>';
   if(!ST.recipes||!ST.recipes.length){
     h+='<div style="display:flex;justify-content:flex-end;margin:8px 2px"><button class="pick" onclick="newRecipe(false)">+ '+lbl('rNewRecipe','Νέα Συνταγή')+'</button></div>';
     h+='<div class="card muted" style="text-align:center;margin-top:14px">'+L('Καμία συνταγή ακόμα — πάτα «+ Νέα Συνταγή».','No recipes yet — tap «+ New Recipe».')+'</div>';
@@ -9129,7 +9139,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·310';
+const BUILD='v'+'2026.07.21·311';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
