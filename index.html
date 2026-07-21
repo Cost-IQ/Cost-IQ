@@ -9365,7 +9365,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·322';
+const BUILD='v'+'2026.07.21·323';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -9406,7 +9406,7 @@ const FN_URL=SUPABASE_URL+"/functions/v1/create-member";
 const GMAIL_URL=SUPABASE_URL+"/functions/v1/gmail-read";
 const GMAIL_CLIENT_ID="340405124904-pmulggt039rtq5l6s6ip6os2cd41n7li.apps.googleusercontent.com";
 const GMAIL_REDIRECT="https://cost-iq.github.io/Cost-IQ/gmail-callback.html";
-const GMAIL_SCOPE="https://www.googleapis.com/auth/gmail.readonly";
+const GMAIL_SCOPE="https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email";
 async function gmailApi(payload){
   const {data:{session}}=await sb.auth.getSession();
   // Στέλνουμε ποιο μαγαζί είναι επιλεγμένο. Ο server ελέγχει αν επιτρέπεται.
@@ -9481,7 +9481,9 @@ async function gmailList(){
   window._gmailMsgs={}; msgs.forEach(m=>{window._gmailMsgs[m.id]=m.subject||'';});
   const hideDone=ST.gmailHideDone;
   const doneCount=msgs.filter(m=>done.has(m.id)).length;
-  let h='<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin:0 4px 8px"><span class="muted" style="font-size:13px">'+msgs.length+' '+L('email με συνημμένα','emails with attachments')+(doneCount?(' · '+doneCount+' ✅'):'')+'</span>'+((ST.role==='admin'||ST.role==='owner')?('<span style="display:flex;gap:5px"><button class="pick" style="margin:0" onclick="gmailConnect()">🔄 '+L('Ξανασύνδεση','Reconnect')+'</button><button class="pick" style="margin:0;border-color:var(--bad);color:var(--bad)" onclick="gmailDisconnect()">🔌 '+L('Αποσύνδεση','Disconnect')+'</button></span>'):'')+'</div>';
+  let h='<div style="margin-top:12px">'+
+    (res.account?('<div class="card" style="background:var(--accent-bg);border-color:var(--accent);padding:9px 12px;font-size:12px;color:var(--accent)">📧 '+L('Συνδεδεμένο','Connected')+': <b>'+esc(res.account)+'</b>'+(res.scanned!=null?(' · '+L('σαρώθηκαν','scanned')+' '+res.scanned):'')+'</div>'):'')+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin:0 4px 8px"><span class="muted" style="font-size:13px">'+msgs.length+' '+L('email με συνημμένα','emails with attachments')+(doneCount?(' · '+doneCount+' ✅'):'')+'</span>'+((ST.role==='admin'||ST.role==='owner')?('<span style="display:flex;gap:5px"><button class="pick" style="margin:0" onclick="gmailConnect()">🔄 '+L('Ξανασύνδεση','Reconnect')+'</button><button class="pick" style="margin:0;border-color:var(--bad);color:var(--bad)" onclick="gmailDisconnect()">🔌 '+L('Αποσύνδεση','Disconnect')+'</button></span>'):'')+'</div>';
   if(doneCount)h+='<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:0 4px 8px;cursor:pointer"><input type="checkbox" '+(hideDone?'checked':'')+' onchange="ST.gmailHideDone=this.checked;gmailList()"> '+L('Κρύψε τα περασμένα','Hide processed')+'</label>';
   if(!msgs.length)h+='<div class="card muted" style="text-align:center">'+L('Δεν βρέθηκαν email με τιμολόγια (pdf/φωτο).','No emails with invoices (pdf/photo).')+'</div>';
   msgs.forEach(m=>{
