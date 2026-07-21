@@ -278,7 +278,7 @@ const EN_DEF={
   wFrom:'From',wTo:'To',wInvoices:'invoices',wTotal:'Total',iNone:'No invoices for these filters.',
   thDate:'Date',thSup:'Supplier',thInvNo:'Invoice No',thCat:'Category',thNet:'Net Value',thVat:'VAT',thTotal:'Total',thBalance:'New Balance',thStatus:'Status',thNotes:'Notes',invGross:'Gross Value',invBalance:'Balance',invViewScan:'View scanned copy',invLines:'LINES / PRICES',invNoLines:'No linked lines found',
   suName:'Name',suWhats:'WhatsApp (e.g 3069...)',suAlias:'Invoice aliases (comma separated)',suAliasPh:'comma separated',suNamePh:'Supplier name',wOptional:'(optional)',wSave:'Save',suPrices:'Prices',suAddBtn:'Add Supplier',
-  pdSelect:'Choose',pdNoPrice:'No Supplier Price',wSupplier:'Supplier',wPriceEuro:'Price (€)',pdAddPrice:'Add',
+  pdSelect:'Choose',pdNoPrice:'No Supplier Price',wSupplier:'Supplier',wPriceEuro:'Price (€)',pdAddPrice:'Add',pdPickSupplier:'— choose supplier —',
   pdMeasure:'Measure (ml per serving)',pdUnits:'Units (units/package)',pdRetail:'Selling Price (incl VAT €)',pdWaste:'Waste %',
   pdCostMl:'Cost ml/g',pdUnitCost:'Unit Cost (serving)',pdRealCost:'Real Cost',pdExVat:'Price ex-VAT',pdGross:'Gross Profit',pdPerUnit:'Cost per Unit',
   pdSku:'Product Name (SKU)',pdKind:'Section',wCategory:'Category',wSubcat:'Sub-Category',pdInvName:'Invoice Name (OCR)',pdPack:'Packaging',pdSize:'Size (ml/g)',pdAlc:'Alcohol % (auto excise)',pdEfk:'Excise (€, manual or auto)',pdDelete:'Delete Product',pdMeasureUnit:'Measure Unit',
@@ -3067,7 +3067,7 @@ const LABEL_KEYS=[
   ['wFrom','Από'],['wTo','Έως'],['wInvoices','τιμολόγια'],['wTotal','Σύνολο'],['iNone','Κανένα τιμολόγιο σε αυτά τα φίλτρα.'],
   ['thDate','Ημερομηνία'],['thSup','Προμηθευτής'],['thInvNo','Αριθμός Τιμολογίου'],['thCat','Κατηγορία'],['thNet','Καθαρή Αξία'],['thVat','ΦΠΑ'],['thTotal','Σύνολο'],['thBalance','Νέο Υπόλοιπο'],['thStatus','Κατάσταση'],['thNotes','Σημειώσεις'],['invGross','Μικτή Αξία'],['invBalance','Υπόλοιπο'],['invViewScan','Δες το σκαναρισμένο'],['invLines','ΓΡΑΜΜΕΣ / ΤΙΜΕΣ'],['invNoLines','Δεν βρέθηκαν συνδεδεμένες γραμμές'],
   ['suName','Όνομα'],['suWhats','WhatsApp (πχ 3069...)'],['suAlias','Ψευδώνυμα τιμολογίου'],['suAliasPh','χωρισμένα με κόμμα'],['suNamePh','Όνομα προμηθευτή'],['wOptional','(προαιρετικό)'],['wSave','Αποθήκευση'],['suPrices','Τιμές'],['suAddBtn','Προσθήκη (προμηθευτή)'],
-  ['pdSelect','Επιλογή'],['pdNoPrice','Καμία Τιμή Προμηθευτή'],['wSupplier','Προμηθευτής'],['wPriceEuro','Τιμή (€)'],
+  ['pdSelect','Επιλογή'],['pdNoPrice','Καμία Τιμή Προμηθευτή'],['wSupplier','Προμηθευτής'],['wPriceEuro','Τιμή (€)'],['pdPickSupplier','— διάλεξε προμηθευτή —'],
   ['pdMeasure','Measure (ml ανά σερβίρισμα)'],['pdUnits','Units (μονάδες/συσκευασία)'],['pdRetail','Τιμή Πώλησης (με ΦΠΑ €)'],['pdWaste','Φύρα %'],
   ['pdCostMl','Cost ml/g'],['pdUnitCost','Unit Cost (σερβ.)'],['pdRealCost','Real Cost'],['pdExVat','Τιμή χωρίς ΦΠΑ'],['pdGross','Gross Profit'],['pdPerUnit','Κόστος ανά μονάδα'],
   ['pdSku','Όνομα προϊόντος (SKU)'],['pdKind','Τμήμα'],['wCategory','Κατηγορία'],['wSubcat','Υποκατηγορία'],['pdInvName','Όνομα Τιμολογίου (για OCR)'],['pdPack','Συσκευασία (πώς παραγγέλνεις)'],['pdSize','Μέγεθος (ml/g)'],['pdAlc','Αλκοόλ % (για αυτόματο ΕΦΚ)'],['pdEfk','ΕΦΚ (€, χειροκίνητο ή αυτόματο)'],['pdDelete','Διαγραφή Προϊόντος'],
@@ -3320,7 +3320,7 @@ function drawProd(){persistNav();
   if(!rows.length)sup='<div class="muted" style="padding:8px 0">'+lbl('pdNoPrice','Καμία Τιμή Προμηθευτή')+'</div>';
   const usedIds=rows.map(r=>r.supplier_id);
   const avail=ST.suppliers.filter(s=>!usedIds.includes(s.id));
-  const supOpts=avail.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
+  const supOpts='<option value="">'+lbl('pdPickSupplier','— διάλεξε προμηθευτή —')+'</option>'+avail.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
   const anyOvr=rows.some(r=>r.is_override);
 
   let big='',costing='';
@@ -9381,7 +9381,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·329';
+const BUILD='v'+'2026.07.21·330';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
