@@ -277,7 +277,7 @@ const EN_DEF={
   iSortLabel:'Sort:',iSortDate:'Date (newest)',iSortAmount:'Amount (highest)',iSortSup:'Supplier',
   wFrom:'From',wTo:'To',wInvoices:'invoices',wTotal:'Total',iNone:'No invoices for these filters.',
   thDate:'Date',thSup:'Supplier',thInvNo:'Invoice No',thCat:'Category',thNet:'Net Value',thVat:'VAT',thTotal:'Total',thBalance:'New Balance',thStatus:'Status',thNotes:'Notes',invGross:'Gross Value',invBalance:'Balance',invViewScan:'View scanned copy',invLines:'LINES / PRICES',invNoLines:'No linked lines found',
-  suName:'Name',suWhats:'WhatsApp (e.g 3069...)',suAlias:'Invoice aliases (comma separated)',suAliasPh:'e.g ACME, XYZ LTD',suNamePh:'Supplier name',wOptional:'(optional)',wSave:'Save',suPrices:'Prices',suAddBtn:'Add Supplier',
+  suName:'Name',suWhats:'WhatsApp (e.g 3069...)',suAlias:'Invoice aliases (comma separated)',suAliasPh:'comma separated',suNamePh:'Supplier name',wOptional:'(optional)',wSave:'Save',suPrices:'Prices',suAddBtn:'Add Supplier',
   pdSelect:'Choose',pdNoPrice:'No Supplier Price',wSupplier:'Supplier',wPriceEuro:'Price (€)',pdAddPrice:'Add',
   pdMeasure:'Measure (ml per serving)',pdUnits:'Units (units/package)',pdRetail:'Selling Price (incl VAT €)',pdWaste:'Waste %',
   pdCostMl:'Cost ml/g',pdUnitCost:'Unit Cost (serving)',pdRealCost:'Real Cost',pdExVat:'Price ex-VAT',pdGross:'Gross Profit',pdPerUnit:'Cost per Unit',
@@ -1337,7 +1337,7 @@ function bizEmpForm(e){
   const ptBtn=(k,lbl)=>'<div id="bp-'+k+'" onclick="bizSetPayType(\''+k+'\')" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:12px;'+(pt===k?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">'+lbl+'</div>';
   const html='<div style="display:flex;flex-direction:column;gap:12px">'+
     '<input type="hidden" id="bemp-id" value="'+(e.id||'')+'">'+
-    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα','Name')+'</label><input id="bemp-name" type="text" value="'+esc(e.name||'')+'" placeholder="'+T('π.χ. Γιώργος Δημητρίου','e.g. John Smith')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα','Name')+'</label><input id="bemp-name" type="text" value="'+esc(e.name||'')+'" placeholder="" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Θέση','Position')+'</label><input id="bemp-pos" type="text" value="'+esc(e.position||'')+'" placeholder="'+T('π.χ. Developer','e.g. Developer')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Τύπος Αμοιβής','Pay Type')+'</label>'+
       '<div style="display:flex;gap:6px;margin:6px 0 8px">'+ptBtn('monthly',T('Μηνιαίος','Monthly'))+ptBtn('daily',T('Ημερήσιος','Daily'))+ptBtn('hourly',T('Ωρομίσθιο','Hourly'))+'</div>'+
@@ -2074,7 +2074,7 @@ function partnerForm(e){
   const csOpts=(ST.bizContrib||[]).map(x=>'<option value="'+esc(x.name)+'"'+(e.contrib_class===x.name?' selected':'')+'>'+esc(x.name)+' ('+x.emp_pct+'% / '+x.empr_pct+'%)</option>').join('');
   const html='<div style="display:flex;flex-direction:column;gap:12px">'+
     '<input type="hidden" id="pt-id" value="'+(e.id||'')+'">'+
-    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα','Name')+'</label><input id="pt-name" type="text" value="'+esc(e.name||'')+'" placeholder="'+T('π.χ. Γιώργος Παπαδόπουλος','e.g. John Smith')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα','Name')+'</label><input id="pt-name" type="text" value="'+esc(e.name||'')+'" placeholder="" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
       '<div><label style="font-size:12px;color:var(--muted)">'+T('Τηλέφωνο','Phone')+'</label><input id="pt-phone" type="tel" value="'+esc(e.phone||'')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
       '<div><label style="font-size:12px;color:var(--muted)">Email</label><input id="pt-email" type="email" value="'+esc(e.email||'')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
@@ -3066,7 +3066,7 @@ const LABEL_KEYS=[
   ['iSortLabel','Ταξ/ση:'],['iSortDate','Ημερομηνία (νεότερα)'],['iSortAmount','Ποσό (μεγαλύτερα)'],['iSortSup','Προμηθευτής'],
   ['wFrom','Από'],['wTo','Έως'],['wInvoices','τιμολόγια'],['wTotal','Σύνολο'],['iNone','Κανένα τιμολόγιο σε αυτά τα φίλτρα.'],
   ['thDate','Ημερομηνία'],['thSup','Προμηθευτής'],['thInvNo','Αριθμός Τιμολογίου'],['thCat','Κατηγορία'],['thNet','Καθαρή Αξία'],['thVat','ΦΠΑ'],['thTotal','Σύνολο'],['thBalance','Νέο Υπόλοιπο'],['thStatus','Κατάσταση'],['thNotes','Σημειώσεις'],['invGross','Μικτή Αξία'],['invBalance','Υπόλοιπο'],['invViewScan','Δες το σκαναρισμένο'],['invLines','ΓΡΑΜΜΕΣ / ΤΙΜΕΣ'],['invNoLines','Δεν βρέθηκαν συνδεδεμένες γραμμές'],
-  ['suName','Όνομα'],['suWhats','WhatsApp (πχ 3069...)'],['suAlias','Ψευδώνυμα τιμολογίου'],['suAliasPh','πχ ΜΟΥΤΟΠΟΥΛΟΣ, ΔΙΑΣ ΑΕ'],['suNamePh','Όνομα προμηθευτή'],['wOptional','(προαιρετικό)'],['wSave','Αποθήκευση'],['suPrices','Τιμές'],['suAddBtn','Προσθήκη (προμηθευτή)'],
+  ['suName','Όνομα'],['suWhats','WhatsApp (πχ 3069...)'],['suAlias','Ψευδώνυμα τιμολογίου'],['suAliasPh','χωρισμένα με κόμμα'],['suNamePh','Όνομα προμηθευτή'],['wOptional','(προαιρετικό)'],['wSave','Αποθήκευση'],['suPrices','Τιμές'],['suAddBtn','Προσθήκη (προμηθευτή)'],
   ['pdSelect','Επιλογή'],['pdNoPrice','Καμία Τιμή Προμηθευτή'],['wSupplier','Προμηθευτής'],['wPriceEuro','Τιμή (€)'],
   ['pdMeasure','Measure (ml ανά σερβίρισμα)'],['pdUnits','Units (μονάδες/συσκευασία)'],['pdRetail','Τιμή Πώλησης (με ΦΠΑ €)'],['pdWaste','Φύρα %'],
   ['pdCostMl','Cost ml/g'],['pdUnitCost','Unit Cost (σερβ.)'],['pdRealCost','Real Cost'],['pdExVat','Τιμή χωρίς ΦΠΑ'],['pdGross','Gross Profit'],['pdPerUnit','Κόστος ανά μονάδα'],
@@ -4000,7 +4000,7 @@ function renderSuppliers(){
       '<div class="field"><label>🏢 '+lbl('suName','Όνομα')+'</label><input id="su-name-'+s.id+'" type="text" value="'+esc(s.name)+'"></div>'+
       '<div class="field"><label>📧 Email</label><input id="su-em-'+s.id+'" type="email" value="'+esc(s.email||'')+'" placeholder="name@email.com"></div>'+
       '<div class="field"><label>🟢 '+lbl('suWhats','WhatsApp (πχ 3069...)')+'</label><input id="su-ph-'+s.id+'" type="tel" value="'+esc(s.phone||'')+'" placeholder="306971234567"></div>'+
-      '<div class="field"><label>🏷️ '+lbl('suAlias','Ψευδώνυμα τιμολογίου (χωρισμένα με κόμμα)')+'</label><input id="su-al-'+s.id+'" type="text" value="'+esc(aliases)+'" placeholder="'+lbl('suAliasPh','πχ ΜΟΥΤΟΠΟΥΛΟΣ, ΔΙΑΣ ΑΕ')+'"></div>'+
+      '<div class="field"><label>🏷️ '+lbl('suAlias','Ψευδώνυμα τιμολογίου (χωρισμένα με κόμμα)')+'</label><input id="su-al-'+s.id+'" type="text" value="'+esc(aliases)+'" placeholder="'+lbl('suAliasPh','χωρισμένα με κόμμα')+'"></div>'+
       '<div style="display:flex;gap:8px">'+
         '<button class="btn" style="flex:1" onclick="saveSupplier(\''+s.id+'\')">'+lbl('wSave','Αποθήκευση')+'</button>'+
         '<button class="btn" style="width:auto;background:var(--card);color:var(--accent);border:1px solid var(--accent)" onclick="backfillSupplier(\''+s.id+'\',\''+esc(s.name).replace(/'/g,"\\'")+'\')" title="Γέμισε τιμές από το ιστορικό αγορών">🔄 '+lbl('suPrices','Τιμές')+'</button>'+
@@ -7268,7 +7268,7 @@ function empFormHtml(e){
   const isHourly=e.pay_type==='hourly';
   const isNet=e.wage_basis==='net';
   return '<div style="display:flex;flex-direction:column;gap:12px">'+
-    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα','Name')+'</label><input id="emp-name" type="text" value="'+esc(e.name||'')+'" placeholder="'+T('π.χ. Γιώργος Παπαδόπουλος','e.g. John Smith')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα','Name')+'</label><input id="emp-name" type="text" value="'+esc(e.name||'')+'" placeholder="" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Θέση','Position')+'</label><input id="emp-pos" list="emp-positions" type="text" value="'+esc(e.position||'')+'" placeholder="Bar" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"><datalist id="emp-positions">'+posOpts+'</datalist></div>'+
     '<div style="border-top:1px solid var(--line);padding-top:10px">'+
       '<label style="font-size:12px;color:var(--muted)">'+T('Τύπος Αμοιβής','Pay Type')+'</label>'+
@@ -8915,7 +8915,7 @@ function creditSupplier(sid){
       '<div><label style="font-size:12px;color:var(--muted)">'+T('ΦΠΑ','VAT')+'</label><input id="sc-vat" type="number" step="0.01" placeholder="0.00" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '</div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Ημερομηνία','Date')+'</label><input id="sc-date" type="date" value="'+dailyDate()+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
-    '<div><label style="font-size:12px;color:var(--muted)">'+T('Αιτιολογία','Reason')+'</label><input id="sc-reason" type="text" placeholder="'+T('π.χ. συμφωνία PT Beverage','e.g. PT Beverage deal')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Αιτιολογία','Reason')+'</label><input id="sc-reason" type="text" placeholder="'+T('π.χ. επιστροφή προϊόντων','e.g. product return')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
   '</div>';
   showModal('🧾 '+T('Πιστωτικό','Credit Note'),html,T('Καταχώρηση','Record'),()=>saveSupplierCredit(sid,s.name));
 }
@@ -9269,7 +9269,7 @@ function daySetupScreen(){
     '<div id="ds-delivery">';
   (s.delivery||[]).forEach((d,i)=>{
     h+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px" data-del="'+i+'">'+
-      '<input type="text" id="ds-delname-'+i+'" value="'+esc(d.name||'')+'" placeholder="'+T('π.χ. Efood','e.g. Efood')+'" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:8px">'+
+      '<input type="text" id="ds-delname-'+i+'" value="'+esc(d.name||'')+'" placeholder="'+T('όνομα πλατφόρμας','platform name')+'" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:8px">'+
       '<div style="display:flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:8px;padding:4px 8px"><input type="number" id="ds-delcom-'+i+'" value="'+(d.commission!=null?d.commission:0)+'" style="width:44px;border:none;text-align:center;font-size:14px">%</div>'+
       '<span onclick="dsRemoveDelivery('+i+')" style="cursor:pointer;color:var(--bad);font-size:16px;padding:0 4px">✕</span>'+
     '</div>';
@@ -9381,7 +9381,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·328';
+const BUILD='v'+'2026.07.21·329';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
@@ -9689,7 +9689,7 @@ async function pickShop(id){
 function newShop(){
   const T=(el,en)=>L(el,en);
   const html='<div style="display:flex;flex-direction:column;gap:12px">'+
-    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα Μαγαζιού','Shop Name')+'</label><input id="ns-name" type="text" placeholder="'+T('π.χ. Bocamar','e.g. Bocamar')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
+    '<div><label style="font-size:12px;color:var(--muted)">'+T('Όνομα Μαγαζιού','Shop Name')+'</label><input id="ns-name" type="text" placeholder="" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Νόμισμα','Currency')+'</label><select id="ns-currency" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)">'+
       ['€','£','$','₺','лв','zł','Kč','Fr'].map(cu=>'<option value="'+cu+'"'+(cu==='€'?' selected':'')+'>'+cu+'</option>').join('')+
     '</select></div>'+
@@ -9873,7 +9873,7 @@ async function openMembers(){
     c.innerHTML=h; return;
   }
   h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px">➕ '+L('Νέο μέλος','New member')+'</h3>'+
-    '<div class="field"><label>'+L('Ονοματεπώνυμο','Full name')+'</label><input id="nm-name" type="text" autocomplete="off" placeholder="'+L('πχ Μαρία Παπαδοπούλου','e.g. Maria Smith')+'"></div>'+
+    '<div class="field"><label>'+L('Ονοματεπώνυμο','Full name')+'</label><input id="nm-name" type="text" autocomplete="off" placeholder=""></div>'+
     '<div class="field"><label>Email</label><input id="nm-email" type="email" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="name@email.com"></div>'+
     '<div class="field"><label>'+L('Κωδικός','Password')+' ('+L('τουλάχ. 6 χαρακτήρες','min 6 chars')+')</label><input id="nm-pass" type="text" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute(\'readonly\')" placeholder="••••••"></div>'+
     '<div class="field"><label>'+L('Θέση (ορίζει αυτόματα δικαιώματα)','Job title (sets permissions)')+'</label><select id="nm-job" style="width:100%;padding:12px;border:1px solid var(--accent);border-radius:10px;font-size:16px;background:var(--accent-bg)">'+
