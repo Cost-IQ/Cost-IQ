@@ -2887,18 +2887,23 @@ function supportBump(){
 }
 // Πού βρίσκεται ο χρήστης, για πιο σχετικές απαντήσεις
 function supportContext(){
-  const names={products:'Προϊόντα',suppliers:'Προμηθευτές',orders:'Παραγγελίες',
-    ocr:'Πρόσθεσε Τιμολόγιο',invoices:'Τιμολόγια',recipes:'Συνταγές',daily:'Ημέρα',
-    agree:'Συμφωνίες',events:'Εκδηλώσεις',history:'Στατιστικά'};
-  let c='Οθόνη: '+(names[ST.section]||ST.section||'—');
+  const en=(ST.lang==='en');
+  const names=en
+    ? {products:'Products',suppliers:'Suppliers',orders:'Orders',ocr:'Scan Invoice',
+       invoices:'Invoices',recipes:'Recipes',daily:'Day',agree:'Agreements',
+       events:'Events',history:'Stats'}
+    : {products:'Προϊόντα',suppliers:'Προμηθευτές',orders:'Παραγγελίες',
+       ocr:'Πρόσθεσε Τιμολόγιο',invoices:'Τιμολόγια',recipes:'Συνταγές',daily:'Ημέρα',
+       agree:'Συμφωνίες',events:'Εκδηλώσεις',history:'Στατιστικά'};
+  let c=(en?'Screen: ':'Οθόνη: ')+(names[ST.section]||ST.section||'—');
   if(ST.section==='recipes'){
     const rk={cocktail:'Spirits & Cocktails',hotcold:'Hot & Cold Beverages',food:'Food'};
     c+=' · '+(rk[ST.rkind]||'');
-    if(ST.homeView)c+=' · Υποσυνταγές';
-    if(ST.recipe)c+=' · Ανοιχτή συνταγή';
+    if(ST.homeView)c+=en?' · Sub-Recipes':' · Υποσυνταγές';
+    if(ST.recipe)c+=en?' · Recipe open':' · Ανοιχτή συνταγή';
   }
   if(ST.section==='history'&&ST.hsub)c+=' · '+ST.hsub;
-  c+=' · Πακέτο: '+String(ST.plan||'advanced').toUpperCase();
+  c+=(en?' · Plan: ':' · Πακέτο: ')+String(ST.plan||'advanced').toUpperCase();
   return c;
 }
 function openSupport(){
@@ -3000,7 +3005,7 @@ async function supportSend(){
     const r=await fetch(SUPABASE_URL+'/functions/v1/support-chat',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?session.access_token:'')},
-      body:JSON.stringify({messages:ST.supportMsgs,context:supportContext()})
+      body:JSON.stringify({messages:ST.supportMsgs,context:supportContext(),lang:(ST.lang==='en'?'en':'el')})
     });
     const d=await r.json();
     ST.supportBusy=false;
@@ -9300,7 +9305,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·316';
+const BUILD='v'+'2026.07.21·317';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
