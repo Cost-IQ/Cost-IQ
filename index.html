@@ -5238,7 +5238,7 @@ async function loadProfit(){
 function pfNum(id){const el=document.getElementById(id);return el?(parseFloat(el.value)||0):0;}
 // ── Αυτόματη άντληση δεδομένων περιόδου για την Κερδοφορία ──
 async function loadProfitSources(start,end){
-  const out={sales:null,wages:0,social:0,opexList:[],opex:0,cashUnrec:0,delNet:0,tillTotal:0,hasData:false};
+  const out={sales:null,wages:0,social:0,opexList:[],opex:0,cashUnrec:0,delNet:0,tillTotal:0,tillDecl:0,salesBrk:null,hasData:false};
   const n=v=>(v!=null&&v!==''?(+v):0);
   const T=(el,en)=>L(el,en);
   try{
@@ -5257,8 +5257,16 @@ async function loadProfitSources(start,end){
     (cls||[]).forEach(cl=>{
       out.cashUnrec+=n(cl.off_envelope);
       out.tillTotal+=n(cl.cash_income)+n(cl.card_income)+n(cl.off_envelope);
+      out.tillDecl +=n(cl.cash_income)+n(cl.card_income);   // δηλωμένο ταμείο (χωρίς εκτός φακέλου)
       let dd=[]; try{dd=(typeof cl.delivery_data==='string')?JSON.parse(cl.delivery_data):(cl.delivery_data||[]);}catch(e){}
-      dd.forEach(d=>{const g=n(d.gross)||(n(d.net_val)+n(d.vat));out.delNet+=(n(d.net_val)||(g-n(d.vat)));out.tillTotal+=g;});
+      dd.forEach(d=>{const g=n(d.gross)||(n(d.net_val)+n(d.vat));out.delNet+=(n(d.net_val)||(g-n(d.vat)));out.tillTotal+=g;out.tillDecl+=g;});
+      // Ανάλυση πωλήσεων ανά κατηγορία (Pro): άθροισμα περιόδου
+      if(isPro()&&cl.sales_breakdown){
+        let sb2={}; try{sb2=(typeof cl.sales_breakdown==='string')?JSON.parse(cl.sales_breakdown):(cl.sales_breakdown||{});}catch(e){sb2={};}
+        if(!out.salesBrk)out.salesBrk={bev:0,food:0,hot:0,hotlow:0};
+        out.salesBrk.bev+=n(sb2.bev); out.salesBrk.food+=n(sb2.food);
+        out.salesBrk.hot+=n(sb2.hot); out.salesBrk.hotlow+=n(sb2.hotlow);
+      }
     });
     if(cls&&cls.length)out.hasData=true;
     // Μισθοδοσία: μικτά + εργοδοτικές εισφορές
@@ -5309,15 +5317,22 @@ function profitCrossCheck(R,A,p){
   const n=v=>(v!=null&&v!==''?(+v):0);
   const money2=x=>money(Math.round(x*100)/100);
   const inclVat=(p.sales_incl_vat!==false);
-  // Τι έγραψε ο χρήστης (μικτά, όπως τα βάζει)
-  const typed=n(p.sales_bev)+n(p.sales_hot)+n(p.sales_hot_low)+n(p.sales_food);
+  const unlocked=privacyUnlocked();
+  // Τι έγραψε ο χρήστης (μικτά, όπως τα βάζει). Ξεκλείδωτος: + μετρητά εκτός φακέλου.
+  let typed=n(p.sales_bev)+n(p.sales_hot)+n(p.sales_hot_low)+n(p.sales_food);
+  if(unlocked)typed+=n(p.sales_cash_unrec!=null&&p.sales_cash_unrec!==''?p.sales_cash_unrec:(A&&A.cashUnrec));
   if(typed<=0)return '';
-  // Τι ξέρει το σύστημα: Ζ (καθαρό + ΦΠΑ) ή Ταμείο
+  // Τι ξέρει το σύστημα: Ζ (καθαρό + ΦΠΑ) ή Ταμείο.
+  // ΚΛΕΙΔΩΜΕΝΟ: σύγκριση δηλωμένα-με-δηλωμένα (Ζ ή δηλωμένο ταμείο) — ποτέ δεν προδίδουμε τα εκτός φακέλου.
+  // ΞΕΚΛΕΙΔΩΤΟ: σύγκριση με το πλήρες ταμείο (το Ζ δεν περιέχει εκτός φακέλου, οπότε αγνοείται).
   let zGross=0;
   if(A&&A.sales){ Object.keys(A.sales).forEach(r=>{ zGross+=A.sales[r]*(1+(+r)/100); }); }
-  const tillGross=n(A&&A.tillTotal);
-  const ref=zGross>0?zGross:tillGross;
-  const src=zGross>0?T('Ζ','Z'):T('Ταμείο','Till');
+  let ref, src;
+  if(unlocked){
+    ref=n(A&&A.tillTotal); src=T('Ταμείο','Till');
+  }else{
+    ref=zGross>0?zGross:n(A&&A.tillDecl); src=zGross>0?T('Ζ','Z'):T('Ταμείο','Till');
+  }
   if(ref<=0)return '';
   const diff=typed-ref;
   const ok=Math.abs(diff)<Math.max(1,ref*0.005);   // ανοχή 0,5%
@@ -5342,10 +5357,11 @@ function calcProfit(p){
   const vhl=(p.vat_hot_low!=null&&p.vat_hot_low!=='')?(parseFloat(p.vat_hot_low)/100):vf;
   const A=ST.pfAuto||{};
   const use=(manual,auto)=>((manual!=null&&manual!=='')?(parseFloat(manual)||0):(auto||0));
-  const sfRaw=parseFloat(p.sales_food)||0;      // Φαγητό 13%
-  const sbRaw=parseFloat(p.sales_bev)||0;       // Ποτά 24%
-  const shRaw=parseFloat(p.sales_hot)||0;       // Ροφήματα 24% (σερβιριζόμενα)
-  const shlRaw=parseFloat(p.sales_hot_low)||0;  // Ροφήματα 13% (πακέτο)
+  const SB=A.salesBrk||{};
+  const sfRaw=use(p.sales_food,SB.food);      // Φαγητό 13%
+  const sbRaw=use(p.sales_bev,SB.bev);        // Ποτά 24%
+  const shRaw=use(p.sales_hot,SB.hot);        // Ροφήματα 24% (σερβιριζόμενα)
+  const shlRaw=use(p.sales_hot_low,SB.hotlow);// Ροφήματα 13% (πακέτο)
   const cashRaw=use(p.sales_cash_unrec,A.cashUnrec);
   // Καθαρές πωλήσεις (χωρίς ΦΠΑ)
   const sf=inclVat?sfRaw/(1+vf):sfRaw;
@@ -5623,10 +5639,10 @@ function drawProfit(){
   h+='<div class="card" style="margin:0"><h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">✏️ '+T('Στοιχεία Περιόδου','Period Data')+'</h3>'+
     '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;cursor:pointer"><input type="checkbox" id="pf-vat" '+(p.sales_incl_vat!==false?'checked':'')+' onchange="pfLive()"> '+T('Οι πωλήσεις είναι ΜΕ ΦΠΑ','Sales include VAT')+'</label>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
-      f('pf-sb','🍸 '+T('Ποτά','Drinks')+' '+(p.vat_bev!=null?p.vat_bev:vStd)+'%',p.sales_bev)+
-      f('pf-sf','🍽️ '+T('Φαγητό','Food')+' '+(p.vat_food!=null?p.vat_food:vRed)+'%',p.sales_food)+
-      f('pf-sh','☕ '+T('Ροφήματα Σερβιριζόμενα','Beverages Served')+' '+(p.vat_hot!=null?p.vat_hot:vStd)+'%',p.sales_hot)+
-      f('pf-shl','🥤 '+T('Ροφήματα σε Πακέτο','Beverages Takeaway')+' '+(p.vat_hot_low!=null?p.vat_hot_low:vRed)+'%',p.sales_hot_low)+
+      fa('pf-sb','🍸 '+T('Ποτά','Drinks')+' '+(p.vat_bev!=null?p.vat_bev:vStd)+'%',p.sales_bev,(A.salesBrk&&A.salesBrk.bev)||0,T('από Ημέρα','from Day'))+
+      fa('pf-sf','🍽️ '+T('Φαγητό','Food')+' '+(p.vat_food!=null?p.vat_food:vRed)+'%',p.sales_food,(A.salesBrk&&A.salesBrk.food)||0,T('από Ημέρα','from Day'))+
+      fa('pf-sh','☕ '+T('Ροφήματα Σερβιριζόμενα','Beverages Served')+' '+(p.vat_hot!=null?p.vat_hot:vStd)+'%',p.sales_hot,(A.salesBrk&&A.salesBrk.hot)||0,T('από Ημέρα','from Day'))+
+      fa('pf-shl','🥤 '+T('Ροφήματα σε Πακέτο','Beverages Takeaway')+' '+(p.vat_hot_low!=null?p.vat_hot_low:vRed)+'%',p.sales_hot_low,(A.salesBrk&&A.salesBrk.hotlow)||0,T('από Ημέρα','from Day'))+
       f('pf-vb','ΦΠΑ '+T('Ποτών','Drinks')+' %',p.vat_bev!=null?p.vat_bev:vStd)+
       f('pf-vf','ΦΠΑ '+T('Φαγητού','Food')+' %',p.vat_food!=null?p.vat_food:vRed)+
       f('pf-vh','ΦΠΑ '+T('Ροφημάτων Σερβ.','Beverages Served')+' %',p.vat_hot!=null?p.vat_hot:vStd)+
@@ -8745,7 +8761,21 @@ function drawDaily(){ persistNav();
     
   '</div>';
 
-  // ── ΚΛΕΙΣΙΜΟ Z ──
+  // ── ΠΩΛΗΣΕΙΣ ΑΝΑ ΚΑΤΗΓΟΡΙΑ (μόνο αν ενεργό στη Ρύθμιση) — τραβιέται από την Κερδοφορία (Pro) ──
+  if(setup.salesBrk){
+    let sbd={}; try{sbd=(typeof cl.sales_breakdown==='string')?JSON.parse(cl.sales_breakdown):(cl.sales_breakdown||{});}catch(e){sbd={};}
+    const sf2=(id,lb,val)=>'<div style="min-width:0"><label style="font-size:12px;color:var(--muted)">'+lb+'</label><input id="'+id+'" type="number" step="0.01" value="'+(val!=null&&val!==''&&(+val)!==0?val:'')+'" placeholder="0" oninput="dailyLive();autoSaveDay()" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px"></div>';
+    h+='<div class="card"><h3 style="font-size:14px;margin:0 0 2px">📊 '+T('Πωλήσεις ανά Κατηγορία','Sales by Category')+'</h3>'+
+      '<div class="muted" style="font-size:11px;margin-bottom:10px">'+T('Με ΦΠΑ, όπως στο POS. Αθροίζονται στην Κερδοφορία.','VAT included, as in POS. Summed in Profit.')+'</div>'+
+      '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">'+
+        sf2('sb-bev','🍸 '+T('Ποτά','Drinks')+' 24%',sbd.bev)+
+        sf2('sb-food','🍽️ '+T('Φαγητό','Food')+' 13%',sbd.food)+
+        sf2('sb-hot','☕ '+T('Ροφήματα Σερβ.','Beverages Served')+' 24%',sbd.hot)+
+        sf2('sb-hotlow','🥤 '+T('Ροφήματα Πακέτο','Beverages Takeaway')+' 13%',sbd.hotlow)+
+      '</div>'+
+    '</div>';
+  }
+
   const z=ST.dailyZ||{};
   let zLines=[];
   try{zLines=(typeof z.vat_lines==='string')?JSON.parse(z.vat_lines):(z.vat_lines||[]);}catch(e){zLines=[];}
@@ -9021,10 +9051,18 @@ async function saveDailyClose(silent){
     const empty=el.value===''; const v=empty?0:(+el.value);
     if(!ptData[pkey])ptData[pkey]={}; ptData[pkey].card=empty?null:v; totalCard+=v;
   });
+  // Ανάλυση πωλήσεων ανά κατηγορία (αν υπάρχουν τα πεδία)
+  let salesBrk=null;
+  if(document.getElementById('sb-bev')||document.getElementById('sb-food')||document.getElementById('sb-hot')||document.getElementById('sb-hotlow')){
+    const gv=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?(+el.value):0;};
+    const bev=gv('sb-bev'),food=gv('sb-food'),hot=gv('sb-hot'),hotlow=gv('sb-hotlow');
+    if(bev||food||hot||hotlow)salesBrk=JSON.stringify({bev,food,hot,hotlow});
+  }
   const row={tenant_id:curTenant(),close_date:dailyDate(),
     cash_income:totalCash,card_income:totalCard,
     off_envelope:g('dc-off'),credit_notes:g('dc-cn'),
     points_data:JSON.stringify(ptData),
+    sales_breakdown:salesBrk,
     created_by:ST.userEmail||''};
   try{const {error}=await sb.from('daily_close').upsert(row,{onConflict:'tenant_id,close_date'});
     if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε','Saved')); keepScroll(renderDaily);}
@@ -9577,6 +9615,11 @@ function daySetupScreen(){
   });
   h+='</div>'+
     '<button class="btn ghost" style="padding:6px 12px;font-size:12px;width:auto" onclick="dsAddVat()">➕ '+T('Συντελεστής','Rate')+'</button>'+
+    // Ανάλυση Πωλήσεων ανά κατηγορία (τραβιέται από την Κερδοφορία στο Pro)
+    '<div onclick="dsToggleSalesBrk()" style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 10px;margin-top:8px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);cursor:pointer">'+
+      '<div><div style="font-size:14px;font-weight:600">'+T('Ανάλυση Πωλήσεων','Sales Breakdown')+'</div><div class="muted" style="font-size:11px">'+T('Καταγραφή πωλήσεων ανά κατηγορία στο Κλείσιμο (με ΦΠΑ)','Log sales per category at Close (VAT incl.)')+'</div></div>'+
+      '<div style="position:relative;width:52px;height:30px;background:'+(s.salesBrk?'var(--accent)':'var(--line)')+';border-radius:30px;transition:.2s;flex:0 0 auto"><div style="position:absolute;height:24px;width:24px;left:'+(s.salesBrk?'25px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>'+
+    '</div>'+
     // Σημεία ταμείου
     '<div style="font-size:12px;color:var(--muted);margin:14px 0 8px">'+T('Σημεία Ταμείου','Cash Points')+'</div>'+
     '<div id="ds-points">';
@@ -9624,9 +9667,10 @@ function dsCollect(){
     const nm=document.getElementById('ds-delname-'+i), cm=document.getElementById('ds-delcom-'+i);
     delivery.push({name:nm?nm.value:'', commission:cm&&cm.value!==''?(+cm.value):0});
   });
-  return {shifts,currency,vatRates,points,delivery,delInZ:(ST.daySetup&&ST.daySetup.delInZ)||false,tipMode:(ST.daySetup&&ST.daySetup.tipMode)||'shift'};
+  return {shifts,currency,vatRates,points,delivery,delInZ:(ST.daySetup&&ST.daySetup.delInZ)||false,tipMode:(ST.daySetup&&ST.daySetup.tipMode)||'shift',salesBrk:(ST.daySetup&&ST.daySetup.salesBrk)||false};
 }
 function dsSetTipMode(m){ const s=dsCollect(); s.tipMode=m; ST.daySetup=s; daySetupScreen(); }
+function dsToggleSalesBrk(){ const s=dsCollect(); s.salesBrk=!s.salesBrk; ST.daySetup=s; daySetupScreen(); }
 function dsToggleDelZ(){ const s=dsCollect(); s.delInZ=!s.delInZ; ST.daySetup=s; daySetupScreen(); }
 function dsAddDelivery(){ const s=dsCollect(); s.delivery=s.delivery||[]; s.delivery.push({name:'',commission:30}); ST.daySetup=s; daySetupScreen(); }
 function dsRemoveDelivery(i){ const s=dsCollect(); s.delivery.splice(i,1); ST.daySetup=s; daySetupScreen(); }
