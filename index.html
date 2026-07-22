@@ -405,7 +405,7 @@ async function openRevenue(){
   const c=document.getElementById('content');
   c.innerHTML='<div class="card center" style="min-height:30vh"><span class="spin"></span></div>';
   let hasPin=false;
-  try{const {data}=await sb.rpc('has_revenue_pin'); hasPin=!!data;}catch(e){}
+  try{const {data}=await sb.rpc('has_shop_pin'); hasPin=!!data;}catch(e){}
   if(!hasPin)return revSetPinScreen();
   return revPinScreen();
 }
@@ -448,7 +448,7 @@ async function revSavePin(){
   if(!/^\d{6}$/.test(a)){if(err)err.textContent=L('Το PIN πρέπει να είναι 6 ψηφία','PIN must be 6 digits');return;}
   if(a!==b){if(err)err.textContent=L('Τα PIN δεν ταιριάζουν','PINs do not match');return;}
   try{
-    const {data,error}=await sb.rpc('set_revenue_pin',{new_pin:a});
+    const {data,error}=await sb.rpc('set_shop_pin',{new_pin:a});
     if(error)throw error;
     if(data===false){if(err)err.textContent=L('Δεν έχεις δικαίωμα','Not allowed');return;}
     toast('✅ '+L('Το PIN ορίστηκε','PIN set'));
@@ -461,7 +461,7 @@ async function revCheckPin(){
   if(!/^\d{6}$/.test(pin)){if(err)err.textContent=L('6 ψηφία','6 digits');return;}
   if(err)err.textContent='';
   try{
-    const {data,error}=await sb.rpc('check_revenue_pin',{try_pin:pin});
+    const {data,error}=await sb.rpc('check_shop_pin',{try_pin:pin});
     if(error)throw error;
     if(!data){
       if(err)err.textContent='❌ '+L('Λάθος PIN','Wrong PIN');
@@ -483,24 +483,30 @@ async function revForgotPin(){
 }
 
 // ── Κλείδωμα ευαίσθητων νούμερων (ιδιωτικότητα) ──
-// Χρησιμοποιεί το ίδιο PIN των Εσόδων. Όταν ξεκλειδωθεί, ισχύει για τη συνεδρία
-// μέχρι να πατήσει ο χρήστης «Κλείδωμα» ή να βγει.
+// Ξεκλειδώνει με master key (system owner) Ή με το PIN του owner.
+// Όταν ξεκλειδωθεί, ισχύει για τη συνεδρία μέχρι «Κλείδωμα» ή έξοδο.
 function privacyUnlocked(){ return !!ST.privacyOK; }
 async function requestPrivacyUnlock(cb){
-  // Ο owner/admin του μαγαζιού μπορεί να ξεκλειδώσει· αν δεν υπάρχει PIN, ζητά να οριστεί
+  // owner/admin μπορεί να ξεκλειδώσει· αν δεν υπάρχει PIN, μπορεί να το ορίσει επιτόπου
   let hasPin=false;
-  try{const {data}=await sb.rpc('has_revenue_pin');hasPin=!!data;}catch(e){}
+  try{const {data}=await sb.rpc('has_shop_pin');hasPin=!!data;}catch(e){}
   const T=(el,en)=>L(el,en);
+  const canSet=(ST.role==='owner'||ST.role==='admin');
+  if(!hasPin){
+    // Δεν υπάρχει PIN: αν είναι owner/admin, άνοιξε ροή ορισμού· αλλιώς ενημέρωσε
+    if(canSet){ ST._pvCb=cb||null; return shopSetPinModal(function(){ /* μετά τον ορισμό, ζήτα ξεκλείδωμα */ requestPrivacyUnlock(ST._pvCb); }); }
+    const body0='<div style="text-align:center"><div style="font-size:40px">🔒</div>'+
+      '<p class="muted" style="font-size:13px;margin:8px 0 14px">'+T('Δεν έχει οριστεί PIN ακόμα.','No PIN set yet.')+'</p></div>';
+    return showModal('🔒',body0,T('ΟΚ','OK'),function(){closeModal();});
+  }
   const body='<div style="text-align:center">'+
     '<div style="font-size:40px">🔒</div>'+
-    '<p class="muted" style="font-size:13px;margin:8px 0 14px">'+
-      (hasPin?T('Βάλε εξαψήφιο pin.','Enter six-digit PIN.')
-             :T('Δεν έχεις ορίσει PIN ακόμα. Όρισέ το από τα Έσοδα πρώτα.','No PIN set yet. Set it from Revenue first.'))+'</p>'+
-    (hasPin?'<input id="pv-pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="••••••" style="width:100%;box-sizing:border-box;padding:13px;border:1px solid var(--line);border-radius:12px;font-size:24px;text-align:center;letter-spacing:9px" oninput="if(this.value.length===6)pvTryUnlock()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();pvTryUnlock();}">'+
-      '<div id="pv-err" style="min-height:20px;margin-top:8px;font-size:13px;color:var(--bad)"></div>':'')+
+    '<p class="muted" style="font-size:13px;margin:8px 0 14px">'+T('Βάλε εξαψήφιο pin.','Enter six-digit PIN.')+'</p>'+
+    '<input id="pv-pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="••••••" style="width:100%;box-sizing:border-box;padding:13px;border:1px solid var(--line);border-radius:12px;font-size:24px;text-align:center;letter-spacing:9px" oninput="if(this.value.length===6)pvTryUnlock()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();pvTryUnlock();}">'+
+    '<div id="pv-err" style="min-height:20px;margin-top:8px;font-size:13px;color:var(--bad)"></div>'+
   '</div>';
   ST._pvCb=cb||null;
-  showModal('🔒',body,hasPin?T('Ξεκλείδωμα','Unlock'):T('ΟΚ','OK'),hasPin?pvTryUnlock:function(){closeModal();});
+  showModal('🔒',body,T('Ξεκλείδωμα','Unlock'),pvTryUnlock);
   setTimeout(function(){const el=document.getElementById('pv-pin');if(el)el.focus();},100);
 }
 async function pvTryUnlock(){
@@ -508,7 +514,7 @@ async function pvTryUnlock(){
   const err=document.getElementById('pv-err');
   if(!/^\d{6}$/.test(pin)){if(err)err.textContent=L('6 ψηφία','6 digits');return;}
   try{
-    const {data,error}=await sb.rpc('check_revenue_pin',{try_pin:pin});
+    const {data,error}=await sb.rpc('check_shop_pin',{try_pin:pin});
     if(error)throw error;
     if(!data){if(err)err.textContent='❌ '+L('Λάθος PIN','Wrong PIN');const el=document.getElementById('pv-pin');if(el){el.value='';el.focus();}return;}
     ST.privacyOK=true;
@@ -518,6 +524,39 @@ async function pvTryUnlock(){
   }catch(e){if(err)err.textContent='❌ '+(e.message||e);}
 }
 function lockPrivacy(){ ST.privacyOK=false; rerenderCurrent(); }
+
+// ── Ορισμός/Αλλαγή Κωδικού Ασφαλείας (owner PIN) ──
+// Ένα PIN ανά owner, καλύπτει όλα τα μαγαζιά του. Μόνο owner/admin.
+// onDone(): προαιρετικό callback μετά από επιτυχή αποθήκευση.
+function shopSetPinModal(onDone){
+  const T=(el,en)=>L(el,en);
+  if(ST.role!=='owner'&&ST.role!=='admin'){toast('🔒 '+T('Μόνο owner/admin','Owner/admin only'));return;}
+  ST._pinDoneCb=onDone||null;
+  const body='<div style="text-align:center">'+
+    '<div style="font-size:40px">🔐</div>'+
+    '<p class="muted" style="font-size:13px;margin:8px 0 14px">'+T('6 ψηφία. Καλύπτει όλα τα μαγαζιά σου. Θα ζητείται για τα ευαίσθητα νούμερα.','6 digits. Covers all your shops. Required for sensitive figures.')+'</p>'+
+    '<input id="sp-pin1" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="'+T('Νέο PIN','New PIN')+'" style="width:100%;box-sizing:border-box;padding:13px;border:1px solid var(--line);border-radius:12px;font-size:22px;text-align:center;letter-spacing:8px;margin-bottom:8px">'+
+    '<input id="sp-pin2" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="'+T('Επανάληψη','Repeat')+'" style="width:100%;box-sizing:border-box;padding:13px;border:1px solid var(--line);border-radius:12px;font-size:22px;text-align:center;letter-spacing:8px" onkeydown="if(event.key===\'Enter\'){event.preventDefault();shopSavePin();}">'+
+    '<div id="sp-err" style="min-height:20px;margin-top:8px;font-size:13px;color:var(--bad)"></div>'+
+  '</div>';
+  showModal('🔐',body,T('Αποθήκευση','Save'),shopSavePin);
+  setTimeout(function(){const el=document.getElementById('sp-pin1');if(el)el.focus();},100);
+}
+async function shopSavePin(){
+  const a=(document.getElementById('sp-pin1')||{}).value||'';
+  const b=(document.getElementById('sp-pin2')||{}).value||'';
+  const err=document.getElementById('sp-err');
+  if(!/^\d{6}$/.test(a)){if(err)err.textContent=L('Το PIN πρέπει να είναι 6 ψηφία','PIN must be 6 digits');return;}
+  if(a!==b){if(err)err.textContent=L('Τα PIN δεν ταιριάζουν','PINs do not match');return;}
+  try{
+    const {data,error}=await sb.rpc('set_shop_pin',{new_pin:a});
+    if(error)throw error;
+    if(data===false){if(err)err.textContent=L('Δεν έχεις δικαίωμα','Not allowed');return;}
+    closeModal();
+    toast('✅ '+L('Το PIN ορίστηκε','PIN set'));
+    const cb=ST._pinDoneCb; ST._pinDoneCb=null; if(cb)cb();
+  }catch(e){if(err)err.textContent='❌ '+(e.message||e);}
+}
 // Κρύβει ένα ποσό πίσω από κουμπί ξεκλειδώματος αν δεν έχει ξεκλειδωθεί
 function maybeHide(html){
   if(privacyUnlocked())return html;
@@ -7308,6 +7347,13 @@ function drawPayroll(){ persistNav();
       (cs.length?'':'<button class="btn ghost" style="width:100%;margin-top:6px" onclick="csPresetGR()">🇬🇷 '+T('Προτεινόμενες Ελλάδας','Greek Presets')+'</button>')+
       '<button class="btn" style="margin-top:12px" onclick="saveContribSetup()">💾 '+T('Αποθήκευση','Save')+'</button>'+
     '</div>';
+    if(ST.role==='owner'||ST.role==='admin'){
+      h+='<div class="card" style="margin-top:14px">'+
+        '<div style="font-size:14px;font-weight:700;margin-bottom:4px">🔐 '+T('Κωδικός Ασφαλείας','Security PIN')+'</div>'+
+        '<div class="muted" style="font-size:12px;margin-bottom:10px">'+T('6ψήφιο PIN που κλειδώνει τα ευαίσθητα οικονομικά νούμερα. Ένα PIN καλύπτει όλα τα μαγαζιά σου.','A 6-digit PIN that locks sensitive financial figures. One PIN covers all your shops.')+'</div>'+
+        '<button class="btn ghost" style="width:100%" onclick="shopSetPinModal()">🔐 '+T('Ορισμός / Αλλαγή PIN','Set / Change PIN')+'</button>'+
+      '</div>';
+    }
     h+='</div></div>'; c.innerHTML=h; return;
   }
 
