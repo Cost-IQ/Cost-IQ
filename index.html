@@ -264,7 +264,7 @@ let _searchT=null;
 function debSearch(fn){clearTimeout(_searchT);_searchT=setTimeout(fn,220);}
 const EN_DEF={
   products:'Products',suppliers:'Suppliers',orders:'Orders',ocr:'Scan Invoice',invoices:'Invoices',recipes:'Recipes',agree:'Agreements',events:'Events',history:'Stats',daily:'Day',expenses:'Expenses',payroll:'Payroll',cashflow:'Cash Flow',vat:'VAT',
-  kindBeverage:'Drinks',kindFood:'Food',kindSupplies:'Supplies',sale:'Sale',
+  kindBeverage:'Beverages',kindFood:'Food',kindSupplies:'Supplies',sale:'Sale',
   searchPh:'🔍 Search…',sortLabel:'Sort:',sortCat:'Category',sortSub:'Sub-Category',sortName:'Name (A→Z)',sortPrice:'Price (low→high)',
   wordProducts:'products',addBtn:'Add',noProducts:'No products',
   hSupPrices:'SUPPLIER PRICES',hAddPrice:'ADD PRICE',hCosting:'COSTING',hInfo:'DETAILS',pdNotes:'Notes (origin/vintage)',phNotes:'e.g. Naxos / Greece, or wine vintage 2019',
@@ -3051,7 +3051,7 @@ const LABEL_KEYS=[
   ['products','Προϊόντα'],['suppliers','Προμηθευτές'],['orders','Παραγγελίες'],
   ['ocr','Πρόσθεσε Τιμολόγιο'],['invoices','Τιμολόγια'],['recipes','Συνταγές'],['daily','Ημέρα'],['expenses','Έξοδα'],
   ['agree','Συμφωνίες'],['events','Εκδηλώσεις'],['history','Στατιστικά'],
-  ['kindBeverage','Ποτά'],['kindFood','Τρόφιμα'],['kindSupplies','Αναλώσιμα'],
+  ['kindBeverage','Ποτά & Ροφήματα'],['kindFood','Τρόφιμα'],['kindSupplies','Αναλώσιμα'],
   ['sale','Πώληση'],['searchPh','🔍 Αναζήτηση…'],['sortLabel','Ταξινόμηση:'],
   ['sortCat','Κατηγορία'],['sortSub','Υποκατηγορία'],['sortName','Όνομα (A→Ω)'],['sortPrice','Τιμή (φθηνό→ακριβό)'],
   ['wordProducts','προϊόντα'],['addBtn','Προσθήκη'],['noProducts','Κανένα προϊόν'],
@@ -3162,7 +3162,7 @@ function renderList(){
   else if(sb2==='price'){items=items.slice().sort((a,b)=>((ST.best[a.id]||{}).price||1e9)-((ST.best[b.id]||{}).price||1e9));groups={'':items};}
   let h=sectionNav()+'<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto">'+
     '<div class="tabs">'+
-    '<div class="tab '+(ST.kind==='beverage'?'active':'')+'" onclick="setKind(\'beverage\')">🍺 '+lbl('kindBeverage','Ποτά')+'</div>'+
+    '<div class="tab '+(ST.kind==='beverage'?'active':'')+'" onclick="setKind(\'beverage\')">🍺 '+lbl('kindBeverage','Ποτά & Ροφήματα')+'</div>'+
     '<div class="tab '+(ST.kind==='food'?'active':'')+'" onclick="setKind(\'food\')">🍽️ '+lbl('kindFood','Τρόφιμα')+'</div>'+
     '<div class="tab '+(ST.kind==='supplies'?'active':'')+'" onclick="setKind(\'supplies\')">📦 '+lbl('kindSupplies','Αναλώσιμα')+'</div></div>'+
     '<input class="search" autocomplete="off" autocorrect="off" spellcheck="false" id="q" placeholder="'+lbl('searchPh','🔍 Αναζήτηση…')+'" oninput="debSearch(renderList)" value="'+esc(q)+'">'+
@@ -3376,7 +3376,7 @@ function drawProd(){persistNav();
     '<div class="card" style="margin:0"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px"'+'>📋 '+lbl('hInfo','ΣΤΟΙΧΕΙΑ')+'</h3>'+
       '<div class="field"><label>'+lbl('pdSku','Όνομα προϊόντος (SKU)')+'</label><input id="pi-sku" type="text" value="'+esc(p.sku)+'"></div>'+
       '<div class="field"><label>'+lbl('pdKind','Τμήμα')+'</label><select id="pi-kind" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
-        ['beverage','food','supplies'].map(k=>'<option value="'+k+'"'+(p.kind===k?' selected':'')+'>'+(k==='beverage'?'🍺 '+lbl('kindBeverage','Ποτά'):(k==='food'?'🍽️ '+lbl('kindFood','Τρόφιμα'):'📦 '+lbl('kindSupplies','Αναλώσιμα')))+'</option>').join('')+'</select></div>'+
+        ['beverage','food','supplies'].map(k=>'<option value="'+k+'"'+(p.kind===k?' selected':'')+'>'+(k==='beverage'?'🍺 '+lbl('kindBeverage','Ποτά & Ροφήματα'):(k==='food'?'🍽️ '+lbl('kindFood','Τρόφιμα'):'📦 '+lbl('kindSupplies','Αναλώσιμα')))+'</option>').join('')+'</select></div>'+
       '<div class="field"><label>'+lbl('wCategory','Κατηγορία')+'</label><input id="pi-cat" type="text" value="'+esc(p.category||'')+'" placeholder="'+lbl('phCat','δικές σου κατηγορίες')+'"></div>'+
       '<div class="field"><label>'+lbl('wSubcat','Υποκατηγορία')+'</label><input id="pi-sub" type="text" value="'+esc(p.sub_category||'')+'" placeholder="'+lbl('phSub','δικές σου υποκατηγορίες')+'"></div>'+
       '<div class="field"><label>'+lbl('pdInvName','Όνομα Τιμολογίου (για OCR)')+'</label><input id="pi-inv" type="text" value="'+esc(p.invoice_name||'')+'" placeholder="'+lbl('phInv','λέξεις όπως στο τιμολόγιο')+'"></div>'+
@@ -4099,7 +4099,7 @@ function renderOrders(){
   let h=sectionNav()+
     '<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px)"><div style="max-width:1400px;margin:0 auto">'+
     '<div class="tabs lap-tabs">'+
-      '<div class="tab '+(ST.okind==='beverage'?'active':'')+'" onclick="setOKind(\'beverage\')">🍺 '+lbl('kindBeverage','Ποτά')+'</div>'+
+      '<div class="tab '+(ST.okind==='beverage'?'active':'')+'" onclick="setOKind(\'beverage\')">🍺 '+lbl('kindBeverage','Ποτά & Ροφήματα')+'</div>'+
       '<div class="tab '+(ST.okind==='food'?'active':'')+'" onclick="setOKind(\'food\')">🍽️ '+lbl('kindFood','Φαγητό')+'</div>'+
       '<div class="tab '+(ST.okind==='supplies'?'active':'')+'" onclick="setOKind(\'supplies\')">📦 '+lbl('kindSupplies','Αναλώσιμα')+'</div></div></div></div>'+
     '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="orderSummary()">📋 '+lbl('oSummary','Σύνοψη & Αποστολή')+'</button>'+
@@ -4153,7 +4153,7 @@ function stockTotalValue(){
 }
 function updateStockTotal(){const el=document.getElementById('stockTotal');if(el)el.textContent=money(stockTotalValue());}
 // ═══════════ 📸 ΑΠΟΓΡΑΦΕΣ (Stock Takes) ═══════════
-function kindLabel(k){return k==='beverage'?('🍺 '+lbl('kindBeverage','Ποτά')):(k==='food'?('🍽️ '+lbl('kindFood','Τρόφιμα')):('📦 '+lbl('kindSupplies','Αναλώσιμα')));}
+function kindLabel(k){return k==='beverage'?('🍺 '+lbl('kindBeverage','Ποτά & Ροφήματα')):(k==='food'?('🍽️ '+lbl('kindFood','Τρόφιμα')):('📦 '+lbl('kindSupplies','Αναλώσιμα')));}
 // Μαζεύει τις τρέχουσες γραμμές αποθέματος του ενεργού τμήματος (από τα πεδία ή τη βάση)
 function currentStockLines(){
   const isBev=ST.okind==='beverage';const lines=[];let total=0;
@@ -6342,7 +6342,7 @@ async function ocrNewProduct(i){
   const ln=ST.ocr.lines[i]; const raw=(ln.raw||'').trim(); if(!raw){toast('Κενή γραμμή');return;}
   const name=prompt(L('Όνομα προϊόντος (πάτα OK για την περιγραφή, ή διόρθωσέ το):','Product name (OK to keep description, or edit):'), raw);
   if(name===null)return; const sku=(String(name).trim()||raw);
-  let k=prompt(L('Τμήμα;  1 = Ποτά   2 = Τρόφιμα   3 = Αναλώσιμα','Section?  1 = Beverage   2 = Food   3 = Supplies'),'1');
+  let k=prompt(L('Τμήμα;  1 = Ποτά & Ροφήματα   2 = Τρόφιμα   3 = Αναλώσιμα','Section?  1 = Beverages   2 = Food   3 = Supplies'),'1');
   if(k===null)return;
   const kind=({'1':'beverage','2':'food','3':'supplies'}[String(k).trim()])||'beverage';
   const tid=curTenant();
@@ -6586,7 +6586,7 @@ function manualView(){
   const supOpts='<option value="">'+lbl('mpOrType','— ή γράψε όνομα δεξιά —')+'</option>'+ST.suppliers.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
   const manuals=(ST.history||[]).filter(r=>(r.notes||'').indexOf('Χωρίς')>=0).slice(0,30);
   let h='<div class="card" style="margin-top:12px;border:1.5px dashed var(--accent)"><h3 style="font-size:13px;color:var(--accent);margin-bottom:10px">📝 '+lbl('mpTitle','ΧΕΙΡΟΚΙΝΗΤΗ ΑΓΟΡΑ (χωρίς τιμολόγιο)')+'</h3>'+
-    '<div class="tabs" style="margin:0 0 10px"><div class="tab '+(ST.mkind==='beverage'?'active':'')+'" onclick="setMKind(\'beverage\')">🍺 '+lbl('kindBeverage','Ποτά')+'</div><div class="tab '+(ST.mkind==='food'?'active':'')+'" onclick="setMKind(\'food\')">🍽️ '+lbl('kindFood','Τρόφιμα')+'</div><div class="tab '+(ST.mkind==='supplies'?'active':'')+'" onclick="setMKind(\'supplies\')">📦 '+lbl('kindSupplies','Αναλώσιμα')+'</div></div>'+
+    '<div class="tabs" style="margin:0 0 10px"><div class="tab '+(ST.mkind==='beverage'?'active':'')+'" onclick="setMKind(\'beverage\')">🍺 '+lbl('kindBeverage','Ποτά & Ροφήματα')+'</div><div class="tab '+(ST.mkind==='food'?'active':'')+'" onclick="setMKind(\'food\')">🍽️ '+lbl('kindFood','Τρόφιμα')+'</div><div class="tab '+(ST.mkind==='supplies'?'active':'')+'" onclick="setMKind(\'supplies\')">📦 '+lbl('kindSupplies','Αναλώσιμα')+'</div></div>'+
     '<div class="field"><label>'+lbl('wProduct','Προϊόν')+'</label><select id="mp-prod"></select></div>'+
     '<div class="field"><label>'+lbl('mpSupExist','Προμηθευτής (υπάρχων)')+'</label><select id="mp-sup">'+supOpts+'</select></div>'+
     '<div class="field"><label>'+lbl('mpOrName','…ή γράψε όνομα (πχ λαϊκή)')+'</label><input id="mp-supname" type="text" placeholder="'+lbl('mpOrNamePh','πχ λαϊκή')+'"></div>'+
@@ -9381,7 +9381,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·330';
+const BUILD='v'+'2026.07.21·331';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
