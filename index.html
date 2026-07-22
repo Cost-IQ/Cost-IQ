@@ -5238,7 +5238,7 @@ async function loadProfit(){
 function pfNum(id){const el=document.getElementById(id);return el?(parseFloat(el.value)||0):0;}
 // ── Αυτόματη άντληση δεδομένων περιόδου για την Κερδοφορία ──
 async function loadProfitSources(start,end){
-  const out={sales:null,wages:0,social:0,opexList:[],opex:0,cashUnrec:0,delNet:0,tillTotal:0,tillDecl:0,salesBrk:null,hasData:false};
+  const out={sales:null,wages:0,social:0,opexList:[],opex:0,rent:0,utilities:0,cashUnrec:0,delNet:0,tillTotal:0,tillDecl:0,salesBrk:null,hasData:false};
   const n=v=>(v!=null&&v!==''?(+v):0);
   const T=(el,en)=>L(el,en);
   try{
@@ -5273,11 +5273,15 @@ async function loadProfitSources(start,end){
     const {data:sh}=await sb.from('work_shifts').select('*').eq('tenant_id',curTenant()).gte('work_date',start).lte('work_date',end);
     (sh||[]).forEach(s=>{ out.wages+=n(s.total_amount); out.social+=n(s.empr_contrib); });
     if(sh&&sh.length)out.hasData=true;
-    // Έξοδα: ανά όνομα (χωρίς προμηθευτές — αυτοί είναι αγορές)
+    // Έξοδα: ανά κατηγορία. Ενοίκιο & ΔΕΗ/κοινόχρηστα ξεχωριστά, υπόλοιπα → Λοιπά.
+    // Εξαιρούνται: suppliers (=αγορές) και staff (=μισθοί, έρχονται από Μισθοδοσία).
     const {data:ex}=await sb.from('daily_expenses').select('*').eq('tenant_id',curTenant()).gte('exp_date',start).lte('exp_date',end);
     const map={};
     (ex||[]).forEach(e=>{
-      if(e.category==='suppliers')return;
+      const cat=e.category||'other';
+      if(cat==='suppliers'||cat==='staff')return;      // αγορές & μισθοί: αλλού
+      if(cat==='rent'){ out.rent+=n(e.amount); return; }
+      if(cat==='utilities'){ out.utilities+=n(e.amount); return; }
       const nm=(e.label&&e.label.trim())?e.label.trim():T('Έξοδο','Expense');
       map[nm]=(map[nm]||0)+n(e.amount);
     });
@@ -5382,7 +5386,7 @@ function calcProfit(p){
   const purchases=pFood+pBev+pSup;
   // Προσωπικό & λειτουργικά
   const labour=use(p.wages,A.wages)+use(p.social,A.social);
-  const opex=(parseFloat(p.rent)||0)+(parseFloat(p.utilities)||0)+use(p.other_expenses,A.opex);
+  const opex=use(p.rent,A.rent)+use(p.utilities,A.utilities)+use(p.other_expenses,A.opex);
   const mk=(sales)=>{
     const gp=sales-purchases;
     const np=gp-labour-opex;
@@ -5651,8 +5655,8 @@ function drawProfit(){
       f('pf-vhl','ΦΠΑ '+T('Ροφημάτων Πακέτο','Beverages Takeaway')+' %',p.vat_hot_low!=null?p.vat_hot_low:vRed)+
       fa('pf-w',T('Μισθοί','Wages'),p.wages,A.wages||0,T('από Μισθοδοσία','from Payroll'))+
       fa('pf-soc','ΙΚΑ / '+T('Εισφορές','Contributions'),p.social,A.social||0,T('από Μισθοδοσία','from Payroll'))+
-      fa('pf-rent',T('Ενοίκιο','Rent'),p.rent,0,'')+
-      fa('pf-util',T('ΔΕΗ/Νερό/Internet','Utilities'),p.utilities,0,'')+
+      fa('pf-rent',T('Ενοίκιο','Rent'),p.rent,A.rent||0,T('από Έξοδα','from Expenses'))+
+      fa('pf-util',T('ΔΕΗ/Νερό/Internet','Utilities'),p.utilities,A.utilities||0,T('από Έξοδα','from Expenses'))+
       fa('pf-oth',T('Λοιπά Έξοδα','Other Expenses'),p.other_expenses,A.opex||0,T('από Έξοδα','from Expenses'),
         (A.opexList&&A.opexList.length)?A.opexList.slice(0,6).map(x=>esc(x.name)+' '+money(Math.round(x.amt))).join(' · '):'')+
       (privacyUnlocked()?fa('pf-cash','💵 '+T('Μετρητά','Cash'),p.sales_cash_unrec,A.cashUnrec||0,T('από Ταμείο','from Till')):'')+
@@ -5732,15 +5736,17 @@ async function delProfitPeriod(start,end){
 function pfLive(){
   const p=ST.pf||{};
   const cb=document.getElementById('pf-vat'); if(cb)p.sales_incl_vat=cb.checked;
-  p.sales_food=pfNum('pf-sf'); p.sales_bev=pfNum('pf-sb'); p.sales_hot=pfNum('pf-sh'); p.sales_hot_low=pfNum('pf-shl');
+  // Κενό πεδίο → null (ΟΧΙ 0), ώστε να συνεχίσει να ισχύει η αυτόματη τιμή.
+  // Αν γράψεις 0, μένει 0 (χειροκίνητο μηδέν).
+  const gv=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?parseFloat(el.value):null;};
+  p.sales_food=gv('pf-sf'); p.sales_bev=gv('pf-sb'); p.sales_hot=gv('pf-sh'); p.sales_hot_low=gv('pf-shl');
   const _std=vatByRole('std',24), _red=vatByRole('red',13);
   p.vat_food=pfNum('pf-vf')||_red; p.vat_bev=pfNum('pf-vb')||_std; p.vat_hot=pfNum('pf-vh')||_std; p.vat_hot_low=pfNum('pf-vhl')||_red;
-  p.wages=pfNum('pf-w'); p.social=pfNum('pf-soc');
-  p.rent=pfNum('pf-rent'); p.utilities=pfNum('pf-util'); p.other_expenses=pfNum('pf-oth');
+  p.wages=gv('pf-w'); p.social=gv('pf-soc');
+  p.rent=gv('pf-rent'); p.utilities=gv('pf-util'); p.other_expenses=gv('pf-oth');
   // Αν το πεδίο μετρητών είναι κρυμμένο (κλειδωμένο), κράτα την υπάρχουσα τιμή
-  if(document.getElementById('pf-cash'))p.sales_cash_unrec=pfNum('pf-cash');
+  if(document.getElementById('pf-cash'))p.sales_cash_unrec=gv('pf-cash');
   p.tax_pct=pfNum('pf-tax');
-  const gv=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?parseFloat(el.value):null;};
   p.purch_food_manual=gv('pf-pf'); p.purch_bev_manual=gv('pf-pb'); p.purch_sup_manual=gv('pf-ps');
   ST.pf=p; refreshProfitNumbers();   // ΜΟΝΟ τα νούμερα — δεν ξαναφτιάχνει την οθόνη
 }
