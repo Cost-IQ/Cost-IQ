@@ -5342,7 +5342,7 @@ function pfCompareHtml(){
       const ps=new Date(r.period_start+'T12:00:00');
       if(ps.getFullYear()!==year||ps.getMonth()>d.getMonth())return;
       const C=profitCalcFromRow(r); if(!C)return;
-      const M=(ST.pfUseReal!==false&&C.hasCash)?C.real:C.decl;
+      const M=(ST.pfUseReal!==false&&C.hasCash&&privacyUnlocked())?C.real:C.decl;
       rev+=M.sales; prof+=M.np;
     });
     return {rev:rev,prof:prof};
@@ -5364,7 +5364,7 @@ function pfCompareHtml(){
   if(prevRow){
     const P=profitCalcFromRow(prevRow);
     const cur=calcProfit(ST.pf||{});
-    const useReal=(ST.pfUseReal!==false);
+    const useReal=(ST.pfUseReal!==false)&&privacyUnlocked();
     const Mc=(useReal&&cur.hasCash)?cur.real:cur.decl;
     const Mp=(useReal&&P.hasCash)?P.real:P.decl;
     inner+=row(T('Τζίρος — Ίδια Περίοδος Πέρυσι','Sales — Same Period Last Year'),Mc.sales,Mp.sales);
@@ -5516,7 +5516,7 @@ function drawProfit(){
       fa('pf-util',T('ΔΕΗ/Νερό/Internet','Utilities'),p.utilities,0,'')+
       fa('pf-oth',T('Λοιπά Έξοδα','Other Expenses'),p.other_expenses,A.opex||0,T('από Έξοδα','from Expenses'),
         (A.opexList&&A.opexList.length)?A.opexList.slice(0,6).map(x=>esc(x.name)+' '+money(Math.round(x.amt))).join(' · '):'')+
-      fa('pf-cash','💵 '+T('Μετρητά','Cash'),p.sales_cash_unrec,A.cashUnrec||0,T('από Ταμείο','from Till'))+
+      (privacyUnlocked()?fa('pf-cash','💵 '+T('Μετρητά','Cash'),p.sales_cash_unrec,A.cashUnrec||0,T('από Ταμείο','from Till')):'')+
       f('pf-tax','🧾 '+T('Φόρος % (προαιρετικό)','Tax % (optional)'),p.tax_pct)+
     '</div>'+
     '<div style="font-size:11px;color:var(--muted);margin:10px 0 4px">'+T('Αγορές (Αυτόματα από Τιμολόγια + Χειροκίνητες Αγορές — άφησε κενό)','Purchases (Auto from Invoices + Manual Purchases — leave empty)')+':</div>'+
@@ -5532,10 +5532,7 @@ function drawProfit(){
           '<div><div style="font-size:12px">'+T('Μετρητά στον Τζίρο','Cash in Turnover')+'</div><div class="muted" style="font-size:10px">'+T('Επηρεάζει το Prime Cost','Affects Prime Cost')+'</div></div>'+
           '<div style="position:relative;width:46px;height:26px;background:'+(ST.pfUseReal!==false?'var(--accent)':'var(--line)')+';border-radius:26px;transition:.2s;flex:0 0 auto"><div style="position:absolute;height:20px;width:20px;left:'+(ST.pfUseReal!==false?'23px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>'+
         '</div>'
-      : '<div onclick="requestPrivacyUnlock()" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px;margin-top:8px;border-top:1px solid var(--line);cursor:pointer">'+
-          '<div><div style="font-size:12px;color:var(--muted)">'+T('Μετρητά στον Τζίρο','Cash in Turnover')+'</div><div class="muted" style="font-size:10px">'+T('Πάτησε για ξεκλείδωμα','Tap to unlock')+'</div></div>'+
-          '<div style="color:var(--muted);font-size:15px">🔒</div>'+
-        '</div>')+
+      : '<div onclick="requestPrivacyUnlock()" style="display:flex;justify-content:flex-end;align-items:center;padding:10px 0 4px;margin-top:8px;border-top:1px solid var(--line);cursor:pointer"><span style="color:var(--muted);font-size:20px" title="'+T('Βάλε εξαψήφιο pin','Enter six-digit PIN')+'">🔒</span></div>')+
     '<button class="btn" style="margin-top:10px" onclick="saveProfit()">💾 '+T('Αποθήκευση','Save')+'</button>'+
   '</div>';
   // ΔΕΞΙΑ: Αποτελέσματα
@@ -5599,7 +5596,9 @@ function pfLive(){
   p.vat_food=pfNum('pf-vf')||_red; p.vat_bev=pfNum('pf-vb')||_std; p.vat_hot=pfNum('pf-vh')||_std; p.vat_hot_low=pfNum('pf-vhl')||_red;
   p.wages=pfNum('pf-w'); p.social=pfNum('pf-soc');
   p.rent=pfNum('pf-rent'); p.utilities=pfNum('pf-util'); p.other_expenses=pfNum('pf-oth');
-  p.sales_cash_unrec=pfNum('pf-cash'); p.tax_pct=pfNum('pf-tax');
+  // Αν το πεδίο μετρητών είναι κρυμμένο (κλειδωμένο), κράτα την υπάρχουσα τιμή
+  if(document.getElementById('pf-cash'))p.sales_cash_unrec=pfNum('pf-cash');
+  p.tax_pct=pfNum('pf-tax');
   const gv=id=>{const el=document.getElementById(id);return(el&&el.value!=='')?parseFloat(el.value):null;};
   p.purch_food_manual=gv('pf-pf'); p.purch_bev_manual=gv('pf-pb'); p.purch_sup_manual=gv('pf-ps');
   ST.pf=p; refreshProfitNumbers();   // ΜΟΝΟ τα νούμερα — δεν ξαναφτιάχνει την οθόνη
@@ -9552,7 +9551,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·339';
+const BUILD='v'+'2026.07.21·340';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
