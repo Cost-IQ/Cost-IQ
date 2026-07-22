@@ -98,18 +98,19 @@
   .toast.show{opacity:1}
   /* ── Κάρτες σύνοψης κερδοφορίας ── */
   .pcards{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}
-  .pcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 13px;text-align:center}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 13px;text-align:center;position:relative;overflow:hidden}
+  .pcstripe{position:absolute;left:0;top:0;bottom:0;width:4px}
   .pcard .t{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
   .pcard .n{font-size:21px;font-weight:800;margin-top:3px;letter-spacing:-.5px}
   .pcard .s{font-size:10.5px;color:var(--muted);margin-top:2px}
-  .plegend{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11.5px;color:var(--muted)}
+  .plegend{display:grid;grid-template-columns:1fr;gap:9px;font-size:13px;color:var(--muted)}
+  .prow{display:flex;align-items:center;justify-content:space-between}
   @media(max-width:600px){
     .pcards{grid-template-columns:1fr;gap:8px}
-    .pcard{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;text-align:left}
+    .pcard{display:flex;justify-content:space-between;align-items:center;padding:12px 14px 12px 18px;text-align:left}
     .pcard .n{font-size:19px;margin:0}
     .pcard .s{margin:0}
     .pcard .r{text-align:right}
-    .plegend{grid-template-columns:1fr}
   }
   /* ── Sub-tabs με emoji πάνω από τη λέξη ── */
   .subtabs{display:flex;gap:5px;margin-bottom:12px}
@@ -5423,8 +5424,21 @@ function profitTopHtml(M,T,money2,pct,badge){
   const pu=nn(M.purchases), la=nn(M.labour), op=nn(M.opex), np=nn(M.np);
   // Χωρίς πωλήσεις: κρατάμε τις κάρτες ορατές με παύλες, ώστε να μην
   // αναβοσβήνει η οθόνη κάθε φορά που ο χρήστης σβήνει ένα ψηφίο.
+  // Hex τιμές των θεματικών χρωμάτων — χρειάζονται για να φτιάξουμε tint (χρώμα+alpha)
+  const OK_HEX='#1e8449', BAD_HEX='#922b21', ACCENT_HEX='#1a5276', WARN_HEX='#e0a800';
+  // Κάρτα KPI με έγχρωμη λωρίδα αριστερά + διακριτικό tint φόντο
+  const mc=(t,val,sub,valCol,stripeHex,tintBg)=>
+    '<div class="pcard" style="background:'+tintBg+'">'+
+      '<span class="pcstripe" style="background:'+stripeHex+'"></span>'+
+      '<div><div class="t">'+t+'</div></div>'+
+      '<div class="r"><div class="n" style="color:'+valCol+'">'+val+'</div><div class="s">'+sub+'</div></div>'+
+    '</div>';
+
+  // Χωρίς πωλήσεις: κρατάμε τις κάρτες ορατές με παύλες, ώστε να μην
+  // αναβοσβήνει η οθόνη κάθε φορά που ο χρήστης σβήνει ένα ψηφίο.
   if(sales<=0){
-    const empty=(t,sub)=>'<div class="pcard"><div><div class="t">'+t+'</div></div>'+
+    const empty=(t,sub)=>'<div class="pcard"><span class="pcstripe" style="background:var(--line)"></span>'+
+      '<div><div class="t">'+t+'</div></div>'+
       '<div class="r"><div class="n" style="color:var(--muted)">—</div><div class="s">'+sub+'</div></div></div>';
     return '<div class="pcards">'+
       empty(T('Τζίρος','Sales'),T('Καθαρές Πωλήσεις','Net Sales'))+
@@ -5432,46 +5446,60 @@ function profitTopHtml(M,T,money2,pct,badge){
       empty(T('Καθαρό Κέρδος','Net Profit'),T('Περιθώριο','Margin'))+
     '</div>'+
     '<div class="card" style="padding:15px">'+
-      '<h3 style="font-size:13px;color:var(--muted);margin-bottom:11px">📊 '+T('Πού πάνε τα λεφτά','Where the money goes')+'</h3>'+
-      '<div style="display:flex;height:34px;border-radius:6px;overflow:hidden;margin-bottom:13px;background:var(--line)"></div>'+
-      '<div class="muted" style="font-size:12px;text-align:center">'+T('Συμπλήρωσε πωλήσεις για να δεις την κατανομή','Enter sales to see the breakdown')+'</div>'+
+      '<h3 style="font-size:13px;color:var(--muted);margin-bottom:14px">📊 '+T('Κατανομή Τζίρου','Revenue Breakdown')+'</h3>'+
+      '<div style="display:flex;align-items:center;justify-content:center;height:140px">'+
+        '<svg viewBox="0 0 140 140" width="140" height="140" style="transform:rotate(-90deg)">'+
+          '<circle cx="70" cy="70" r="52" fill="none" stroke="var(--line)" stroke-width="26"></circle></svg>'+
+      '</div>'+
+      '<div class="muted" style="font-size:12px;text-align:center;margin-top:6px">'+T('Συμπλήρωσε πωλήσεις για να δεις την κατανομή','Enter sales to see the breakdown')+'</div>'+
     '</div>';
   }
-  const pPu=pu/sales*100, pLa=la/sales*100, pOp=op/sales*100, pNp=np/sales*100;
-  const primeCol=badge(M.primePct,65,70);
-  const npCol=(np>=0)?'var(--ok)':'var(--bad)';
-  // Μπάρα: αν υπάρχει ζημιά, το κέρδος δεν εμφανίζεται
-  const seg=[];
-  if(pPu>0.4)seg.push({w:pPu,c:'#154766',t:pPu.toFixed(0)+'%'});
-  if(pLa>0.4)seg.push({w:pLa,c:'#1a5276',t:pLa.toFixed(0)+'%'});
-  if(pOp>0.4)seg.push({w:pOp,c:'#7d919f',t:pOp.toFixed(0)+'%'});
-  if(pNp>0.4)seg.push({w:pNp,c:'#1e8449',t:pNp.toFixed(0)+'%'});
-  const tot=seg.reduce((a,b)=>a+b.w,0)||100;
-  let bar='';
-  seg.forEach(function(x,i){
-    const r=(i===0?'border-radius:6px 0 0 6px;':'')+(i===seg.length-1?'border-radius:0 6px 6px 0;':'');
-    bar+='<div style="width:'+(x.w/tot*100).toFixed(2)+'%;background:'+x.c+';'+r+
-      'display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#fff;overflow:hidden;white-space:nowrap">'+x.t+'</div>';
+
+  const primeHex=(M.primePct<=65)?OK_HEX:(M.primePct<=70?WARN_HEX:BAD_HEX);
+  const npHex=(np>=0)?OK_HEX:BAD_HEX;
+  const cards='<div class="pcards">'+
+      mc(T('Τζίρος','Sales'),money2(sales),T('Καθαρές Πωλήσεις','Net Sales'),'var(--accent)',ACCENT_HEX,'var(--accent-bg)')+
+      mc('Prime Cost',pct(M.primePct),T('Αγορές + Προσωπικό','Purchases + Labour'),primeHex,primeHex,primeHex+'14')+
+      mc(T('Καθαρό Κέρδος','Net Profit'),money2(np),T('Περιθώριο','Margin')+' '+pct(M.npPct),npHex,npHex,npHex+'14')+
+    '</div>';
+
+  // ── Donut «Κατανομή Τζίρου» ──
+  const Rr=52, Cc=2*Math.PI*Rr;
+  const parts=[
+    {name:T('Αγορές','Purchases'),val:pu,col:'#154766'},
+    {name:T('Μισθοδοσία','Payroll'),val:la,col:'#1a5276'},
+    {name:T('Λειτουργικά','Operating'),val:op,col:'#7d919f'},
+  ];
+  if(np>=0) parts.push({name:T('Καθαρό','Net'),val:np,col:'#1e8449',bold:true});
+  else       parts.push({name:T('Ζημιά','Loss'),val:np,col:'#922b21',bold:true});
+  // Σε ζημιά, ο δακτύλιος δείχνει μόνο την κατανομή κόστους (χωρίς segment κέρδους)
+  const denom=(np>=0)?sales:(pu+la+op);
+  let off=0, ring='';
+  parts.forEach(function(p){
+    if(np<0 && p.bold) return; // χωρίς arc ζημιάς
+    const frac=denom>0?Math.max(0,p.val)/denom:0;
+    const len=frac*Cc;
+    if(len<=0)return;
+    ring+='<circle cx="70" cy="70" r="'+Rr+'" fill="none" stroke="'+p.col+'" stroke-width="26" '+
+      'stroke-dasharray="'+len.toFixed(2)+' '+(Cc-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'"></circle>';
+    off+=len;
   });
-  const lg=(c,t,v,col)=>'<span style="display:flex;align-items:center;gap:7px'+(col?';color:'+col+';font-weight:600':'')+'">'+
-    '<i style="width:9px;height:9px;border-radius:2px;background:'+c+';display:inline-block;flex:0 0 auto"></i>'+
-    t+' <b style="color:'+(col||'var(--fg)')+'">'+money2(v)+'</b></span>';
-  const mc=(t,val,sub,col,bcol)=>'<div class="pcard"'+(bcol?' style="border:1.5px solid '+bcol+'"':'')+'>'+
-    '<div><div class="t">'+t+'</div></div>'+
-    '<div class="r"><div class="n" style="color:'+col+'">'+val+'</div><div class="s">'+sub+'</div></div></div>';
-  return '<div class="pcards">'+
-      mc(T('Τζίρος','Sales'),money2(sales),T('Καθαρές Πωλήσεις','Net Sales'),'var(--accent)',null)+
-      mc('Prime Cost',pct(M.primePct),T('Αγορές + Προσωπικό','Purchases + Labour'),primeCol,primeCol)+
-      mc(T('Καθαρό Κέρδος','Net Profit'),money2(np),T('Περιθώριο','Margin')+' '+pct(M.npPct),npCol,npCol)+
-    '</div>'+
+  const donut='<svg viewBox="0 0 140 140" width="140" height="140" style="transform:rotate(-90deg)">'+
+    '<circle cx="70" cy="70" r="'+Rr+'" fill="none" stroke="var(--line)" stroke-width="26"></circle>'+ring+'</svg>';
+  const center='<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">'+
+    '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">'+T('Τζίρος','Sales')+'</div>'+
+    '<div style="font-size:16px;font-weight:800;color:var(--ink)">'+money2(sales)+'</div></div>';
+  const row=p=>'<div class="prow"'+(p.bold?' style="color:'+p.col+'"':'')+'>'+
+    '<span style="display:flex;align-items:center;gap:9px'+(p.bold?';font-weight:700':'')+'">'+
+      '<i style="width:11px;height:11px;border-radius:50%;background:'+p.col+';display:inline-block;flex:0 0 auto"></i>'+p.name+'</span>'+
+    '<b style="color:'+(p.bold?p.col:'var(--ink)')+'">'+money2(p.val)+'</b></div>';
+
+  return cards+
     '<div class="card" style="padding:15px">'+
-      '<h3 style="font-size:13px;color:var(--muted);margin-bottom:11px">📊 '+T('Πού πάνε τα λεφτά','Where the money goes')+'</h3>'+
-      '<div style="display:flex;height:34px;border-radius:6px;overflow:hidden;margin-bottom:13px">'+bar+'</div>'+
-      '<div class="plegend">'+
-        lg('#154766',T('Αγορές','Purchases'),pu)+
-        lg('#1a5276',T('Μισθοδοσία','Payroll'),la)+
-        lg('#7d919f',T('Λειτουργικά','Operating'),op)+
-        lg(np>=0?'#1e8449':'#922b21',np>=0?T('Καθαρό','Net'):T('Ζημιά','Loss'),np,npCol)+
+      '<h3 style="font-size:13px;color:var(--muted);margin-bottom:14px">📊 '+T('Κατανομή Τζίρου','Revenue Breakdown')+'</h3>'+
+      '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">'+
+        '<div style="position:relative;width:140px;height:140px;flex:0 0 auto;margin:0 auto">'+donut+center+'</div>'+
+        '<div class="plegend" style="flex:1 1 150px;min-width:150px">'+parts.map(row).join('')+'</div>'+
       '</div>'+
     '</div>';
 }
