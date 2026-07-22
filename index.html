@@ -7287,8 +7287,18 @@ function drawPayroll(){ persistNav();
       '<span style="font-size:13px;font-weight:600">'+periodLabel(period,range)+'</span>'+
       '<span onclick="ST.payOffset=(ST.payOffset||0)+1;drawPayroll()" style="cursor:pointer;font-size:18px;padding:0 8px">›</span>'+
     '</div>';
+    // Προσωρινός διακόπτης ματιάς (μόνο αν υπάρχουν βάρδιες)· default = ρύθμιση μαγαζιού
+    const shopMode=(ST.daySetup&&ST.daySetup.tipMode)||'shift';
+    const hasShifts=!!(ST.daySetup&&ST.daySetup.shifts);
+    if(hasShifts){
+      if(ST.tipViewMode==null)ST.tipViewMode=shopMode;
+      const vm=ST.tipViewMode;
+      h+='<div style="display:flex;gap:6px;margin-bottom:12px">'+
+        '<div onclick="ST.tipViewMode=\'shift\';drawPayroll()" style="flex:1;text-align:center;padding:7px;border-radius:20px;cursor:pointer;font-size:12px;'+(vm==='shift'?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">🌅🌙 '+T('Ανά Βάρδια','Per Shift')+'</div>'+
+        '<div onclick="ST.tipViewMode=\'day\';drawPayroll()" style="flex:1;text-align:center;padding:7px;border-radius:20px;cursor:pointer;font-size:12px;'+(vm==='day'?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">📅 '+T('Ανά Μέρα','Whole Day')+'</div>'+
+      '</div>';
+    } else { ST.tipViewMode=null; }
     const td=computeTips(range);
-    // Αξίες ώρας
     h+='<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:12px">';
     Object.keys(td.rates).forEach(k=>{
       const lbl=k==='morning'?('🌅 '+T('Πρωί','Morning')):(k==='night'?('🌙 '+T('Βράδυ','Night')):T('Αξία Ώρας','Hour Value'));
@@ -7806,6 +7816,9 @@ function computeTips(range){
   const n=v=>(v!=null&&v!==''?(+v):0);
   const emps=ST.employees||[]; const shifts=ST.workShifts||[]; const closes=ST.payCloses||[];
   const T=(el,en)=>L(el,en);
+  // Τρόπος διαμοιρασμού: 'day' = όλη η μέρα σε ένα pot, 'shift' = ξεχωριστά ανά βάρδια.
+  // Το view μπορεί να κάνει προσωρινό override μέσω ST.tipViewMode.
+  const mode=ST.tipViewMode||(ST.daySetup&&ST.daySetup.tipMode)||'shift';
   // Ανά ημέρα: pot ανά βάρδια + σύνολο ωρών ανά βάρδια
   const days={};
   closes.forEach(cl=>{
@@ -7823,6 +7836,14 @@ function computeTips(range){
     else if(st==='morning'||st==='night'){ add(st,n(s.hours)); }
     else { add('all',n(s.hours)); }
   });
+  // Σε mode 'day': ένωσε τα pots της κάθε μέρας σε ένα ('all') και μέτρα όλες τις ώρες μαζί
+  if(mode==='day'){
+    Object.keys(days).forEach(d=>{
+      const day=days[d]; let card=0,cash=0;
+      Object.keys(day.pots).forEach(k=>{card+=n(day.pots[k].card);cash+=n(day.pots[k].cash);});
+      day.pots={all:{card:card,cash:cash}};
+    });
+  }
   // Rate ανά ημέρα/βάρδια, και μοίρασμα
   const perEmp={}; let grandTips=0;
   const rateSum={}, rateCount={};
@@ -7839,15 +7860,21 @@ function computeTips(range){
         const e=emps.find(x=>x.id===s.employee_id); if(!e)return;
         const unit=n(e.tip_units)||1; const st=s.shift_type||'all';
         let hh=0;
-        if(st==='both')hh=(k==='morning')?n(s.hours_morning):(k==='night'?n(s.hours_night):0);
-        else if(st===k)hh=n(s.hours);
-        else if(st==='all'&&k==='all')hh=n(s.hours);
+        if(mode==='day'){
+          // Όλες οι ώρες της μέρας του εργαζόμενου, ανεξαρτήτως βάρδιας
+          hh=(st==='both')?(n(s.hours_morning)+n(s.hours_night)):n(s.hours);
+        } else {
+          if(st==='both')hh=(k==='morning')?n(s.hours_morning):(k==='night'?n(s.hours_night):0);
+          else if(st===k)hh=n(s.hours);
+          else if(st==='all'&&k==='all')hh=n(s.hours);
+        }
         if(hh<=0)return;
-        const w=hh*unit; weighted+=w; parts.push({id:e.id,name:e.name,unit:unit,hh:hh,w:w,k:k});
+        const w=hh*unit; weighted+=w; parts.push({id:e.id,name:e.name,unit:unit,hh:hh,w:w,k:(mode==='day'?'all':k)});
       });
       if(weighted<=0)return;
       const rate=potTotal/weighted;
-      rateSum[k]=(rateSum[k]||0)+rate; rateCount[k]=(rateCount[k]||0)+1;
+      const rk=(mode==='day')?'all':k;
+      rateSum[rk]=(rateSum[rk]||0)+rate; rateCount[rk]=(rateCount[rk]||0)+1;
       const cardShare=potTotal>0?(n(pot.card)/potTotal):0;
       parts.forEach(p=>{
         const amt=p.w*rate;
@@ -9437,6 +9464,15 @@ function daySetupScreen(){
       '<div onclick="dsToggleShifts()" style="position:relative;width:52px;height:30px;background:'+(s.shifts?'var(--accent)':'var(--line)')+';border-radius:30px;cursor:pointer;transition:.2s;flex:0 0 auto"><div style="position:absolute;height:24px;width:24px;left:'+(s.shifts?'25px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>'+
       '<input type="checkbox" id="ds-shifts" '+(s.shifts?'checked':'')+' style="display:none">'+
     '</div>'+
+    // Διαμοιρασμός Tips (μόνο όταν υπάρχουν βάρδιες)
+    (s.shifts?('<div style="padding:12px 0;border-bottom:1px solid var(--line)">'+
+      '<div style="font-size:14px;font-weight:600;margin-bottom:3px">'+T('Διαμοιρασμός Φιλοδωρημάτων','Tip Distribution')+'</div>'+
+      '<div class="muted" style="font-size:11px;margin-bottom:8px">'+T('Ίδια λογική (ώρες × μονάδες) ανά μέρα. Επίλεξε αν το ταμείο ενώνεται.','Same logic (hours × units) per day. Choose if the pot is combined.')+'</div>'+
+      '<div style="display:flex;gap:6px">'+
+        '<div onclick="dsSetTipMode(\'shift\')" style="flex:1;text-align:center;padding:9px;border-radius:8px;cursor:pointer;font-size:12px;'+((s.tipMode||'shift')==='shift'?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">🌅🌙 '+T('Ανά Βάρδια','Per Shift')+'</div>'+
+        '<div onclick="dsSetTipMode(\'day\')" style="flex:1;text-align:center;padding:9px;border-radius:8px;cursor:pointer;font-size:12px;'+((s.tipMode||'shift')==='day'?'background:var(--accent);color:#fff':'border:1px solid var(--line);color:var(--muted)')+'">📅 '+T('Ανά Μέρα','Whole Day')+'</div>'+
+      '</div>'+
+    '</div>'):'')+
     // Νόμισμα
     '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)">'+
       '<div><div style="font-size:14px;font-weight:600">'+T('Νόμισμα','Currency')+'</div></div>'+
@@ -9507,8 +9543,9 @@ function dsCollect(){
     const nm=document.getElementById('ds-delname-'+i), cm=document.getElementById('ds-delcom-'+i);
     delivery.push({name:nm?nm.value:'', commission:cm&&cm.value!==''?(+cm.value):0});
   });
-  return {shifts,currency,vatRates,points,delivery,delInZ:(ST.daySetup&&ST.daySetup.delInZ)||false};
+  return {shifts,currency,vatRates,points,delivery,delInZ:(ST.daySetup&&ST.daySetup.delInZ)||false,tipMode:(ST.daySetup&&ST.daySetup.tipMode)||'shift'};
 }
+function dsSetTipMode(m){ const s=dsCollect(); s.tipMode=m; ST.daySetup=s; daySetupScreen(); }
 function dsToggleDelZ(){ const s=dsCollect(); s.delInZ=!s.delInZ; ST.daySetup=s; daySetupScreen(); }
 function dsAddDelivery(){ const s=dsCollect(); s.delivery=s.delivery||[]; s.delivery.push({name:'',commission:30}); ST.daySetup=s; daySetupScreen(); }
 function dsRemoveDelivery(i){ const s=dsCollect(); s.delivery.splice(i,1); ST.daySetup=s; daySetupScreen(); }
