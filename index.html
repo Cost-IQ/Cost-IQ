@@ -8163,8 +8163,8 @@ function drawCashflow(){ persistNav();
   if(!d.hasOpening)h+='<div class="card" style="border:1px solid var(--warn);background:#FFF7E6;margin-bottom:12px"><div style="font-size:12px;color:var(--warn)">⚠ '+T('Δεν έχεις ορίσει αρχικά υπόλοιπα — τα νούμερα δείχνουν μόνο τις κινήσεις','No opening balances set — figures show movements only')+'</div></div>';
   // Υπόλοιπα
   h+='<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:16px">'+
-    '<div class="card" style="padding:12px"><div class="muted" style="font-size:11px">🏦 '+T('Τράπεζα','Bank')+'</div><div style="font-size:20px;font-weight:800;margin-top:2px">'+money2(d.bank)+'</div>'+(d.hasOpening?'<div class="muted" style="font-size:10px;margin-top:3px">'+T('Από','From')+' '+money2(d.openBank)+'</div>':'')+'</div>'+
-    '<div class="card" style="padding:12px"><div class="muted" style="font-size:11px">💵 '+T('Ταμείο','Till')+'</div><div style="font-size:20px;font-weight:800;margin-top:2px">'+money2(d.till)+'</div>'+(d.hasOpening?'<div class="muted" style="font-size:10px;margin-top:3px">'+T('Από','From')+' '+money2(d.openTill)+'</div>':'')+'</div>'+
+    '<div class="card" style="padding:14px 12px;text-align:center"><div class="muted" style="font-size:11px">🏦 '+T('Τράπεζα','Bank')+'</div><div style="font-size:20px;font-weight:800;margin-top:2px">'+money2(d.bank)+'</div>'+(d.hasOpening?'<div class="muted" style="font-size:10px;margin-top:3px">'+T('Από','From')+' '+money2(d.openBank)+'</div>':'')+'</div>'+
+    '<div class="card" style="padding:14px 12px;text-align:center"><div class="muted" style="font-size:11px">💵 '+T('Ταμείο','Till')+'</div><div style="font-size:20px;font-weight:800;margin-top:2px">'+money2(d.till)+'</div>'+(d.hasOpening?'<div class="muted" style="font-size:10px;margin-top:3px">'+T('Από','From')+' '+money2(d.openTill)+'</div>':'')+'</div>'+
   '</div>';
   // Εισροές
   h+='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 2px 8px">'+T('Εισροές','Inflows')+'</div>';
@@ -9550,7 +9550,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·337';
+const BUILD='v'+'2026.07.21·338';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
