@@ -113,9 +113,9 @@
   }
   /* ── Sub-tabs με emoji πάνω από τη λέξη ── */
   .subtabs{display:flex;gap:5px;margin-bottom:12px}
-  .subtab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 4px;border-radius:9px;cursor:pointer;border:1px solid var(--line);color:var(--muted);background:var(--card)}
+  .subtab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 4px;border-radius:9px;cursor:pointer;border:1px solid var(--line);color:var(--muted);background:var(--card);min-height:52px}
   .subtab .e{font-size:17px;line-height:1}
-  .subtab .t{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .subtab .t{font-size:11px;font-weight:600;text-align:center;line-height:1.15;word-break:break-word}
   .subtab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   /* ── Tabs συνταγών: ίσα πλάτη, δύο σειρές κειμένου ── */
   .rkinds{display:flex;gap:8px;margin:14px 0 6px}
@@ -1122,10 +1122,10 @@ function bizDrawCashflow(){ persistNav();
   h+=bizTabs()+bizNav();
   if(!R.hasOpening)h+='<div class="card" style="border:1px solid var(--warn);background:#FFF7E6;margin-bottom:10px"><div style="font-size:12px;color:#B8860B">⚠ '+T('Δεν έχεις ορίσει αρχικά υπόλοιπα — τα νούμερα δείχνουν μόνο τις κινήσεις','No opening balances set — figures show movements only')+'</div></div>';
   h+='<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:12px">'+
-    '<div class="card" style="padding:12px;margin:0"><div class="muted" style="font-size:11px">🏦 '+T('Τράπεζα','Bank')+'</div>'+
+    '<div class="card" style="padding:14px 12px;margin:0;text-align:center"><div class="muted" style="font-size:11px">🏦 '+T('Τράπεζα','Bank')+'</div>'+
       '<div style="font-size:21px;font-weight:800;margin-top:2px">'+m2(R.bank)+'</div>'+
       (R.hasOpening?'<div class="muted" style="font-size:10px;margin-top:2px">'+T('Από','From')+' '+m2(R.openBank)+'</div>':'')+'</div>'+
-    '<div class="card" style="padding:12px;margin:0"><div class="muted" style="font-size:11px">💵 '+T('Μετρητά','Cash')+'</div>'+
+    '<div class="card" style="padding:14px 12px;margin:0;text-align:center"><div class="muted" style="font-size:11px">💵 '+T('Μετρητά','Cash')+'</div>'+
       '<div style="font-size:21px;font-weight:800;margin-top:2px">'+m2(R.till)+'</div>'+
       (R.hasOpening?'<div class="muted" style="font-size:10px;margin-top:2px">'+T('Από','From')+' '+m2(R.openTill)+'</div>':'')+'</div>'+
   '</div>';
@@ -4662,8 +4662,8 @@ function menuEngView(){
   const R=menuEngCalc();
   let h='<div style="margin-top:10px">';
   // επιλογέας κατηγορίας
-  h+='<div style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:8px">'+
-    MKINDS.map(([k,label])=>'<div class="tab '+(kind===k?'active':'')+'" style="flex:0 0 auto;white-space:nowrap;padding:9px 14px" onclick="ST.meKind=\''+k+'\';ST.meSub=\'\';renderStats()">'+esc(label)+'</div>').join('')+'</div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:8px">'+
+    MKINDS.map(([k,label])=>'<div class="tab '+(kind===k?'active':'')+'" style="flex:1;min-width:0;padding:9px 6px;text-align:center;line-height:1.15" onclick="ST.meKind=\''+k+'\';ST.meSub=\'\';renderStats()">'+esc(label)+'</div>').join('')+'</div>';
   // φίλτρο υποκατηγορίας (έτοιμες + όσες υπάρχουν στις συνταγές)
   const preset=RSUBS[kind]||[];
   const usedSubs=[...new Set((ST.recipes||[]).filter(r=>r.kind===kind&&!r.is_homemade&&r.is_active!==false&&r.sub_category).map(r=>r.sub_category))];
@@ -7125,10 +7125,10 @@ function drawPayroll(){ persistNav();
   const view=ST.payView||'summary';
   let h='<div style="width:calc(100vw - 24px);position:relative;left:50%;right:50%;margin-left:calc(-50vw + 12px);margin-right:calc(-50vw + 12px);margin-top:10px"><div style="max-width:900px;margin:0 auto">';
   h+='<div style="font-size:16px;font-weight:700;margin:0 2px 12px">👥 '+T('Μισθοδοσία','Payroll')+'</div>';
-  // Pills: Σύνοψη / Εργαζόμενοι
-  const vp=(id,label)=>'<div onclick="ST.payView=\''+id+'\';drawPayroll()" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-size:13px;'+(view===id?'background:var(--accent);color:#fff;font-weight:600':'border:1px solid var(--line);color:var(--muted)')+'">'+label+'</div>';
-  h+='<div style="display:flex;gap:6px;margin-bottom:8px">'+vp('summary','📊 '+T('Σύνοψη','Summary'))+vp('tips','🫙 '+T('Φιλοδωρήματα','Tips'))+vp('efka','🏛️ '+T('Εισφορές','Contributions'))+'</div>'+
-    '<div style="display:flex;gap:6px;margin-bottom:14px">'+vp('staff','👤 '+T('Εργαζόμενοι','Staff'))+vp('contrib','⚙️ '+T('Ρύθμιση','Setup'))+'</div>';
+  // Pills: emoji πάνω, όνομα κάτω — ίδιο στυλ με τις άλλες οθόνες
+  const vp=(id,emo,label)=>'<div onclick="ST.payView=\''+id+'\';drawPayroll()" class="subtab '+(view===id?'on':'')+'"><span class="e">'+emo+'</span><span class="t">'+label+'</span></div>';
+  h+='<div class="subtabs">'+vp('summary','📊',T('Σύνοψη','Summary'))+vp('tips','🫙',T('Φιλοδωρήματα','Tips'))+vp('efka','🏛️',T('Εισφορές','Contributions'))+'</div>'+
+    '<div class="subtabs">'+vp('staff','👤',T('Εργαζόμενοι','Staff'))+vp('contrib','⚙️',T('Ρύθμιση','Setup'))+'</div>';
 
   if(view==='efka'){
     const period=ST.payPeriod||'month'; const range=payPeriodRange(period);
@@ -9501,7 +9501,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·334';
+const BUILD='v'+'2026.07.21·336';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
