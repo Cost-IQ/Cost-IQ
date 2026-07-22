@@ -112,6 +112,19 @@
     .pcard .s{margin:0}
     .pcard .r{text-align:right}
   }
+  /* ── Ανάλυση ανά κατηγορία (πλακίδια) ── */
+  .achips{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .achip{border:1px solid var(--line);border-radius:12px;padding:13px 12px;position:relative;overflow:hidden;text-align:center}
+  .achip .cstripe{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .achip .cn{font-size:12px;color:var(--muted);letter-spacing:.2px}
+  .achip .amt{font-size:18px;font-weight:800;margin-top:6px;letter-spacing:-.3px}
+  .achip .pc{font-size:11.5px;font-weight:700;margin-top:2px}
+  .agp{margin-top:11px;border:1px solid var(--line);border-radius:12px;padding:13px 16px;position:relative;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+  .agp .cstripe{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .agp .lab{font-size:13px;font-weight:700;color:var(--fg)}
+  .agp .val{font-size:18px;font-weight:800;letter-spacing:-.3px}
+  .agp .vpc{font-size:12px;font-weight:700}
   /* ── Sub-tabs με emoji πάνω από τη λέξη ── */
   .subtabs{display:flex;gap:5px;margin-bottom:12px}
   .subtab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 4px;border-radius:9px;cursor:pointer;border:1px solid var(--line);color:var(--muted);background:var(--card);min-height:52px}
@@ -5509,36 +5522,50 @@ function profitResultsHtml(R){
   const pct=v=>(isFinite(v)?v.toFixed(1):'0.0')+'%';
   const badge=(val,good,warn,inv)=>{const ok=inv?(val>=good):(val<=good);const mid=inv?(val>=warn):(val<=warn);return ok?'var(--ok)':(mid?'#e0a800':'var(--bad)');};
   const T=(el,en)=>L(el,en);
-  const cardP=(ttl,M,note)=>{
-    return '<div class="card" style="border:1.5px solid '+badge(M.npPct,10,5,true)+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:15px">'+ttl+'</b>'+(note?'<span style="font-size:11px;color:var(--muted)">'+note+'</span>':'')+'</div>'+
-      '<div class="kv"><span class="k">'+T('Πωλήσεις (καθαρές)','Sales (net)')+'</span><span class="v">'+money2(M.sales)+'</span></div>'+
-      '<div class="kv"><span class="k">'+T('Αγορές','Purchases')+'</span><span class="v">−'+money2(M.purchases)+'</span></div>'+
-      '<div class="kv" style="border-top:1px solid var(--line);padding-top:5px"><span class="k"><b>'+T('Μικτό Κέρδος','Gross Profit')+'</b></span><span class="v"><b>'+money2(M.gp)+'</b> <span style="color:'+badge(M.gpPct,65,55,true)+'">('+pct(M.gpPct)+')</span></span></div>'+
-      '<div class="kv"><span class="k">'+T('Προσωπικό','Labour')+'</span><span class="v">−'+money2(M.labour)+' <span style="color:'+badge(M.labourPct,30,35)+'">('+pct(M.labourPct)+')</span></span></div>'+
-      '<div class="kv"><span class="k">'+T('Λειτουργικά','Operating')+'</span><span class="v">−'+money2(M.opex)+'</span></div>'+
-      '<div class="kv" style="border-top:2px solid var(--line);padding-top:6px;font-size:16px"><span class="k"><b>'+T('ΚΑΘΑΡΟ ΚΕΡΔΟΣ','NET PROFIT')+'</b></span><span class="v" style="color:'+(M.np>=0?'var(--ok)':'var(--bad)')+'"><b>'+money2(M.np)+'</b> ('+pct(M.npPct)+')</span></div>'+
-      (M.taxPct>0?('<div class="kv"><span class="k">'+T('Φόρος','Tax')+' ('+M.taxPct+'%)</span><span class="v">−'+money2(M.tax)+'</span></div>'+
-        '<div class="kv" style="border-top:1px solid var(--line);padding-top:5px;font-size:15px"><span class="k"><b>💰 '+T('ΜΕΤΑ ΦΟΡΩΝ','AFTER TAX')+'</b></span><span class="v" style="color:'+(M.after>=0?'var(--ok)':'var(--bad)')+'"><b>'+money2(M.after)+'</b> ('+pct(M.afterPct)+')</span></div>'):'')+
-      '<div style="margin-top:8px;padding:8px;border-radius:8px;background:'+(M.primePct<=65?'#e7f6ec':(M.primePct<=70?'#FFF7E6':'#FFF0F0'))+';border:1px solid '+badge(M.primePct,65,70)+'">'+
-        '<div style="display:flex;justify-content:space-between;font-size:13px"><b>⚡ Prime Cost</b><b style="color:'+badge(M.primePct,65,70)+'">'+pct(M.primePct)+'</b></div>'+
-        '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+T('Αγορές + Προσωπικό · ≤65%','Purchases + Labour · ≤65%')+'</div>'+
-      '</div>'+
+  const OK_HEX='#1e8449', BAD_HEX='#922b21';
+
+  // Ανάλυση ανά κατηγορία (πλακίδια) — δείχνει τα ΜΟΝΑΔΙΚΑ στοιχεία,
+  // χωρίς να επαναλαμβάνει Τζίρο/Prime/Καθαρό (είναι ήδη στις κάρτες πάνω)
+  // ούτε Αγορές/Μισθοδοσία/Λειτουργικά (είναι ήδη στο donut).
+  const chip=(name,amt,pcTxt,pcCol,stripe)=>
+    '<div class="achip">'+
+      '<span class="cstripe" style="background:'+stripe+'"></span>'+
+      '<div class="cn">'+name+'</div>'+
+      '<div class="amt">'+money2(amt)+'</div>'+
+      '<div class="pc" style="color:'+pcCol+'">'+pcTxt+'</div>'+
     '</div>';
+  const analysisCard=(M)=>{
+    const bevCol=badge(M.bevPct,25,30), foodCol=badge(M.foodPct,30,35), labCol=badge(M.labourPct,30,35);
+    const supPct=M.sales?(R.pSup||0)/M.sales*100:0;
+    const gpCol=(M.gp>=0)?'var(--ok)':'var(--bad)';
+    let h='<div class="card">'+
+      '<h3 style="font-size:13px;color:var(--muted);margin-bottom:14px;text-align:center">📈 '+T('Ανάλυση ανά κατηγορία','Category Breakdown')+'</h3>'+
+      '<div class="achips">'+
+        chip(T('Ποτά','Drinks'),R.pBev,pct(M.bevPct)+' · ≤25%',bevCol,'#154766')+
+        chip(T('Φαγητό','Food'),R.pFood,pct(M.foodPct)+' · ≤30%',foodCol,'#7d919f')+
+        chip(T('Προσωπικό','Labour'),M.labour,pct(M.labourPct)+' · ≤30%',labCol,'#1a5276')+
+        chip(T('Αναλώσιμα','Supplies'),R.pSup,pct(supPct)+' '+T('τζίρου','of sales'),'var(--muted)','#95a1ab')+
+      '</div>'+
+      '<div class="agp" style="background:'+(M.gp>=0?'#f2faf5':'#fdf3f2')+'">'+
+        '<span class="cstripe" style="background:'+gpCol+'"></span>'+
+        '<span class="lab">'+T('Μικτό Κέρδος','Gross Profit')+'</span>'+
+        '<span class="val" style="color:'+gpCol+'">'+money2(M.gp)+'</span>'+
+        '<span class="vpc" style="color:'+gpCol+'">('+pct(M.gpPct)+')</span>'+
+      '</div>';
+    // Φόρος / Μετά Φόρων — μόνο όταν υπάρχει φόρος
+    if(M.taxPct>0){
+      h+='<div class="kv" style="margin-top:11px"><span class="k">'+T('Φόρος','Tax')+' ('+M.taxPct+'%)</span><span class="v">−'+money2(M.tax)+'</span></div>'+
+        '<div class="kv" style="border-top:1px solid var(--line);padding-top:6px;font-size:15px"><span class="k"><b>💰 '+T('Μετά Φόρων','After Tax')+'</b></span><span class="v" style="color:'+(M.after>=0?'var(--ok)':'var(--bad)')+'"><b>'+money2(M.after)+'</b> ('+pct(M.afterPct)+')</span></div>';
+    }
+    h+='</div>';
+    return h;
   };
-  // Ένας πίνακας — ακολουθεί τον διακόπτη «Μετρητά στον Τζίρο».
+
+  // Ακολουθεί τον διακόπτη «Μετρητά στον Τζίρο».
   // Όταν είναι κλειδωμένο (ιδιωτικότητα), δείχνει πάντα τη Δηλωμένη — ποτέ την Πραγματική.
   const useReal=(ST.pfUseReal!==false)&&R.hasCash&&privacyUnlocked();
   const M=useReal?RE:D;
-  const ttl=useReal?('💵 '+T('Πραγματική','Real')):('📊 '+T('Δηλωμένη','Declared'));
-  const note='';
-  let h=profitTopHtml(M,T,money2,pct,badge)+cardP(ttl,M,note);
-  h+='<div class="card"><h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">📈 '+T('Δείκτες','Ratios')+'</h3>'+
-    '<div class="kv"><span class="k">🍸 Beverage Cost</span><span class="v" style="color:'+badge(M.bevPct,25,30)+'">'+pct(M.bevPct)+' <span style="font-size:11px;color:var(--muted)">(≤25%)</span></span></div>'+
-    '<div class="kv"><span class="k">🍽️ Food Cost</span><span class="v" style="color:'+badge(M.foodPct,30,35)+'">'+pct(M.foodPct)+' <span style="font-size:11px;color:var(--muted)">(≤30%)</span></span></div>'+
-    '<div class="kv"><span class="k">👥 '+T('Προσωπικό','Labour')+'</span><span class="v" style="color:'+badge(M.labourPct,30,35)+'">'+pct(M.labourPct)+' <span style="font-size:11px;color:var(--muted)">(≤30%)</span></span></div>'+
-  '</div>';
-  return h;
+  return profitTopHtml(M,T,money2,pct,badge)+analysisCard(M);
 }
 function drawProfit(){
   const p=ST.pf||{}; const R=calcProfit(p);
