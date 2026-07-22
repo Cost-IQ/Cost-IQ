@@ -5297,7 +5297,8 @@ function pfAnchorCashRow(){
   try{ el.scrollIntoView({block:'center'}); }catch(e){ el.scrollIntoView(); }
 }
 function pfToggleReal(){ ST.pfUseReal=(ST.pfUseReal===false); persistNav(); drawProfit(); pfAnchorCashRow(); }
-function pfLockPrivacy(){ ST.privacyOK=false; drawProfit(); pfAnchorCashRow(); }
+function pfReloadAndAnchor(){ loadProfit().then(pfAnchorCashRow); }
+function pfLockPrivacy(){ ST.privacyOK=false; pfReloadAndAnchor(); }
 function pfAutoSales(A,which,p){
   if(!A||!A.sales)return 0;
   const n=v=>(v!=null&&v!==''?(+v):0);
@@ -5673,7 +5674,7 @@ function drawProfit(){
           '</div>'+
           '<span onclick="pfLockPrivacy()" title="'+T('Κλείδωμα ευαίσθητων','Lock sensitive')+'" style="cursor:pointer;color:var(--muted);font-size:18px;padding:2px 4px;flex:0 0 auto">🔓</span>'+
         '</div>'
-      : '<div id="pf-cashrow" onclick="requestPrivacyUnlock(function(){drawProfit();pfAnchorCashRow();})" style="display:flex;justify-content:flex-end;align-items:center;padding:10px 0 4px;margin-top:8px;border-top:1px solid var(--line);cursor:pointer"><span style="color:var(--muted);font-size:20px" title="'+T('Βάλε εξαψήφιο pin','Enter six-digit PIN')+'">🔒</span></div>')+
+      : '<div id="pf-cashrow" onclick="requestPrivacyUnlock(pfReloadAndAnchor)" style="display:flex;justify-content:flex-end;align-items:center;padding:10px 0 4px;margin-top:8px;border-top:1px solid var(--line);cursor:pointer"><span style="color:var(--muted);font-size:20px" title="'+T('Βάλε εξαψήφιο pin','Enter six-digit PIN')+'">🔒</span></div>')+
     '<button class="btn" style="margin-top:10px" onclick="saveProfit()">💾 '+T('Αποθήκευση','Save')+'</button>'+
   '</div>';
   // ΔΕΞΙΑ: Αποτελέσματα
