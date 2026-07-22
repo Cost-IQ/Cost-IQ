@@ -282,7 +282,7 @@ const EN_DEF={
   pdMeasure:'Measure (ml per serving)',pdUnits:'Units (units/package)',pdRetail:'Selling Price (incl VAT €)',pdWaste:'Waste %',
   pdCostMl:'Cost ml/g',pdUnitCost:'Unit Cost (serving)',pdRealCost:'Real Cost',pdExVat:'Price ex-VAT',pdGross:'Gross Profit',pdPerUnit:'Cost per Unit',
   pdSku:'Product Name (SKU)',pdKind:'Section',wCategory:'Category',wSubcat:'Sub-Category',pdInvName:'Invoice Name (OCR)',pdPack:'Packaging',pdSize:'Size (ml/g)',pdAlc:'Alcohol % (auto excise)',pdEfk:'Excise (€, manual or auto)',pdDelete:'Delete Product',pdMeasureUnit:'Measure Unit',
-  phCat:'your categories',phSub:'your sub-categories',phInv:'words as on invoice',phPack:'e.g Box 6×1L / Sack 25Kg',phAlc:'e.g 40',
+  phCat:'your categories',phSub:'your sub-categories',phInv:'words as on invoice',phPack:'e.g Box 6×1L / Sack 25Kg',phAlc:'e.g 40',phPick:'— choose —',phAddNew:'➕ New…',
   pdBestPrice:'Best Price',pdBestSup:'Best Supplier',pdCmLabel:'Beverage Cost % (CM)',
   oSearch:'🔍 Search…',rSearch:'Search…',iPriceHist:'Price History',
   rHomemade:'Homemade Recipes',rBack:'Back to recipes',rNewHome:'New Homemade',rNewRecipe:'New Recipe',
@@ -3375,10 +3375,10 @@ function drawProd(){persistNav();
     // ── ΣΤΗΛΗ 3: Στοιχεία ──
     '<div class="card" style="margin:0"><h3 style="font-size:13px;color:var(--muted);margin-bottom:10px"'+'>📋 '+lbl('hInfo','ΣΤΟΙΧΕΙΑ')+'</h3>'+
       '<div class="field"><label>'+lbl('pdSku','Όνομα προϊόντος (SKU)')+'</label><input id="pi-sku" type="text" value="'+esc(p.sku)+'"></div>'+
-      '<div class="field"><label>'+lbl('pdKind','Τμήμα')+'</label><select id="pi-kind" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
+      '<div class="field"><label>'+lbl('pdKind','Τμήμα')+'</label><select id="pi-kind" onchange="onKindChange()" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)">'+
         ['beverage','food','supplies'].map(k=>'<option value="'+k+'"'+(p.kind===k?' selected':'')+'>'+(k==='beverage'?'🍺 '+lbl('kindBeverage','Ποτά & Ροφήματα'):(k==='food'?'🍽️ '+lbl('kindFood','Τρόφιμα'):'📦 '+lbl('kindSupplies','Αναλώσιμα')))+'</option>').join('')+'</select></div>'+
-      '<div class="field"><label>'+lbl('wCategory','Κατηγορία')+'</label><input id="pi-cat" type="text" value="'+esc(p.category||'')+'" placeholder="'+lbl('phCat','δικές σου κατηγορίες')+'"></div>'+
-      '<div class="field"><label>'+lbl('wSubcat','Υποκατηγορία')+'</label><input id="pi-sub" type="text" value="'+esc(p.sub_category||'')+'" placeholder="'+lbl('phSub','δικές σου υποκατηγορίες')+'"></div>'+
+      '<div class="field"><label>'+lbl('wCategory','Κατηγορία')+'</label>'+catSelectHtml('pi-cat',p.kind,p.category||'')+'</div>'+
+      '<div class="field"><label>'+lbl('wSubcat','Υποκατηγορία')+'</label>'+subSelectHtml('pi-sub',p.kind,p.category||'',p.sub_category||'')+'</div>'+
       '<div class="field"><label>'+lbl('pdInvName','Όνομα Τιμολογίου (για OCR)')+'</label><input id="pi-inv" type="text" value="'+esc(p.invoice_name||'')+'" placeholder="'+lbl('phInv','λέξεις όπως στο τιμολόγιο')+'"></div>'+
       '<div class="field"><label>'+lbl('pdNotes','Σημειώσεις (προέλευση/χρονιά)')+'</label><input id="pi-notes" type="text" value="'+esc(p.notes||'')+'" placeholder="'+lbl('phNotes','πχ Νάξος / Ελλάδα, ή χρονιά κρασιού 2019')+'"></div>'+
       '<div class="field"><label>'+lbl('pdPack','Συσκευασία (πώς παραγγέλνεις)')+'</label><input id="pi-pack" type="text" value="'+esc(p.packaging||'')+'" placeholder="'+lbl('phPack','πχ Κιβώτιο 6×1L / Σακί 25Kg / Τεμάχιο')+'"></div>'+
@@ -3439,7 +3439,7 @@ function autoEfk(force){
   else if(force)toast('Καμία αυτόματη κατηγορία ΕΦΚ — βάλε χειροκίνητα');
 }
 async function saveAllProduct(pid){
-  const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  const g=id=>{const e=document.getElementById(id);let v=e?e.value:'';if(v==='__new__')v='';return v;};
   const sku=(g('pi-sku')||'').trim();
   if(!sku){toast('❌ '+L('Βάλε όνομα','Enter a name'));return;}
   const upd={sku,category:(g('pi-cat')||'').trim()||null,sub_category:(g('pi-sub')||'').trim()||null,invoice_name:(g('pi-inv')||'').trim()||null,notes:(g('pi-notes')||'').trim()||null};
@@ -3547,6 +3547,124 @@ function recipeCalc(rec,depth){
   return {lines,total,waste,realCost,retail,retailNet,netProfit,costPct};
 }
 const RKINDS=[['cocktail','Spirits & Cocktails'],['hotcold','Hot & Cold Beverages'],['food','Food']];
+
+// ── Ταξινομία Κατηγοριών Προϊόντων ──
+// Κλειδί (αγγλικά, αποθηκεύεται) → ελληνική ετικέτα. Υποκατηγορίες ίδιο μοτίβο.
+// Ο ΕΦΚ ψάχνει τα αγγλικά κλειδιά, γι' αυτό αποθηκεύονται αγγλικά.
+const CATTAX={
+  beverage:[
+    ['Spirits','Αποστάγματα',[['Gin','Τζιν'],['Vodka','Βότκα'],['Rum','Ρούμι'],['Tequila','Τεκίλα'],['Whisky','Ουίσκι'],['Brandy','Μπράντι'],['Liqueur','Λικέρ'],['Bitter','Bitter'],['Aperitif','Απεριτίφ'],['Vermouth','Βερμούτ'],['Ouzo','Ούζο'],['Tsipouro','Τσίπουρο']]],
+    ['Beer','Μπύρα',[['Lager','Lager'],['Weiss','Weiss'],['IPA','IPA'],['Ale','Ale'],['Pilsner','Pilsner'],['Radler','Radler']]],
+    ['Wine','Κρασί',[['White','Λευκό'],['Red','Κόκκινο'],['Rose','Ροζέ'],['Sparkling','Αφρώδες']]],
+    ['Soft Drinks','Αναψυκτικά',[['Cola','Κόλα'],['Lemon-Lime','Λεμόνι-Λάιμ'],['Orange','Πορτοκάλι'],['Tonic','Τόνικ'],['Soda','Σόδα']]],
+    ['Water','Νερό',[['Still','Φυσικό'],['Sparkling','Ανθρακούχο']]],
+    ['Juice','Χυμοί',[['Orange','Πορτοκάλι'],['Mixed','Ανάμεικτος'],['Fresh','Φρέσκος']]],
+    ['Coffee','Καφές',[['Espresso','Εσπρέσο'],['Filter','Φίλτρου'],['Greek','Ελληνικός'],['Instant','Στιγμιαίος'],['Beans','Κόκκοι']]],
+    ['Tea','Τσάι',[['Black','Μαύρο'],['Green','Πράσινο'],['Herbal','Βοτάνων'],['Chai','Chai']]],
+    ['Specialty','Ειδικά Ροφήματα',[['Hot Chocolate','Σοκολάτα'],['Matcha','Matcha'],['Smoothie','Smoothie']]]
+  ],
+  food:[
+    ['Dairy','Γαλακτοκομικά',[['Milk','Γάλα'],['Cheese','Τυρί'],['Butter','Βούτυρο'],['Cream','Κρέμα'],['Yogurt','Γιαούρτι'],['Dairy Alternatives','Φυτικά Γάλατα']]],
+    ['Eggs','Αυγά',[['Fresh Eggs','Φρέσκα'],['Liquid Eggs','Υγρά']]],
+    ['Meat','Κρέας',[['Beef','Μοσχάρι'],['Pork','Χοιρινό'],['Chicken','Κοτόπουλο'],['Lamb','Αρνί'],['Processed Meat','Αλλαντικά']]],
+    ['Seafood','Θαλασσινά',[['Fresh Fish','Φρέσκο Ψάρι'],['Frozen Fish','Κατεψυγμένο'],['Shellfish','Οστρακοειδή']]],
+    ['Produce','Οπωρολαχανικά',[['Vegetables','Λαχανικά'],['Fruits','Φρούτα'],['Herbs','Μυρωδικά'],['Salads','Σαλατικά']]],
+    ['Dry Goods','Ξηρά Είδη',[['Flour','Αλεύρι'],['Rice','Ρύζι'],['Sugar','Ζάχαρη'],['Pasta','Ζυμαρικά'],['Salt','Αλάτι'],['Spices','Μπαχαρικά'],['Baking','Ζαχαροπλαστικής'],['Canned','Κονσέρβες']]],
+    ['Frozen','Κατεψυγμένα',[['Meat','Κρέας'],['Fish','Ψάρι'],['Vegetables','Λαχανικά'],['Fruits','Φρούτα']]],
+    ['Bakery & Pastry','Αρτοζαχαροπλαστική',[['Bread','Ψωμί'],['Croissants','Κρουασάν'],['Desserts','Γλυκά'],['Bakery Ingredients','Υλικά Αρτοποιίας']]],
+    ['Oils & Condiments','Λάδια & Καρυκεύματα',[['Olive Oil','Ελαιόλαδο'],['Seed Oil','Σπορέλαιο'],['Vinegar','Ξύδι'],['Sauces','Σάλτσες']]]
+  ],
+  supplies:[
+    ['Paper Products','Χάρτινα Είδη',[['Napkins','Χαρτοπετσέτες'],['Hand Towels','Χειροπετσέτες'],['Toilet Paper','Χαρτί Υγείας'],['Kitchen Roll','Χαρτί Κουζίνας'],['Receipt Roll','Ρολά Ταμείου'],['Printer Rolls','Ρολά Εκτυπωτή']]],
+    ['Packaging','Συσκευασία',[['Cups','Ποτήρια'],['Lids','Καπάκια'],['Containers','Σκεύη'],['Bags','Σακούλες'],['Straws','Καλαμάκια'],['Cutlery','Μαχαιροπίρουνα']]],
+    ['Cleaning','Καθαριστικά',[['Dishwash','Πιάτων'],['Surface','Επιφανειών'],['Floor','Δαπέδου'],['Detergent','Απορρυπαντικά']]],
+    ['Hygiene','Υγιεινή',[['Gloves','Γάντια'],['Sanitizer','Αντισηπτικό'],['Masks','Μάσκες']]],
+    ['Bar Supplies','Είδη Μπαρ',[['Coasters','Σουβέρ'],['Picks','Οδοντογλυφίδες'],['Stirrers','Αναδευτήρες']]]
+  ]
+};
+// Ελληνική ετικέτα από αγγλικό κλειδί (ή το ίδιο αν δεν βρεθεί)
+function catGr(kind,key){
+  const list=CATTAX[kind]||[]; const f=list.find(c=>c[0]===key);
+  return f?f[1]:key;
+}
+function subGr(kind,cat,key){
+  const list=CATTAX[kind]||[]; const c=list.find(x=>x[0]===cat);
+  if(!c)return key; const f=c[2].find(s=>s[0]===key); return f?f[1]:key;
+}
+// Λίστα κατηγοριών για dropdown: προκαθορισμένες + όσες υπάρχουν ήδη στα προϊόντα
+function catsForKind(kind){
+  const preset=(CATTAX[kind]||[]).map(c=>c[0]);
+  const used=[...new Set((ST.products||[]).filter(p=>p.kind===kind&&p.category).map(p=>p.category))];
+  const extra=used.filter(c=>!preset.includes(c));
+  return preset.concat(extra.sort());
+}
+function subsForCat(kind,cat){
+  const list=CATTAX[kind]||[]; const c=list.find(x=>x[0]===cat);
+  const preset=c?c[2].map(s=>s[0]):[];
+  const used=[...new Set((ST.products||[]).filter(p=>p.kind===kind&&p.category===cat&&p.sub_category).map(p=>p.sub_category))];
+  const extra=used.filter(s=>!preset.includes(s));
+  return preset.concat(extra.sort());
+}
+const SELCSS='width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:var(--card)';
+function catSelectHtml(id,kind,current){
+  const cats=catsForKind(kind);
+  let cur=current||'';
+  // Αν η τρέχουσα τιμή δεν είναι στη λίστα (π.χ. παλιά χειροκίνητη), βάλ' τη
+  if(cur&&!cats.includes(cur))cats.push(cur);
+  let o='<option value="">'+lbl('phPick','— επίλεξε —')+'</option>';
+  cats.forEach(c=>{o+='<option value="'+esc(c)+'"'+(c===cur?' selected':'')+'>'+esc(catGr(kind,c))+'</option>';});
+  o+='<option value="__new__">'+lbl('phAddNew','➕ Νέα κατηγορία…')+'</option>';
+  return '<select id="'+id+'" style="'+SELCSS+'" onchange="onCatChange(this)">'+o+'</select>';
+}
+function subSelectHtml(id,kind,cat,current){
+  const subs=cat?subsForCat(kind,cat):[];
+  let cur=current||'';
+  if(cur&&!subs.includes(cur))subs.push(cur);
+  let o='<option value="">'+lbl('phPick','— επίλεξε —')+'</option>';
+  subs.forEach(s=>{o+='<option value="'+esc(s)+'"'+(s===cur?' selected':'')+'>'+esc(subGr(kind,cat,s))+'</option>';});
+  o+='<option value="__new__">'+lbl('phAddNew','➕ Νέα…')+'</option>';
+  return '<select id="'+id+'" style="'+SELCSS+'" onchange="onSubChange(this)"'+(cat?'':' disabled')+'>'+o+'</select>';
+}
+// Όταν αλλάζει η κατηγορία: ξαναχτίζει τις υποκατηγορίες
+function onCatChange(sel){
+  if(sel.value==='__new__'){
+    const v=(prompt(L('Νέα κατηγορία:','New category:'))||'').trim();
+    if(v){addOptionBefore(sel,v,v);sel.value=v;}
+    else{sel.value='';}
+  }
+  const kind=document.getElementById('pi-kind').value;
+  const subWrap=document.getElementById('pi-sub');
+  if(subWrap){
+    const parent=subWrap.parentElement;
+    parent.innerHTML='<label>'+lbl('wSubcat','Υποκατηγορία')+'</label>'+subSelectHtml('pi-sub',kind,sel.value,'');
+  }
+}
+function onSubChange(sel){
+  if(sel.value==='__new__'){
+    const v=(prompt(L('Νέα υποκατηγορία:','New sub-category:'))||'').trim();
+    if(v){addOptionBefore(sel,v,v);sel.value=v;}
+    else{sel.value='';}
+  }
+}
+// Προσθέτει option πριν από το "➕ Νέα"
+function addOptionBefore(sel,val,label){
+  const newOpt=sel.querySelector('option[value="__new__"]');
+  const op=document.createElement('option');
+  op.value=val; op.textContent=label;
+  sel.insertBefore(op,newOpt);
+}
+// Όταν αλλάζει το Τμήμα (kind), ξαναχτίζει κατηγορία+υποκατηγορία
+function onKindChange(){
+  const kind=document.getElementById('pi-kind').value;
+  const catSel=document.getElementById('pi-cat');
+  if(catSel){
+    catSel.parentElement.innerHTML='<label>'+lbl('wCategory','Κατηγορία')+'</label>'+catSelectHtml('pi-cat',kind,'');
+  }
+  const subSel=document.getElementById('pi-sub');
+  if(subSel){
+    subSel.parentElement.innerHTML='<label>'+lbl('wSubcat','Υποκατηγορία')+'</label>'+subSelectHtml('pi-sub',kind,'','');
+  }
+}
 const RKIND_EMO={cocktail:'🍸',hotcold:'☕',food:'🍽️'};
 const RSUBS={
   cocktail:[['Classics','Classics'],['Signature','Signature'],['Non-Alcoholic','Non-Alcoholic']],
@@ -9381,7 +9499,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·332';
+const BUILD='v'+'2026.07.21·333';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
