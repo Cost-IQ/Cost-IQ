@@ -481,6 +481,48 @@ async function revForgotPin(){
     revSetPinScreen();
   }catch(e){toast('❌ '+T('Λάθος κωδικός','Wrong password'));}
 }
+
+// ── Κλείδωμα ευαίσθητων νούμερων (ιδιωτικότητα) ──
+// Χρησιμοποιεί το ίδιο PIN των Εσόδων. Όταν ξεκλειδωθεί, ισχύει για τη συνεδρία
+// μέχρι να πατήσει ο χρήστης «Κλείδωμα» ή να βγει.
+function privacyUnlocked(){ return !!ST.privacyOK; }
+async function requestPrivacyUnlock(cb){
+  // Ο owner/admin του μαγαζιού μπορεί να ξεκλειδώσει· αν δεν υπάρχει PIN, ζητά να οριστεί
+  let hasPin=false;
+  try{const {data}=await sb.rpc('has_revenue_pin');hasPin=!!data;}catch(e){}
+  const T=(el,en)=>L(el,en);
+  const body='<div style="text-align:center">'+
+    '<div style="font-size:40px">🔒</div>'+
+    '<p class="muted" style="font-size:13px;margin:8px 0 14px">'+
+      (hasPin?T('Βάλε το 6ψήφιο PIN για να δεις τα ευαίσθητα νούμερα.','Enter the 6-digit PIN to reveal sensitive figures.')
+             :T('Δεν έχεις ορίσει PIN ακόμα. Όρισέ το από τα Έσοδα πρώτα.','No PIN set yet. Set it from Revenue first.'))+'</p>'+
+    (hasPin?'<input id="pv-pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="••••••" style="width:100%;box-sizing:border-box;padding:13px;border:1px solid var(--line);border-radius:12px;font-size:24px;text-align:center;letter-spacing:9px" oninput="if(this.value.length===6)pvTryUnlock()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();pvTryUnlock();}">'+
+      '<div id="pv-err" style="min-height:20px;margin-top:8px;font-size:13px;color:var(--bad)"></div>':'')+
+  '</div>';
+  ST._pvCb=cb||null;
+  showModal('🔒 '+T('Προστασία','Privacy'),body,hasPin?T('Ξεκλείδωμα','Unlock'):T('ΟΚ','OK'),hasPin?pvTryUnlock:function(){closeModal();});
+  setTimeout(function(){const el=document.getElementById('pv-pin');if(el)el.focus();},100);
+}
+async function pvTryUnlock(){
+  const pin=(document.getElementById('pv-pin')||{}).value||'';
+  const err=document.getElementById('pv-err');
+  if(!/^\d{6}$/.test(pin)){if(err)err.textContent=L('6 ψηφία','6 digits');return;}
+  try{
+    const {data,error}=await sb.rpc('check_revenue_pin',{try_pin:pin});
+    if(error)throw error;
+    if(!data){if(err)err.textContent='❌ '+L('Λάθος PIN','Wrong PIN');const el=document.getElementById('pv-pin');if(el){el.value='';el.focus();}return;}
+    ST.privacyOK=true;
+    closeModal();
+    const cb=ST._pvCb; ST._pvCb=null; if(cb)cb();
+    else rerenderCurrent();
+  }catch(e){if(err)err.textContent='❌ '+(e.message||e);}
+}
+function lockPrivacy(){ ST.privacyOK=false; rerenderCurrent(); }
+// Κρύβει ένα ποσό πίσω από κουμπί ξεκλειδώματος αν δεν έχει ξεκλειδωθεί
+function maybeHide(html){
+  if(privacyUnlocked())return html;
+  return '<span onclick="requestPrivacyUnlock()" style="cursor:pointer;color:var(--muted);letter-spacing:1px" title="'+L('Πάτησε για ξεκλείδωμα','Tap to unlock')+'">••••• 🔒</span>';
+}
 function bizRestore(){
   const t=ST.bizTab||'revenue';
   if(t!=='revenue')return bizGo(t);
@@ -5417,8 +5459,9 @@ function profitResultsHtml(R){
       '</div>'+
     '</div>';
   };
-  // Ένας πίνακας — ακολουθεί τον διακόπτη «Μετρητά στον Τζίρο»
-  const useReal=(ST.pfUseReal!==false)&&R.hasCash;
+  // Ένας πίνακας — ακολουθεί τον διακόπτη «Μετρητά στον Τζίρο».
+  // Όταν είναι κλειδωμένο (ιδιωτικότητα), δείχνει πάντα τη Δηλωμένη — ποτέ την Πραγματική.
+  const useReal=(ST.pfUseReal!==false)&&R.hasCash&&privacyUnlocked();
   const M=useReal?RE:D;
   const ttl=useReal?('💵 '+T('Πραγματική','Real')):('📊 '+T('Δηλωμένη','Declared'));
   const note='';
@@ -5484,14 +5527,20 @@ function drawProfit(){
     '</div>'+
     profitCrossCheck(R,A,p)+
     (isPro()?'':'<div style="background:var(--accent-bg);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:11px;color:var(--accent)">💡 '+T('Οι αγορές έρχονται αυτόματα από τα τιμολόγια. Πωλήσεις, μισθοί και έξοδα συμπληρώνονται χειροκίνητα. Με το πακέτο Pro γεμίζουν μόνα τους από το Κλείσιμο Ημέρας, τη Μισθοδοσία και τα Έξοδα.','Purchases come automatically from invoices. Sales, wages and expenses are entered manually. With the Pro plan they fill in automatically from Daily Close, Payroll and Expenses.')+'</div>')+
-    '<div onclick="pfToggleReal()" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px;margin-top:8px;border-top:1px solid var(--line);cursor:pointer">'+
-      '<div><div style="font-size:12px">'+T('Μετρητά στον Τζίρο','Cash in Turnover')+'</div><div class="muted" style="font-size:10px">'+T('Επηρεάζει το Prime Cost','Affects Prime Cost')+'</div></div>'+
-      '<div style="position:relative;width:46px;height:26px;background:'+(ST.pfUseReal!==false?'var(--accent)':'var(--line)')+';border-radius:26px;transition:.2s;flex:0 0 auto"><div style="position:absolute;height:20px;width:20px;left:'+(ST.pfUseReal!==false?'23px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>'+
-    '</div>'+
+    (privacyUnlocked()
+      ? '<div onclick="pfToggleReal()" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px;margin-top:8px;border-top:1px solid var(--line);cursor:pointer">'+
+          '<div><div style="font-size:12px">'+T('Μετρητά στον Τζίρο','Cash in Turnover')+'</div><div class="muted" style="font-size:10px">'+T('Επηρεάζει το Prime Cost','Affects Prime Cost')+'</div></div>'+
+          '<div style="position:relative;width:46px;height:26px;background:'+(ST.pfUseReal!==false?'var(--accent)':'var(--line)')+';border-radius:26px;transition:.2s;flex:0 0 auto"><div style="position:absolute;height:20px;width:20px;left:'+(ST.pfUseReal!==false?'23px':'3px')+';top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>'+
+        '</div>'
+      : '<div onclick="requestPrivacyUnlock()" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px;margin-top:8px;border-top:1px solid var(--line);cursor:pointer">'+
+          '<div><div style="font-size:12px;color:var(--muted)">'+T('Μετρητά στον Τζίρο','Cash in Turnover')+'</div><div class="muted" style="font-size:10px">'+T('Πάτησε για ξεκλείδωμα','Tap to unlock')+'</div></div>'+
+          '<div style="color:var(--muted);font-size:15px">🔒</div>'+
+        '</div>')+
     '<button class="btn" style="margin-top:10px" onclick="saveProfit()">💾 '+T('Αποθήκευση','Save')+'</button>'+
   '</div>';
   // ΔΕΞΙΑ: Αποτελέσματα
   h+='<div id="pf-results">'+profitResultsHtml(R)+pfCompareHtml()+'</div>';
+  if(privacyUnlocked())h+='<div style="text-align:center;margin-top:10px"><a href="#" onclick="lockPrivacy();return false" style="color:var(--muted);font-size:12px">🔒 '+T('Κλείδωμα ευαίσθητων','Lock sensitive')+'</a></div>';
   h+='</div></div></div>';
   h+='<div id="pf-saved" style="margin-top:16px"></div>';
   box.innerHTML=h;
@@ -8544,7 +8593,7 @@ function drawDaily(){ persistNav();
       '<div><div style="font-size:13px;font-weight:700;color:var(--accent)">📥 '+T('Φάκελος (Banking)','Envelope (Banking)')+'</div><div style="font-size:11px;color:var(--accent)">'+T('Μετρητά − Πληρωμές','Cash − Payments')+'</div></div>'+
       '<span id="dc-envelope" style="font-size:18px;font-weight:800;color:var(--accent)">'+money2(0)+'</span>'+
     '</div>'+
-    '<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:14px"><div><div class="muted">'+T('Πραγματικός Τζίρος','Real Turnover')+'</div><div class="muted" style="font-size:10px">'+T('Φάκελος + Εκτός + Κάρτες + Delivery','Envelope + Off + Cards + Delivery')+'</div></div><span id="daily-income" style="font-weight:700;color:var(--ok);font-size:16px">'+money2(income)+'</span></div>'+
+    '<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:14px"><div><div class="muted">'+T('Πραγματικός Τζίρος','Real Turnover')+'</div><div class="muted" style="font-size:10px">'+T('Φάκελος + Εκτός + Κάρτες + Delivery','Envelope + Off + Cards + Delivery')+'</div></div><span id="daily-income" style="font-weight:700;color:var(--ok);font-size:16px">'+maybeHide(money2(income))+'</span></div>'+
     
   '</div>';
 
@@ -8739,7 +8788,7 @@ function dailyLive(){
     delNet+=(g2-v2);
   });
   const income = envelope + off + card - cn + delNet;
-  const incEl=document.getElementById('daily-income'); if(incEl)incEl.textContent=money(Math.round(income*100)/100);
+  const incEl=document.getElementById('daily-income'); if(incEl)incEl.innerHTML=privacyUnlocked()?money(Math.round(income*100)/100):maybeHide(money(Math.round(income*100)/100));
   const envEl=document.getElementById('dc-envelope'); if(envEl)envEl.textContent=money(Math.round(envelope*100)/100);
   recLive();
 }
@@ -9501,7 +9550,7 @@ async function clearOverride(pid){
   catch(e){toast('❌ '+(e.message||e));}
 }
 
-const BUILD='v'+'2026.07.21·336';
+const BUILD='v'+'2026.07.21·337';
 // ═══════════ ΟΡΙΟ ΣΥΣΚΕΥΩΝ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ ═══════════
 // Κάθε account = 1 άτομο. Επιτρέπονται έως DEVICE_LIMIT συσκευές ταυτόχρονα
 // (π.χ. κινητό + laptop). Αν συνδεθεί 3η, η παλιότερη αποσυνδέεται αυτόματα.
