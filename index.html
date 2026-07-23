@@ -5629,14 +5629,18 @@ function drawProfit(){
   h+='<div style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="month" id="pf-when" value="'+((ST.pfDate||new Date().toISOString().slice(0,10)).slice(0,7))+'" onchange="ST.pfDate=this.value+\'-01\';loadProfit()" style="padding:8px;border:1px solid var(--line);border-radius:8px"><b style="color:var(--accent)">'+pLabel()+'</b></div>';
   const f=(id,lb,val,ph)=>'<div class="field" style="margin-bottom:6px"><label style="font-size:12px">'+lb+'</label><input id="'+id+'" type="number" step="0.01" value="'+(val!=null&&val!==''?val:'')+'" placeholder="'+(ph||'0')+'" oninput="pfLive()"></div>';
   const A=ST.pfAuto||{};
+  const pfSalesAuto=!!(ST.daySetup&&ST.daySetup.salesBrk);   // πωλήσεις τραβιούνται από Ημέρα;
   const vStd=vatByRole('std',24), vRed=vatByRole('red',13);
   // Πεδίο με αυτόματη τιμή: αν δεν έχεις γράψει κάτι, μπαίνει η αυτόματη ως placeholder
-  const fa=(id,lb,val,autoVal,src,note)=>{
+  const fa=(id,lb,val,autoVal,src,note,alwaysAuto)=>{
     const has=(val!=null&&val!=='');
+    // Badge «από ...»: κανονικά μόνο όταν υπάρχει auto τιμή. Με alwaysAuto (Pro),
+    // δείχνεται πάντα ώστε ο χρήστης να ξέρει ότι το πεδίο τραβάει αυτόματα.
+    const showAuto=(src&&(autoVal>0||(alwaysAuto&&isPro())));
     return '<div class="field" style="margin-bottom:6px">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:2px">'+
         '<label style="font-size:12px;margin:0">'+lb+'</label>'+
-        ((autoVal>0&&src)?profitAutoLabel(src):(isPro()?'':'<span style="font-size:10px;color:var(--muted);background:var(--chip);padding:2px 7px;border-radius:10px;white-space:nowrap">✋ '+T('Χειροκίνητο','Manual')+'</span>'))+
+        (showAuto?profitAutoLabel(src):(isPro()?'':'<span style="font-size:10px;color:var(--muted);background:var(--chip);padding:2px 7px;border-radius:10px;white-space:nowrap">✋ '+T('Χειροκίνητο','Manual')+'</span>'))+
       '</div>'+
       '<input id="'+id+'" type="number" step="0.01" value="'+(has?val:'')+'" placeholder="'+(autoVal>0?money(Math.round(autoVal*100)/100):'0')+'" oninput="pfLive()">'+
       (note?'<div class="muted" style="font-size:10px;margin-top:3px">'+note+'</div>':'')+
@@ -5647,21 +5651,21 @@ function drawProfit(){
   h+='<div class="card" style="margin:0"><h3 style="font-size:13px;color:var(--muted);margin-bottom:8px">✏️ '+T('Στοιχεία Περιόδου','Period Data')+'</h3>'+
     '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;cursor:pointer"><input type="checkbox" id="pf-vat" '+(p.sales_incl_vat!==false?'checked':'')+' onchange="pfLive()"> '+T('Οι πωλήσεις είναι ΜΕ ΦΠΑ','Sales include VAT')+'</label>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
-      fa('pf-sb','🍸 '+T('Ποτά','Drinks')+' '+(p.vat_bev!=null?p.vat_bev:vStd)+'%',p.sales_bev,(A.salesBrk&&A.salesBrk.bev)||0,T('από Ημέρα','from Day'))+
-      fa('pf-sf','🍽️ '+T('Φαγητό','Food')+' '+(p.vat_food!=null?p.vat_food:vRed)+'%',p.sales_food,(A.salesBrk&&A.salesBrk.food)||0,T('από Ημέρα','from Day'))+
-      fa('pf-sh','☕ '+T('Ροφήματα Σερβιριζόμενα','Beverages Served')+' '+(p.vat_hot!=null?p.vat_hot:vStd)+'%',p.sales_hot,(A.salesBrk&&A.salesBrk.hot)||0,T('από Ημέρα','from Day'))+
-      fa('pf-shl','🥤 '+T('Ροφήματα σε Πακέτο','Beverages Takeaway')+' '+(p.vat_hot_low!=null?p.vat_hot_low:vRed)+'%',p.sales_hot_low,(A.salesBrk&&A.salesBrk.hotlow)||0,T('από Ημέρα','from Day'))+
+      fa('pf-sb','🍸 '+T('Ποτά','Drinks')+' '+(p.vat_bev!=null?p.vat_bev:vStd)+'%',p.sales_bev,(A.salesBrk&&A.salesBrk.bev)||0,T('από Ημέρα','from Day'),null,pfSalesAuto)+
+      fa('pf-sf','🍽️ '+T('Φαγητό','Food')+' '+(p.vat_food!=null?p.vat_food:vRed)+'%',p.sales_food,(A.salesBrk&&A.salesBrk.food)||0,T('από Ημέρα','from Day'),null,pfSalesAuto)+
+      fa('pf-sh','☕ '+T('Ροφήματα Σερβιριζόμενα','Beverages Served')+' '+(p.vat_hot!=null?p.vat_hot:vStd)+'%',p.sales_hot,(A.salesBrk&&A.salesBrk.hot)||0,T('από Ημέρα','from Day'),null,pfSalesAuto)+
+      fa('pf-shl','🥤 '+T('Ροφήματα σε Πακέτο','Beverages Takeaway')+' '+(p.vat_hot_low!=null?p.vat_hot_low:vRed)+'%',p.sales_hot_low,(A.salesBrk&&A.salesBrk.hotlow)||0,T('από Ημέρα','from Day'),null,pfSalesAuto)+
       f('pf-vb','ΦΠΑ '+T('Ποτών','Drinks')+' %',p.vat_bev!=null?p.vat_bev:vStd)+
       f('pf-vf','ΦΠΑ '+T('Φαγητού','Food')+' %',p.vat_food!=null?p.vat_food:vRed)+
       f('pf-vh','ΦΠΑ '+T('Ροφημάτων Σερβ.','Beverages Served')+' %',p.vat_hot!=null?p.vat_hot:vStd)+
       f('pf-vhl','ΦΠΑ '+T('Ροφημάτων Πακέτο','Beverages Takeaway')+' %',p.vat_hot_low!=null?p.vat_hot_low:vRed)+
-      fa('pf-w',T('Μισθοί','Wages'),p.wages,A.wages||0,T('από Μισθοδοσία','from Payroll'))+
-      fa('pf-soc','ΙΚΑ / '+T('Εισφορές','Contributions'),p.social,A.social||0,T('από Μισθοδοσία','from Payroll'))+
-      fa('pf-rent',T('Ενοίκιο','Rent'),p.rent,A.rent||0,T('από Έξοδα','from Expenses'))+
-      fa('pf-util',T('ΔΕΗ/Νερό/Internet','Utilities'),p.utilities,A.utilities||0,T('από Έξοδα','from Expenses'))+
+      fa('pf-w',T('Μισθοί','Wages'),p.wages,A.wages||0,T('από Μισθοδοσία','from Payroll'),null,true)+
+      fa('pf-soc','ΙΚΑ / '+T('Εισφορές','Contributions'),p.social,A.social||0,T('από Μισθοδοσία','from Payroll'),null,true)+
+      fa('pf-rent',T('Ενοίκιο','Rent'),p.rent,A.rent||0,T('από Έξοδα','from Expenses'),null,true)+
+      fa('pf-util',T('ΔΕΗ/Νερό/Internet','Utilities'),p.utilities,A.utilities||0,T('από Έξοδα','from Expenses'),null,true)+
       fa('pf-oth',T('Λοιπά Έξοδα','Other Expenses'),p.other_expenses,A.opex||0,T('από Έξοδα','from Expenses'),
-        (A.opexList&&A.opexList.length)?A.opexList.slice(0,6).map(x=>esc(x.name)+' '+money(Math.round(x.amt))).join(' · '):'')+
-      (privacyUnlocked()?fa('pf-cash','💵 '+T('Μετρητά','Cash'),p.sales_cash_unrec,A.cashUnrec||0,T('από Ταμείο','from Till')):'')+
+        (A.opexList&&A.opexList.length)?A.opexList.slice(0,6).map(x=>esc(x.name)+' '+money(Math.round(x.amt))).join(' · '):'',true)+
+      (privacyUnlocked()?fa('pf-cash','💵 '+T('Μετρητά','Cash'),p.sales_cash_unrec,A.cashUnrec||0,T('από Ταμείο','from Till'),null,true):'')+
       f('pf-tax','🧾 '+T('Φόρος % (προαιρετικό)','Tax % (optional)'),p.tax_pct)+
     '</div>'+
     '<div style="font-size:11px;color:var(--muted);margin:10px 0 4px">'+T('Αγορές (Αυτόματα από Τιμολόγια + Χειροκίνητες Αγορές — άφησε κενό)','Purchases (Auto from Invoices + Manual Purchases — leave empty)')+':</div>'+
