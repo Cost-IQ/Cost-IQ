@@ -5241,6 +5241,8 @@ async function loadProfitSources(start,end){
   const out={sales:null,wages:0,social:0,opexList:[],opex:0,rent:0,utilities:0,cashUnrec:0,delNet:0,tillTotal:0,tillDecl:0,salesBrk:null,hasData:false};
   const n=v=>(v!=null&&v!==''?(+v):0);
   const T=(el,en)=>L(el,en);
+  // Αυτόματη άντληση ΜΟΝΟ στο Pro. Advanced/Basic: όλα χειροκίνητα.
+  if(!isPro())return out;
   try{
     // Ζ: πωλήσεις ανά συντελεστή ΦΠΑ
     const {data:zs}=await sb.from('z_closing').select('*').eq('tenant_id',curTenant()).gte('z_date',start).lte('z_date',end);
@@ -9073,8 +9075,8 @@ async function saveDailyClose(silent){
     cash_income:totalCash,card_income:totalCard,
     off_envelope:g('dc-off'),credit_notes:g('dc-cn'),
     points_data:JSON.stringify(ptData),
-    sales_breakdown:salesBrk,
     created_by:ST.userEmail||''};
+  if(salesBrk!=null)row.sales_breakdown=salesBrk;   // μόνο αν υπάρχει ανάλυση (αλλιώς μη σπάσει αν λείπει η στήλη)
   try{const {error}=await sb.from('daily_close').upsert(row,{onConflict:'tenant_id,close_date'});
     if(error)throw error; if(!silent){toast('✅ '+L('Αποθηκεύτηκε','Saved')); keepScroll(renderDaily);}
   }catch(e){if(!silent)toast('❌ '+(e.message||e)); else throw e;}
@@ -9202,23 +9204,34 @@ async function saveDelivery(silent){
 function addDailyExp(){
   const T=(el,en)=>L(el,en);
   const supOpts=(ST.suppliers||[]).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
-  // Προτάσεις από όσες κατηγορίες έχουν ήδη χρησιμοποιηθεί
-  const usedCats=[...new Set((ST.dailyExpsAll||ST.dailyExps||[]).map(e=>(e.label||'').trim()).filter(x=>x))];
-  const datalist='<datalist id="ne-cats">'+usedCats.map(c=>'<option value="'+esc(c)+'">').join('')+'</datalist>';
+  // Κατηγορίες εξόδων: 2 ειδικές (Ενοίκιο/ΔΕΗ) + Λοιπά + custom (από τη Ρύθμιση) + Νέα
+  const T2=(el,en)=>L(el,en);
   const payOpt=(v,emo,el,en)=>'<option value="'+v+'">'+emo+' '+T(el,en)+'</option>';
+  const baseCats=[['rent','🏠 '+T2('Ενοίκιο','Rent')],['utilities','💡 '+T2('ΔΕΗ/Νερό/Internet','Utilities')],['other','📎 '+T2('Λοιπά','Other')]];
+  const customCats=((ST.daySetup&&ST.daySetup.expenseCats)||[]).map(c=>['custom:'+c, '• '+c]);
+  const allCats=baseCats.concat(customCats);
+  const catSelect='<select id="ne-cat" onchange="neCatChange()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)">'+
+    allCats.map(c=>'<option value="'+c[0]+'">'+c[1]+'</option>').join('')+
+    '<option value="__new">➕ '+T2('Νέα κατηγορία','New category')+'</option>'+
+  '</select>';
   const html='<div style="display:flex;flex-direction:column;gap:12px">'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Τι είναι;','What is it?')+'</label><select id="ne-type" onchange="neTypeChange()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)">'+
       '<option value="other">'+T('Έξοδο (ΔΕΗ, Λογιστής, Φόροι…)','Expense (utilities, accountant…)')+'</option>'+
       '<option value="supplier">'+T('Πληρωμή Προμηθευτή','Supplier Payment')+'</option>'+
     '</select></div>'+
     '<div id="ne-sup-wrap" style="display:none"><label style="font-size:12px;color:var(--muted)">'+T('Ποιος Προμηθευτής','Which Supplier')+'</label><select id="ne-sup" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)"><option value="">—</option>'+supOpts+'</select></div>'+
-    '<div id="ne-label-wrap"><label style="font-size:12px;color:var(--muted)">'+T('Κατηγορία Εξόδου','Expense Category')+'</label><input id="ne-label" list="ne-cats" type="text" placeholder="'+T('π.χ. ΔΕΗ, Νερό, Λογιστής, Δημοτικοί Φόροι','e.g. Electricity, Water, Accountant')+'" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px">'+datalist+'</div>'+
+    '<div id="ne-label-wrap"><label style="font-size:12px;color:var(--muted)">'+T('Κατηγορία Εξόδου','Expense Category')+'</label>'+catSelect+
+      '<input id="ne-newcat" type="text" placeholder="'+T('Όνομα νέας κατηγορίας','New category name')+'" style="display:none;width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;margin-top:8px"></div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Ποσό','Amount')+'</label><input id="ne-amount" type="number" step="0.01" placeholder="0.00" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px"></div>'+
     '<div><label style="font-size:12px;color:var(--muted)">'+T('Τρόπος Πληρωμής','Payment Method')+'</label><select id="ne-pay" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card)">'+
       payOpt('cash','💵','Μετρητά','Cash')+payOpt('transfer','🏦','Τραπεζικό Έμβασμα','Bank Transfer')+payOpt('card','💳','Κάρτα','Card')+
     '</select></div>'+
   '</div>';
   showModal('➕ '+T('Νέο Έξοδο','New Expense'),html,T('Αποθήκευση','Save'),saveDailyExp);
+}
+function neCatChange(){
+  const sel=document.getElementById('ne-cat'), inp=document.getElementById('ne-newcat');
+  if(sel&&inp)inp.style.display=(sel.value==='__new')?'block':'none';
 }
 function neTypeChange(){
   const tp=document.getElementById('ne-type').value;
@@ -9240,9 +9253,24 @@ async function saveDailyExp(){
     }catch(e){toast('❌ '+(e.message||e));}
     return;
   }
-  const label=g('ne-label').trim();
-  if(!label){toast('❌ '+L('Βάλε κατηγορία','Enter a category'));return;}
-  try{const {error}=await sb.from('daily_expenses').insert({tenant_id:curTenant(),exp_date:dailyDate(),label:label,category:'other',payment_method:g('ne-pay'),amount:amount,created_by:ST.userEmail||''});
+  // Κατηγορία από το dropdown (+ νέα αν επιλέχθηκε)
+  let cat=g('ne-cat')||'other';
+  let label;
+  if(cat==='__new'){
+    const nc=g('ne-newcat').trim();
+    if(!nc){toast('❌ '+L('Βάλε όνομα κατηγορίας','Enter a category name'));return;}
+    cat='custom:'+nc; label=nc;
+    // Αποθήκευσε τη νέα κατηγορία στη Ρύθμιση Ημέρας ώστε να θυμάται
+    try{
+      const s=ST.daySetup||{}; const cats=(s.expenseCats||[]).slice();
+      if(cats.indexOf(nc)<0){ cats.push(nc); s.expenseCats=cats; ST.daySetup=s;
+        await sb.from('tenants').update({day_setup:s}).eq('id',curTenant()); }
+    }catch(e){}
+  }else if(cat==='rent'){ label=L('Ενοίκιο','Rent'); }
+  else if(cat==='utilities'){ label=L('ΔΕΗ/Νερό/Internet','Utilities'); }
+  else if(cat.indexOf('custom:')===0){ label=cat.slice(7); }
+  else { label=L('Λοιπά','Other'); }
+  try{const {error}=await sb.from('daily_expenses').insert({tenant_id:curTenant(),exp_date:dailyDate(),label:label,category:cat,payment_method:g('ne-pay'),amount:amount,created_by:ST.userEmail||''});
     if(error)throw error; closeModal(); toast('✅ '+L('Προστέθηκε','Added')); keepScroll(renderDaily);
   }catch(e){toast('❌ '+(e.message||e));}
 }
